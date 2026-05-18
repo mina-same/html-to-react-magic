@@ -160,53 +160,70 @@ function Association() {
 }
 
 const STATS = [
-  { n: "186K", l: "ريال تبرعات هذا الشهر", icon: "💵", c: "from-saaid-g2 to-saaid-g3" },
-  { n: "12", l: "حملة نشطة", icon: "📣", c: "from-saaid-gold to-amber-500" },
-  { n: "47K", l: "وصول إعلامي", icon: "📡", c: "from-sky-500 to-cyan-600" },
-  { n: "+18%", l: "نمو المتابعين", icon: "📈", c: "from-emerald-500 to-teal-600" },
+  { n: "—", l: "متابع على المنصات", change: "+ ابدأ بتفعيل حسابك", changeCls: "text-saaid-g3" },
+  { n: "—", l: "تبرعات هذا الشهر", change: "+ ابدأ حملتك الأولى", changeCls: "text-saaid-g3" },
+  { n: "0", l: "قطعة محتوى مُنتجة", change: "+ ارفع الملف التعريفي", changeCls: "text-saaid-g3" },
+  { n: "5", l: "خدمات متاحة لك", change: "✓ جاهزة للتفعيل", changeCls: "text-saaid-g3" },
 ];
 
-function Overview() {
+const QUICK = [
+  { icon: "📋", title: "رفع الملف التعريفي", sub: "PDF أو Word — يحلله AI فوراً", bg: "bg-saaid-g5", titleCls: "text-saaid-g2", border: "border-saaid-g3/15", hover: "hover:bg-emerald-100", page: "profile" as const },
+  { icon: "🛎", title: "استعرض خدماتنا", sub: "5 خدمات متكاملة للجمعيات", bg: "bg-amber-50", titleCls: "text-amber-800", border: "border-saaid-gold/20", hover: "hover:bg-amber-100", page: "services" as const },
+  { icon: "📣", title: "ابدأ حملة", sub: "حملات رمضان، التبرع، التوعية", bg: "bg-indigo-50", titleCls: "text-indigo-800", border: "border-indigo-200", hover: "hover:bg-indigo-100", page: "campaigns" as const },
+];
+
+function Overview({ onNavigate }: { onNavigate: (p: PageKey) => void }) {
   return (
     <>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* WELCOME BANNER */}
+      <div className="relative overflow-hidden bg-gradient-to-l from-saaid-g1 to-saaid-g3 rounded-2xl p-6 flex items-center gap-5 text-white">
+        <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-saaid-gold/10 pointer-events-none" />
+        <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center text-3xl flex-shrink-0">🏛️</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs text-white/60 mb-1">مرحباً بكم في منصة ساعِد</div>
+          <div className="text-xl font-extrabold mb-1">أهلاً بجمعيتكم الكريمة</div>
+          <div className="text-sm text-white/70">ارفعوا ملف الجمعية لبدء توليد المحتوى التسويقي بالذكاء الاصطناعي</div>
+        </div>
+        <div className="hidden md:flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full text-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+          متصل
+        </div>
+      </div>
+
+      {/* STATS ROW */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {STATS.map((s) => (
-          <div key={s.l} className="bg-white rounded-2xl p-5 border border-saaid-g2/10 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(26,92,58,0.08)] transition-all">
-            <div className={"w-11 h-11 rounded-xl bg-gradient-to-br text-white flex items-center justify-center text-xl mb-3 " + s.c}>{s.icon}</div>
+          <div key={s.l} className="bg-white rounded-xl p-4 border border-saaid-g2/10 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(26,92,58,0.08)] transition-all">
             <div className="text-2xl font-extrabold text-saaid-td">{s.n}</div>
-            <div className="text-sm text-saaid-tl mt-1">{s.l}</div>
+            <div className="text-xs text-saaid-tl mt-1">{s.l}</div>
+            <div className={"text-[0.7rem] mt-2 font-semibold " + s.changeCls}>{s.change}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-saaid-g2/10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-saaid-td">التبرعات الأسبوعية</h3>
-            <span className="text-xs text-saaid-tl">آخر 7 أيام</span>
-          </div>
-          <div className="h-48 flex items-end gap-2">
-            {[50, 72, 60, 88, 65, 92, 78].map((h, i) => (
-              <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-saaid-g3 to-saaid-gold" style={{ height: `${h}%` }} />
-            ))}
+      {/* SECTION: START HERE */}
+      <div className="bg-white rounded-2xl border border-saaid-g2/10 overflow-hidden">
+        <div className="px-6 py-4 border-b border-saaid-g2/10 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-saaid-g5 text-saaid-g2 flex items-center justify-center text-lg">🚀</div>
+          <div>
+            <div className="font-bold text-saaid-td">ابدأ هنا</div>
+            <div className="text-xs text-saaid-tl mt-0.5">ارفع ملف جمعيتك التعريفي ليحلله الذكاء الاصطناعي</div>
           </div>
         </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-saaid-g2/10">
-          <h3 className="font-bold text-saaid-td mb-4">مهام اليوم</h3>
-          <ul className="space-y-3">
-            {[
-              { t: "نشر تغطية الحملة", done: true },
-              { t: "تصميم بوست رمضان", done: false },
-              { t: "مكالمة مع المؤثر", done: false },
-              { t: "تقرير شهري", done: false },
-            ].map((tk, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm">
-                <span className={"w-4 h-4 rounded-full flex items-center justify-center text-[0.6rem] " + (tk.done ? "bg-emerald-500 text-white" : "border border-saaid-g2/30")}>{tk.done ? "✓" : ""}</span>
-                <span className={tk.done ? "line-through text-saaid-tl" : "text-saaid-td"}>{tk.t}</span>
-              </li>
+        <div className="p-5">
+          <div className="grid md:grid-cols-3 gap-3">
+            {QUICK.map((q) => (
+              <button
+                key={q.title}
+                onClick={() => onNavigate(q.page)}
+                className={`text-right rounded-xl p-4 border transition-colors cursor-pointer ${q.bg} ${q.border} ${q.hover}`}
+              >
+                <div className="text-2xl mb-1.5">{q.icon}</div>
+                <div className={`text-sm font-bold mb-1 ${q.titleCls}`}>{q.title}</div>
+                <div className="text-xs text-saaid-tl">{q.sub}</div>
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
     </>
