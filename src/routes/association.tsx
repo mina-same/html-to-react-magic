@@ -145,7 +145,7 @@ function Association() {
         </header>
 
         <div className="p-8 space-y-6">
-          {page === "overview" && <Overview />}
+          {page === "overview" && <Overview onNavigate={setPage} />}
           {page === "profile" && <Profile />}
           {page === "tasks" && <Tasks />}
           {page === "donations" && <Donations />}
