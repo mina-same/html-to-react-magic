@@ -2,6 +2,23 @@
 @source "../src";
 @import "tw-animate-css";
 
+@theme {
+  --color-saaid-g1: #0d3322;
+  --color-saaid-g2: #1a5c3a;
+  --color-saaid-g3: #2d7a52;
+  --color-saaid-g4: #4a9e70;
+  --color-saaid-g5: #e8f5ee;
+  --color-saaid-g6: #f2faf6;
+  --color-saaid-gold: #c9a84c;
+  --color-saaid-gold2: #f0dfa0;
+  --color-saaid-bg: #f4f7f5;
+  --color-saaid-td: #111827;
+  --color-saaid-tm: #374151;
+  --color-saaid-tl: #6b7280;
+  --color-saaid-th: #9ca3af;
+  --font-arabic: "Tajawal", "Cairo", system-ui, sans-serif;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /*
