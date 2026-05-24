@@ -40,6 +40,14 @@ export interface Donation {
   org: string;
 }
 
+export interface Campaign {
+  id: number;
+  title: string;
+  status: "draft" | "active" | "paused" | "ended";
+  budget: number;
+  reach: string;
+}
+
 export interface Service {
   id: string;
   icon: string;

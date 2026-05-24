@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as GateRouteImport } from './routes/gate'
 import { Route as AssociationRouteImport } from './routes/association'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GateRoute = GateRouteImport.update({
   id: '/gate',
   path: '/gate',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
   '/gate': typeof GateRoute
+  '/login': typeof LoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
   '/gate': typeof GateRoute
+  '/login': typeof LoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
   '/gate': typeof GateRoute
+  '/login': typeof LoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/association' | '/gate'
+  fullPaths: '/' | '/admin' | '/association' | '/gate' | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/association' | '/gate'
-  id: '__root__' | '/' | '/admin' | '/association' | '/gate'
+  to: '/' | '/admin' | '/association' | '/gate' | '/login'
+  id: '__root__' | '/' | '/admin' | '/association' | '/gate' | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AssociationRoute: typeof AssociationRoute
   GateRoute: typeof GateRoute
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gate': {
       id: '/gate'
       path: '/gate'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AssociationRoute: AssociationRoute,
   GateRoute: GateRoute,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

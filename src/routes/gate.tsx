@@ -31,7 +31,10 @@ function Gate() {
       setError(true);
       setShake(true);
       setTimeout(() => setShake(false), 400);
-      setTimeout(() => { setPassword(""); inputRef.current?.focus(); }, 100);
+      setTimeout(() => {
+        setPassword("");
+        inputRef.current?.focus();
+      }, 100);
       setTimeout(() => setError(false), 3000);
     }
   }
@@ -39,21 +42,41 @@ function Gate() {
   return (
     <div className="font-arabic" dir="rtl">
       {/* Background layers */}
-      <div className="fixed inset-0" style={{ background: "linear-gradient(135deg,#071a0f 0%,#0d3322 40%,#163d28 70%,#0a2518 100%)" }} />
       <div
         className="fixed inset-0"
         style={{
-          backgroundImage: "linear-gradient(rgba(45,122,82,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(45,122,82,.07) 1px,transparent 1px)",
+          background: "linear-gradient(135deg,#071a0f 0%,#0d3322 40%,#163d28 70%,#0a2518 100%)",
+        }}
+      />
+      <div
+        className="fixed inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(45,122,82,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(45,122,82,.07) 1px,transparent 1px)",
           backgroundSize: "50px 50px",
         }}
       />
       <div
         className="fixed pointer-events-none"
-        style={{ width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle,rgba(45,122,82,.12) 0%,transparent 70%)", top: -100, right: -100 }}
+        style={{
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          background: "radial-gradient(circle,rgba(45,122,82,.12) 0%,transparent 70%)",
+          top: -100,
+          right: -100,
+        }}
       />
       <div
         className="fixed pointer-events-none"
-        style={{ width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle,rgba(201,168,76,.06) 0%,transparent 70%)", bottom: -50, left: -50 }}
+        style={{
+          width: 400,
+          height: 400,
+          borderRadius: "50%",
+          background: "radial-gradient(circle,rgba(201,168,76,.06) 0%,transparent 70%)",
+          bottom: -50,
+          left: -50,
+        }}
       />
 
       {/* Gate overlay */}
@@ -73,7 +96,13 @@ function Gate() {
           <img
             src={saaidLogo}
             alt="ساعِد"
-            style={{ width: 90, margin: "0 auto 20px", filter: "brightness(0) invert(1)", opacity: 0.95, display: "block" }}
+            style={{
+              width: 90,
+              margin: "0 auto 20px",
+              filter: "brightness(0) invert(1)",
+              opacity: 0.95,
+              display: "block",
+            }}
           />
 
           {/* Badge */}
@@ -89,19 +118,48 @@ function Gate() {
           >
             <span
               className="animate-blink"
-              style={{ width: 7, height: 7, borderRadius: "50%", background: "#c9a84c", display: "inline-block" }}
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "#c9a84c",
+                display: "inline-block",
+              }}
             />
-            <span style={{ fontSize: ".8rem", fontWeight: 600, color: "#e8c96e", letterSpacing: ".04em" }}>
+            <span
+              style={{
+                fontSize: ".8rem",
+                fontWeight: 600,
+                color: "#e8c96e",
+                letterSpacing: ".04em",
+              }}
+            >
               قيد الإنشاء
             </span>
           </div>
 
           {/* Title + subtitle */}
-          <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "rgba(255,255,255,.95)", lineHeight: 1.3, marginBottom: 10 }}>
+          <div
+            style={{
+              fontSize: "1.75rem",
+              fontWeight: 800,
+              color: "rgba(255,255,255,.95)",
+              lineHeight: 1.3,
+              marginBottom: 10,
+            }}
+          >
             المنصة قادمة قريباً
           </div>
-          <div style={{ fontSize: ".9rem", color: "rgba(255,255,255,.45)", lineHeight: 1.65, marginBottom: 28 }}>
-            نعمل على بناء منصة إدارية متكاملة للجمعيات الخيرية.<br />
+          <div
+            style={{
+              fontSize: ".9rem",
+              color: "rgba(255,255,255,.45)",
+              lineHeight: 1.65,
+              marginBottom: 28,
+            }}
+          >
+            نعمل على بناء منصة إدارية متكاملة للجمعيات الخيرية.
+            <br />
             للوصول المبكر أدخل كلمة المرور.
           </div>
 
@@ -125,7 +183,14 @@ function Gate() {
               }}
             />
           </div>
-          <div style={{ fontSize: ".74rem", color: "rgba(255,255,255,.3)", textAlign: "left", marginBottom: 26 }}>
+          <div
+            style={{
+              fontSize: ".74rem",
+              color: "rgba(255,255,255,.3)",
+              textAlign: "left",
+              marginBottom: 26,
+            }}
+          >
             اكتملت نسبة 72% من التطوير
           </div>
 
@@ -180,14 +245,27 @@ function Gate() {
 
           {/* Error message */}
           {error && (
-            <div style={{ fontSize: ".8rem", color: "#f87171", marginTop: 10, animation: "fadeIn .2s ease" }}>
+            <div
+              style={{
+                fontSize: ".8rem",
+                color: "#f87171",
+                marginTop: 10,
+                animation: "fadeIn .2s ease",
+              }}
+            >
               كلمة المرور غير صحيحة، حاول مجدداً
             </div>
           )}
 
           {/* Feature chips */}
           <div className="flex flex-wrap gap-2 justify-center" style={{ marginTop: 22 }}>
-            {["📋 ملف الجمعية", "✅ لوحة المهام", "💳 تتبع التبرعات", "✦ محتوى AI", "👥 إدارة الفريق"].map((chip) => (
+            {[
+              "📋 ملف الجمعية",
+              "✅ لوحة المهام",
+              "💳 تتبع التبرعات",
+              "✦ محتوى AI",
+              "👥 إدارة الفريق",
+            ].map((chip) => (
               <span
                 key={chip}
                 style={{
@@ -215,8 +293,10 @@ function Gate() {
             }}
           >
             ساعِد ·{" "}
-            <span style={{ color: "rgba(201,168,76,.5)", fontWeight: 600 }}>The Bright Station</span>
-            {" "}· جميع الحقوق محفوظة
+            <span style={{ color: "rgba(201,168,76,.5)", fontWeight: 600 }}>
+              The Bright Station
+            </span>{" "}
+            · جميع الحقوق محفوظة
           </div>
         </div>
       </div>
