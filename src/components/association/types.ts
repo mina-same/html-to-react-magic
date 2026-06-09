@@ -9,6 +9,17 @@ export interface Influencer {
   niche: string;
   notes: string;
   basePrice: number;
+  bio: string;
+  location: string;
+  audience: string;
+  instagramHandle: string;
+  xHandle: string;
+  tiktokHandle: string;
+  youtubeHandle: string;
+  snapchatHandle: string;
+  website: string;
+  email: string;
+  phone: string;
 }
 
 export interface Employee {
@@ -22,7 +33,7 @@ export interface Employee {
 export interface Task {
   id: number;
   title: string;
-  status: "todo" | "doing" | "done";
+  status: "todo" | "doing" | "review" | "done";
   urgency: "urgent" | "high" | "normal" | "low";
   deadline: string;
   assignee: number;

@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as GateRouteImport } from './routes/gate'
 import { Route as AssociationRouteImport } from './routes/association'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,11 +17,6 @@ import { Route as IndexRouteImport } from './routes/index'
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GateRoute = GateRouteImport.update({
-  id: '/gate',
-  path: '/gate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssociationRoute = AssociationRouteImport.update({
@@ -45,14 +39,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
-  '/gate': typeof GateRoute
   '/login': typeof LoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
-  '/gate': typeof GateRoute
   '/login': typeof LoginRoute
 }
 export interface FileRoutesById {
@@ -60,22 +52,20 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
-  '/gate': typeof GateRoute
   '/login': typeof LoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/association' | '/gate' | '/login'
+  fullPaths: '/' | '/admin' | '/association' | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/association' | '/gate' | '/login'
-  id: '__root__' | '/' | '/admin' | '/association' | '/gate' | '/login'
+  to: '/' | '/admin' | '/association' | '/login'
+  id: '__root__' | '/' | '/admin' | '/association' | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AssociationRoute: typeof AssociationRoute
-  GateRoute: typeof GateRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -86,13 +76,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gate': {
-      id: '/gate'
-      path: '/gate'
-      fullPath: '/gate'
-      preLoaderRoute: typeof GateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/association': {
@@ -123,7 +106,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AssociationRoute: AssociationRoute,
-  GateRoute: GateRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport

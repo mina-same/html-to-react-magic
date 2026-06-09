@@ -5,17 +5,17 @@ import { supabase } from "@/lib/supabase";
 type UserRole = "admin" | "association" | null;
 
 interface AuthState {
-  user:    User | null;
+  user: User | null;
   session: Session | null;
-  role:    UserRole;
+  role: UserRole;
   assocName: string;
   loading: boolean;
 }
 
 interface AuthContextValue extends AuthState {
-  signIn:   (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp:   (email: string, password: string, assocName: string) => Promise<{ error: string | null }>;
-  signOut:  () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, assocName: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updateAssocName: (name: string) => Promise<void>;
 }
@@ -24,7 +24,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    user: null, session: null, role: null, assocName: "", loading: true,
+    user: null,
+    session: null,
+    role: null,
+    assocName: "",
+    loading: true,
   });
 
   async function loadProfile(userId: string) {
@@ -37,27 +41,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const profile = await loadProfile(session.user.id);
-        setState({ user: session.user, session, role: (profile?.role as UserRole) ?? "association", assocName: profile?.assoc_name ?? "", loading: false });
-      } else {
-        setState(s => ({ ...s, loading: false }));
+    let mounted = true;
+
+    // Helper to finish loading
+    const finish = (newState: Partial<AuthState>) => {
+      if (mounted) {
+        setState((s) => ({ ...s, ...newState, loading: false }));
+        clearTimeout(timeout);
       }
-    });
+    };
+
+    // Safety timeout: force loading to false after 5s if still stuck
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        setState((s) => {
+          if (s.loading) {
+            console.warn("Auth initialization timed out, forcing loading state to false");
+            return { ...s, loading: false };
+          }
+          return s;
+        });
+      }
+    }, 5000);
+
+    // Initial session
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          try {
+            const profile = await loadProfile(session.user.id);
+            finish({
+              user: session.user,
+              session,
+              role: (profile?.role as UserRole) ?? "association",
+              assocName: profile?.assoc_name ?? "",
+            });
+          } catch (err) {
+            console.error("Auth init error:", err);
+            finish({ user: session.user, session, role: "association" }); // Fallback
+          }
+        } else {
+          finish({ loading: false });
+        }
+      })
+      .catch((err) => {
+        console.error("Session fetch error:", err);
+        finish({ loading: false });
+      });
 
     // Auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const profile = await loadProfile(session.user.id);
-        setState({ user: session.user, session, role: (profile?.role as UserRole) ?? "association", assocName: profile?.assoc_name ?? "", loading: false });
+        try {
+          const profile = await loadProfile(session.user.id);
+          finish({
+            user: session.user,
+            session,
+            role: (profile?.role as UserRole) ?? "association",
+            assocName: profile?.assoc_name ?? "",
+          });
+        } catch (err) {
+          console.error("Auth change error:", err);
+          finish({ user: session.user, session, role: "association" });
+        }
       } else {
-        setState({ user: null, session: null, role: null, assocName: "", loading: false });
+        finish({ user: null, session: null, role: null, assocName: "" });
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function signIn(email: string, password: string) {
@@ -88,11 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function updateAssocName(name: string) {
     if (!state.user) return;
     await supabase.from("profiles").update({ assoc_name: name }).eq("id", state.user.id);
-    setState(s => ({ ...s, assocName: name }));
+    setState((s) => ({ ...s, assocName: name }));
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, resetPassword, updateAssocName }}>
+    <AuthContext.Provider
+      value={{ ...state, signIn, signUp, signOut, resetPassword, updateAssocName }}
+    >
       {children}
     </AuthContext.Provider>
   );

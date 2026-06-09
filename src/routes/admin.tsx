@@ -1,5 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useMemo, useEffect } from "react";
+import {
+  getCountries,
+  getCountryCallingCode,
+  isValidPhoneNumber,
+  parsePhoneNumberFromString,
+  type Country,
+} from "libphonenumber-js";
+import { useAuth } from "@/hooks/useAuth";
+import { adminOrgsDb, adminRequestsDb, adminMatchesDb, influencersDb } from "@/lib/db";
+import type { AdminOrg, AdminRequest, AdminMatch } from "@/lib/db";
 import saaidLogo from "../assets/saaid-logo.png";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,18 +24,8 @@ export const Route = createFileRoute("/admin")({
 
 // ── Types ────────────────────────────────────────────────
 
-type OrgStatus = "active" | "new" | "pending" | "suspended";
-interface Org {
-  id: number;
-  name: string;
-  license: string;
-  region: string;
-  status: OrgStatus;
-  email: string;
-  phone: string;
-  notes: string;
-  date: string;
-}
+type OrgStatus = AdminOrg["status"];
+type Org = AdminOrg & { notes: string }; // notes = description alias for UI
 
 type InfStatus = "active" | "pending" | "ended";
 interface Influencer {
@@ -38,334 +38,36 @@ interface Influencer {
   niche: string;
   notes: string;
   price: number;
+  bio?: string;
+  location?: string;
+  audience?: string;
+  instagramHandle?: string;
+  xHandle?: string;
+  tiktokHandle?: string;
+  youtubeHandle?: string;
+  snapchatHandle?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
 }
 
-type ReqStatus = "pending" | "matched" | "completed" | "rejected";
-interface CampaignRequest {
-  id: number;
-  orgId: number;
-  infId: number;
-  type: string;
-  budget: number;
-  date: string;
-  duration: string;
-  message: string;
-  status: ReqStatus;
-}
+type ReqStatus = AdminRequest["status"];
+type CampaignRequest = AdminRequest;
 
-type MatchStatus = "active" | "pending" | "completed";
-interface Match {
-  id: number;
-  orgId: number;
-  infId: number;
-  value: number;
-  status: MatchStatus;
-  notes: string;
-  date: string;
-}
+type MatchStatus = AdminMatch["status"];
+type Match = AdminMatch;
 
-interface RevenueRow {
-  org: string;
-  campaigns: number;
-  inf: string;
-  value: number;
-  commission: number;
-  month: string;
-}
+const COUNTRY_DISPLAY_NAMES =
+  typeof Intl !== "undefined" && "DisplayNames" in Intl
+    ? new Intl.DisplayNames(["ar"], { type: "region" })
+    : null;
 
-// ── Initial Data ─────────────────────────────────────────
-
-const initialOrgs: Org[] = [
-  {
-    id: 1,
-    name: "جمعية تكاتف الخيرية",
-    license: "20250001",
-    region: "الرياض",
-    status: "active",
-    email: "info@takaful.org",
-    phone: "0501112233",
-    notes: "",
-    date: "2025-01-10",
-  },
-  {
-    id: 2,
-    name: "جمعية نماء للتنمية",
-    license: "20250018",
-    region: "جدة",
-    status: "active",
-    email: "info@nama.org",
-    phone: "0552223344",
-    notes: "متعاملون منذ 2024",
-    date: "2025-01-22",
-  },
-  {
-    id: 3,
-    name: "جمعية الأمل الخيرية",
-    license: "20250034",
-    region: "الدمام",
-    status: "new",
-    email: "hope@amal.org",
-    phone: "0533334455",
-    notes: "جديدة — بانتظار الفحص",
-    date: "2025-04-28",
-  },
-  {
-    id: 4,
-    name: "جمعية بر الوالدين",
-    license: "20250041",
-    region: "المدينة المنورة",
-    status: "new",
-    email: "bar@bir.org",
-    phone: "0544445566",
-    notes: "",
-    date: "2025-05-01",
-  },
-  {
-    id: 5,
-    name: "جمعية ضياء للأيتام",
-    license: "20250055",
-    region: "مكة المكرمة",
-    status: "new",
-    email: "dia@diaa.org",
-    phone: "0555556677",
-    notes: "",
-    date: "2025-05-03",
-  },
-  {
-    id: 6,
-    name: "جمعية الرعاية الصحية",
-    license: "20240099",
-    region: "الرياض",
-    status: "pending",
-    email: "health@raaya.org",
-    phone: "0566667788",
-    notes: "بانتظار تجديد الترخيص",
-    date: "2024-11-15",
-  },
-  {
-    id: 7,
-    name: "جمعية اليسر",
-    license: "20240077",
-    region: "أبها",
-    status: "active",
-    email: "info@yusr.org",
-    phone: "0577778899",
-    notes: "",
-    date: "2024-09-20",
-  },
-];
-
-const initialInfluencers: Influencer[] = [
-  {
-    id: 1,
-    name: "أبو خالد العوضي",
-    platform: "Instagram",
-    followers: 320000,
-    engagement: 5.2,
-    status: "active",
-    niche: "محتوى خيري وعائلي",
-    notes: "تعاقد سنوي",
-    price: 1800,
-  },
-  {
-    id: 2,
-    name: "هند الرشيدي",
-    platform: "X",
-    followers: 890000,
-    engagement: 3.8,
-    status: "active",
-    niche: "شؤون اجتماعية",
-    notes: "",
-    price: 3500,
-  },
-  {
-    id: 3,
-    name: "أحمد القحطاني",
-    platform: "TikTok",
-    followers: 1200000,
-    engagement: 7.1,
-    status: "active",
-    niche: "ترفيهي وخيري",
-    notes: "حملة رمضان فقط",
-    price: 5000,
-  },
-  {
-    id: 4,
-    name: "نورة العتيبي",
-    platform: "Snapchat",
-    followers: 450000,
-    engagement: 4.5,
-    status: "pending",
-    niche: "محتوى عائلي",
-    notes: "قيد التفاوض على الأسعار",
-    price: 2200,
-  },
-  {
-    id: 5,
-    name: "سالم الدوسري",
-    platform: "YouTube",
-    followers: 280000,
-    engagement: 6.3,
-    status: "active",
-    niche: "وثائقي خيري",
-    notes: "",
-    price: 1500,
-  },
-  {
-    id: 6,
-    name: "ريهام السبيعي",
-    platform: "Instagram",
-    followers: 175000,
-    engagement: 8.9,
-    status: "ended",
-    niche: "محتوى نسائي واجتماعي",
-    notes: "انتهى عقدها مارس 2025",
-    price: 250,
-  },
-];
-
-const initialRequests: CampaignRequest[] = [
-  {
-    id: 1,
-    orgId: 1,
-    infId: 2,
-    type: "حملة خيرية",
-    budget: 2000,
-    date: "2025-05-07",
-    duration: "أسبوع",
-    message: "نريد حملة توعوية بمناسبة يوم الأيتام",
-    status: "pending",
-  },
-  {
-    id: 2,
-    orgId: 2,
-    infId: 3,
-    type: "حملة رمضان",
-    budget: 5000,
-    date: "2025-05-05",
-    duration: "شهر",
-    message: "حملة رمضان الكبرى — نريد وصول واسع",
-    status: "pending",
-  },
-  {
-    id: 3,
-    orgId: 3,
-    infId: 1,
-    type: "تبرع",
-    budget: 1500,
-    date: "2025-05-04",
-    duration: "أسبوعان",
-    message: "جمع تبرعات لمشروع بئر مياه",
-    status: "matched",
-  },
-  {
-    id: 4,
-    orgId: 7,
-    infId: 5,
-    type: "توعية",
-    budget: 800,
-    date: "2025-05-02",
-    duration: "3 أيام",
-    message: "توعية بخطر الأمراض الموسمية",
-    status: "pending",
-  },
-  {
-    id: 5,
-    orgId: 4,
-    infId: 4,
-    type: "مشروع",
-    budget: 1200,
-    date: "2025-04-30",
-    duration: "أسبوع",
-    message: "مشروع توزيع كسوة الشتاء",
-    status: "completed",
-  },
-  {
-    id: 6,
-    orgId: 1,
-    infId: 6,
-    type: "خيرية",
-    budget: 500,
-    date: "2025-04-28",
-    duration: "يوم واحد",
-    message: "فيديو قصير عن مشاريعنا",
-    status: "rejected",
-  },
-];
-
-const initialMatches: Match[] = [
-  {
-    id: 1,
-    orgId: 1,
-    infId: 2,
-    value: 2200,
-    status: "active",
-    notes: "تم التوقيع — الحملة جارية",
-    date: "2025-05-06",
-  },
-  {
-    id: 2,
-    orgId: 2,
-    infId: 3,
-    value: 5500,
-    status: "pending",
-    notes: "قيد التفاوض على التفاصيل",
-    date: "2025-05-04",
-  },
-  {
-    id: 3,
-    orgId: 7,
-    infId: 5,
-    value: 900,
-    status: "completed",
-    notes: "تمت الحملة بنجاح — الدفع تم",
-    date: "2025-04-20",
-  },
-  {
-    id: 4,
-    orgId: 3,
-    infId: 1,
-    value: 1800,
-    status: "active",
-    notes: "حملة بئر المياه — قيد التنفيذ",
-    date: "2025-05-03",
-  },
-];
-
-const revenueData: RevenueRow[] = [
-  {
-    org: "جمعية تكاتف الخيرية",
-    campaigns: 2,
-    inf: "هند الرشيدي",
-    value: 4400,
-    commission: 660,
-    month: "مايو 2025",
-  },
-  {
-    org: "جمعية نماء للتنمية",
-    campaigns: 1,
-    inf: "أحمد القحطاني",
-    value: 5500,
-    commission: 825,
-    month: "مايو 2025",
-  },
-  {
-    org: "جمعية اليسر",
-    campaigns: 1,
-    inf: "سالم الدوسري",
-    value: 900,
-    commission: 135,
-    month: "أبريل 2025",
-  },
-  {
-    org: "جمعية الأمل الخيرية",
-    campaigns: 1,
-    inf: "أبو خالد العوضي",
-    value: 1800,
-    commission: 270,
-    month: "مايو 2025",
-  },
-];
+const COUNTRY_OPTIONS = getCountries()
+  .map((code) => ({
+    code,
+    label: `${COUNTRY_DISPLAY_NAMES?.of(code) ?? code} (+${getCountryCallingCode(code)})`,
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label, "ar"));
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -446,6 +148,7 @@ function OrgModal({
   onSave: (data: Partial<Org>) => void;
 }) {
   const [form, setForm] = useState<Partial<Org>>(org ?? {});
+  const [country, setCountry] = useState<Country>("SA");
   const isNew = !org?.id;
   function set(k: keyof Org, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -455,7 +158,17 @@ function OrgModal({
       toast.error("يجب إدخال اسم الجمعية");
       return;
     }
-    onSave(form);
+    if (form.phone?.trim()) {
+      const parsed = parsePhoneNumberFromString(form.phone.trim(), country);
+      if (!parsed || !isValidPhoneNumber(form.phone.trim(), country)) {
+        toast.error("رقم الهاتف غير صحيح، اختر الدولة وتأكد من الرقم");
+        return;
+      }
+      onSave({ ...form, phone: parsed.number });
+    } else {
+      toast.error("يجب إدخال رقم الهاتف");
+      return;
+    }
     onClose();
   }
 
@@ -479,6 +192,29 @@ function OrgModal({
     letterSpacing: ".05em",
     marginBottom: 5,
   };
+
+  useEffect(() => {
+    const parsed = form.phone ? parsePhoneNumberFromString(form.phone) : undefined;
+    if (parsed?.country) {
+      setCountry(parsed.country);
+      setForm((f) => ({
+        ...f,
+        phone: parsed.formatNational(),
+      }));
+      return;
+    }
+
+    const saParsed = form.phone ? parsePhoneNumberFromString(form.phone, "SA") : undefined;
+    if (saParsed?.country) {
+      setCountry(saParsed.country);
+      setForm((f) => ({
+        ...f,
+        phone: saParsed.formatNational(),
+      }));
+    }
+    // Only run once when the modal opens or the record changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org?.id]);
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -541,12 +277,34 @@ function OrgModal({
             </div>
             <div>
               <label style={labelStyle}>رقم الهاتف</label>
-              <input
-                style={inputStyle}
-                value={form.phone ?? ""}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="05xxxxxxxx"
-              />
+              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                <select
+                  style={{
+                    ...inputStyle,
+                    background: "white",
+                    width: 140,
+                    flexShrink: 0,
+                    direction: "ltr",
+                  }}
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value as Country)}
+                >
+                  {COUNTRY_OPTIONS.map((opt) => (
+                    <option key={opt.code} value={opt.code}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  style={{ ...inputStyle, flex: 1, direction: "ltr" }}
+                  value={form.phone ?? ""}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="501234567"
+                />
+              </div>
+              <div style={{ fontSize: ".7rem", color: "#6b7280", marginTop: 5 }}>
+                اختر الدولة أولاً ثم أدخل الرقم. سيتم حفظه بصيغة دولية صحيحة.
+              </div>
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -890,7 +648,7 @@ function ReqModal({
               <select
                 style={{ ...inputStyle, background: "white" }}
                 value={form.orgId ?? ""}
-                onChange={(e) => set("orgId", Number(e.target.value))}
+                onChange={(e) => set("orgId", e.target.value)}
               >
                 <option value="">اختر الجمعية</option>
                 {orgs.map((o) => (
@@ -1089,7 +847,7 @@ function MatchModal({
               <select
                 style={{ ...inputStyle, background: "white" }}
                 value={form.orgId ?? ""}
-                onChange={(e) => set("orgId", Number(e.target.value))}
+                onChange={(e) => set("orgId", e.target.value)}
               >
                 <option value="">اختر الجمعية</option>
                 {orgs.map((o) => (
@@ -1199,11 +957,15 @@ function MatchModal({
 // ── Main Admin Component ──────────────────────────────────
 
 function Admin() {
+  const navigate = useNavigate();
+  const { user, role, loading, signOut } = useAuth();
+
   const [activePage, setActivePage] = useState("overview");
-  const [orgs, setOrgs] = useState<Org[]>(initialOrgs);
-  const [influencers, setInfluencers] = useState<Influencer[]>(initialInfluencers);
-  const [requests, setRequests] = useState<CampaignRequest[]>(initialRequests);
-  const [matches, setMatches] = useState<Match[]>(initialMatches);
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [influencers, setInfluencers] = useState<Influencer[]>([]);
+  const [requests, setRequests] = useState<CampaignRequest[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const [orgModal, setOrgModal] = useState<{ open: boolean; data: Partial<Org> | null }>({
     open: false,
@@ -1228,6 +990,70 @@ function Admin() {
   const [infPlatFilter, setInfPlatFilter] = useState("all");
   const [reqStatusFilter, setReqStatusFilter] = useState("all");
   const [matchStatusFilter, setMatchStatusFilter] = useState("all");
+
+  const filteredOrgs = useMemo(
+    () =>
+      orgs.filter(
+        (o) =>
+          (orgStatusFilter === "all" || o.status === orgStatusFilter) &&
+          (o.name.includes(orgSearch) ||
+            o.region.includes(orgSearch) ||
+            o.license.includes(orgSearch)),
+      ),
+    [orgs, orgSearch, orgStatusFilter],
+  );
+
+  const filteredInfs = useMemo(
+    () =>
+      influencers.filter(
+        (i) =>
+          (infPlatFilter === "all" || i.platform === infPlatFilter) &&
+          (i.name.includes(infSearch) ||
+            i.niche.includes(infSearch) ||
+            i.platform.includes(infSearch)),
+      ),
+    [influencers, infSearch, infPlatFilter],
+  );
+
+  const filteredReqs = useMemo(
+    () => requests.filter((r) => reqStatusFilter === "all" || r.status === reqStatusFilter),
+    [requests, reqStatusFilter],
+  );
+
+  const filteredMatches = useMemo(
+    () => matches.filter((m) => matchStatusFilter === "all" || m.status === matchStatusFilter),
+    [matches, matchStatusFilter],
+  );
+
+  // ─ Auth guard ────────────────────────────────────────────
+  useEffect(() => {
+    if (!loading) {
+      if (!user) navigate({ to: "/login" });
+      else if (role !== "admin") navigate({ to: "/association" });
+    }
+  }, [user, role, loading, navigate]);
+
+  // ─ Data loading ──────────────────────────────────────────
+  useEffect(() => {
+    if (!user || role !== "admin") return;
+    async function load() {
+      setDataLoading(true);
+      const [orgsData, infsData, reqsData, matchesData] = await Promise.all([
+        adminOrgsDb.list(),
+        influencersDb.list(),
+        adminRequestsDb.list(),
+        adminMatchesDb.list(),
+      ]);
+      setOrgs(orgsData.map((o) => ({ ...o, notes: o.description })));
+      setInfluencers(infsData.map((i) => ({ ...i, price: i.basePrice, status: i.status as InfStatus })));
+      setRequests(reqsData);
+      setMatches(matchesData);
+      setDataLoading(false);
+    }
+    load();
+  }, [user, role]);
+
+  if (loading || !user || role !== "admin") return null;
 
   // ─ Nav items ────────────────────────────────────────────
   type NavItem = { id: string; icon: string; label: string; badge?: { text: string; cls: string } };
@@ -1305,120 +1131,135 @@ function Admin() {
   };
 
   // ─ Derived / filtered data ───────────────────────────────
-  const orgName = (id: number) => orgs.find((o) => o.id === id)?.name ?? "—";
-  const infName = (id: number) => influencers.find((i) => i.id === id)?.name ?? "—";
-
-  const filteredOrgs = useMemo(
-    () =>
-      orgs.filter(
-        (o) =>
-          (orgStatusFilter === "all" || o.status === orgStatusFilter) &&
-          (o.name.includes(orgSearch) ||
-            o.region.includes(orgSearch) ||
-            o.license.includes(orgSearch)),
-      ),
-    [orgs, orgSearch, orgStatusFilter],
-  );
-
-  const filteredInfs = useMemo(
-    () =>
-      influencers.filter(
-        (i) =>
-          (infPlatFilter === "all" || i.platform === infPlatFilter) &&
-          (i.name.includes(infSearch) ||
-            i.niche.includes(infSearch) ||
-            i.platform.includes(infSearch)),
-      ),
-    [influencers, infSearch, infPlatFilter],
-  );
-
-  const filteredReqs = useMemo(
-    () => requests.filter((r) => reqStatusFilter === "all" || r.status === reqStatusFilter),
-    [requests, reqStatusFilter],
-  );
-
-  const filteredMatches = useMemo(
-    () => matches.filter((m) => matchStatusFilter === "all" || m.status === matchStatusFilter),
-    [matches, matchStatusFilter],
-  );
-
   // KPI totals
-  const totalRevenue = revenueData.reduce((s, r) => s + r.value, 0);
+  const totalRevenue = matches.reduce((s, m) => s + m.value, 0);
 
   // ─ CRUD handlers ────────────────────────────────────────
-  function saveOrg(data: Partial<Org>) {
-    if (data.id) {
-      setOrgs((prev) => prev.map((o) => (o.id === data.id ? { ...o, ...data } : o)));
-      toast.success("تم تحديث بيانات الجمعية");
-    } else {
-      const newOrg: Org = {
-        id: Math.max(0, ...orgs.map((o) => o.id)) + 1,
-        name: data.name ?? "",
+  async function saveOrg(data: Partial<Org>) {
+    if (!data.id) return;
+    await adminOrgsDb.upsert(
+      data.id,
+      data.name ?? "",
+      {
         license: data.license ?? "",
         region: data.region ?? "",
-        status: (data.status ?? "new") as OrgStatus,
-        email: data.email ?? "",
         phone: data.phone ?? "",
-        notes: data.notes ?? "",
-        date: new Date().toISOString().slice(0, 10),
-      };
-      setOrgs((prev) => [...prev, newOrg]);
-      toast.success("تمت إضافة الجمعية بنجاح");
-    }
+        email: data.email ?? "",
+        description: data.notes ?? "",
+        status: data.status ?? "active",
+      },
+    );
+    setOrgs((prev) => prev.map((o) => (o.id === data.id ? { ...o, ...data } as Org : o)));
+    toast.success("تم تحديث بيانات الجمعية");
   }
 
-  function deleteOrg(id: number) {
-    setOrgs((prev) => prev.filter((o) => o.id !== id));
-    toast.success("تم حذف الجمعية");
+  async function suspendOrg(id: string) {
+    await adminOrgsDb.setStatus(id, "suspended");
+    setOrgs((prev) => prev.map((o) => (o.id === id ? { ...o, status: "suspended" as OrgStatus } : o)));
+    toast.success("تم توقيف الجمعية");
   }
 
-  function saveInf(data: Partial<Influencer>) {
+  async function saveInf(data: Partial<Influencer>) {
     if (data.id) {
-      setInfluencers((prev) => prev.map((i) => (i.id === data.id ? { ...i, ...data } : i)));
+      await influencersDb.update(data.id, {
+        name: data.name,
+        platform: data.platform as "Instagram" | "X" | "TikTok" | "YouTube" | "Snapchat" | undefined,
+        followers: data.followers,
+        engagement: data.engagement,
+        status: data.status as "active" | "pending" | "ended",
+        niche: data.niche,
+        notes: data.notes,
+        basePrice: data.price,
+      });
+      setInfluencers((prev) => prev.map((i) => (i.id === data.id ? { ...i, ...data } as Influencer : i)));
       toast.success("تم تحديث بيانات المؤثر");
     } else {
-      const newInf: Influencer = {
-        id: Math.max(0, ...influencers.map((i) => i.id)) + 1,
+      const created = await influencersDb.create({
         name: data.name ?? "",
-        platform: data.platform ?? "Instagram",
+        platform: (data.platform ?? "Instagram") as "Instagram" | "X" | "TikTok" | "YouTube" | "Snapchat",
         followers: data.followers ?? 0,
         engagement: data.engagement ?? 0,
-        status: (data.status ?? "active") as InfStatus,
+        status: (data.status ?? "active") as "active" | "pending" | "ended",
+        campaigns: 0,
         niche: data.niche ?? "",
         notes: data.notes ?? "",
-        price: data.price ?? 0,
-      };
-      setInfluencers((prev) => [...prev, newInf]);
+        basePrice: data.price ?? 0,
+        bio: data.bio ?? "",
+        location: data.location ?? "",
+        audience: data.audience ?? "",
+        instagramHandle: data.instagramHandle ?? "",
+        xHandle: data.xHandle ?? "",
+        tiktokHandle: data.tiktokHandle ?? "",
+        youtubeHandle: data.youtubeHandle ?? "",
+        snapchatHandle: data.snapchatHandle ?? "",
+        website: data.website ?? "",
+        email: data.email ?? "",
+        phone: data.phone ?? "",
+      });
+      if (created) {
+        setInfluencers((prev) => [...prev, { ...created, price: created.basePrice, status: created.status as InfStatus }]);
+      }
       toast.success("تمت إضافة المؤثر بنجاح");
     }
   }
 
-  function deleteInf(id: number) {
+  async function deleteInf(id: number) {
+    await influencersDb.delete(id);
     setInfluencers((prev) => prev.filter((i) => i.id !== id));
     toast.success("تم حذف المؤثر");
   }
 
-  function saveReq(data: Partial<CampaignRequest>) {
-    setRequests((prev) => prev.map((r) => (r.id === data.id ? { ...r, ...data } : r)));
+  async function saveReq(data: Partial<CampaignRequest>) {
+    if (!data.id) return;
+    await adminRequestsDb.update(data.id, {
+      type: data.type,
+      budget: data.budget,
+      duration: data.duration,
+      message: data.message,
+      status: data.status,
+    });
+    setRequests((prev) => prev.map((r) => (r.id === data.id ? { ...r, ...data } as CampaignRequest : r)));
     toast.success("تم تحديث الطلب");
   }
 
-  function saveMatch(data: Partial<Match>) {
-    setMatches((prev) => prev.map((m) => (m.id === data.id ? { ...m, ...data } : m)));
+  async function saveMatch(data: Partial<Match>) {
+    if (!data.id) return;
+    await adminMatchesDb.update(data.id, { status: data.status, value: data.value, notes: data.notes });
+    setMatches((prev) => prev.map((m) => (m.id === data.id ? { ...m, ...data } as Match : m)));
     toast.success("تم تحديث التوافق");
   }
 
-  function approveMatch(reqId: number) {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === reqId ? { ...r, status: "matched" as ReqStatus } : r)),
-    );
+  async function approveMatch(reqId: number) {
+    const req = requests.find((r) => r.id === reqId);
+    if (!req) return;
+    await adminRequestsDb.update(reqId, { status: "matched" });
+    const newId = await adminMatchesDb.create({
+      assocId: req.orgId,
+      infId: req.infId,
+      budget: req.budget,
+      notes: req.message,
+      startDate: req.date,
+    });
+    setRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: "matched" as ReqStatus } : r)));
+    if (newId) {
+      setMatches((prev) => [...prev, {
+        id: newId,
+        orgId: req.orgId,
+        infId: req.infId,
+        orgName: req.orgName,
+        infName: req.infName,
+        value: req.budget,
+        status: "active" as MatchStatus,
+        notes: req.message,
+        date: req.date,
+      }]);
+    }
     toast.success("✅ تم قبول الطلب وإنشاء توافق");
   }
 
-  function rejectReq(reqId: number) {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === reqId ? { ...r, status: "rejected" as ReqStatus } : r)),
-    );
+  async function rejectReq(reqId: number) {
+    await adminRequestsDb.update(reqId, { status: "rejected" });
+    setRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: "rejected" as ReqStatus } : r)));
     toast.error("تم رفض الطلب");
   }
 
@@ -1731,8 +1572,8 @@ function Admin() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#f2faf6")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "")}
                   >
-                    <td style={S.tblTd}>{orgName(r.orgId)}</td>
-                    <td style={S.tblTd}>{infName(r.infId)}</td>
+                    <td style={S.tblTd}>{r.orgName}</td>
+                    <td style={S.tblTd}>{r.infName}</td>
                     <td style={S.tblTd}>{r.type}</td>
                     <td style={S.tblTd}>{r.budget.toLocaleString()} ر.س</td>
                     <td style={S.tblTd}>
@@ -1861,8 +1702,8 @@ function Admin() {
                       >
                         تعديل
                       </button>
-                      <button style={S.btnDanger} onClick={() => deleteOrg(o.id)}>
-                        حذف
+                      <button style={S.btnDanger} onClick={() => suspendOrg(o.id)}>
+                        توقيف
                       </button>
                     </div>
                   </td>
@@ -2112,8 +1953,8 @@ function Admin() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "")}
                 >
                   <td style={{ ...S.tblTd, color: "#9ca3af" }}>#{r.id}</td>
-                  <td style={S.tblTd}>{orgName(r.orgId)}</td>
-                  <td style={S.tblTd}>{infName(r.infId)}</td>
+                  <td style={S.tblTd}>{r.orgName}</td>
+                  <td style={S.tblTd}>{r.infName}</td>
                   <td style={S.tblTd}>{r.type}</td>
                   <td style={S.tblTd}>{r.budget.toLocaleString()} ر.س</td>
                   <td style={S.tblTd}>{r.duration}</td>
@@ -2203,14 +2044,14 @@ function Admin() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: ".85rem", fontWeight: 700, color: "#111827" }}>
-                {orgName(m.orgId)}
+                {m.orgName}
               </div>
               <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 2 }}>الجمعية</div>
             </div>
             <div style={{ fontSize: "1.2rem", color: "#c9a84c", flexShrink: 0 }}>⇄</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: ".85rem", fontWeight: 700, color: "#111827" }}>
-                {infName(m.infId)}
+                {m.infName}
               </div>
               <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 2 }}>المؤثر</div>
             </div>
@@ -2243,7 +2084,7 @@ function Admin() {
   }
 
   function renderReports() {
-    const totalCommission = revenueData.reduce((s, r) => s + r.commission, 0);
+    const totalCommission = Math.round(totalRevenue * 0.15);
     return (
       <div>
         <div
@@ -2266,8 +2107,8 @@ function Admin() {
               accent: "#c9a84c",
             },
             {
-              num: revenueData.reduce((s, r) => s + r.campaigns, 0),
-              lbl: "عدد الحملات",
+              num: matches.length,
+              lbl: "عدد التوافقات",
               accent: "#3b82f6",
             },
           ].map((k, i) => (
@@ -2317,57 +2158,64 @@ function Admin() {
             </div>
             <div>
               <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#111827" }}>
-                تقرير الإيرادات
+                تقرير التوافقات
               </div>
               <div style={{ fontSize: ".74rem", color: "#6b7280", marginTop: 1 }}>
-                جميع الحملات المكتملة والنشطة
+                جميع التوافقات المكتملة والنشطة
               </div>
             </div>
           </div>
           <div style={S.secBody}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["الجمعية", "المؤثر", "عدد الحملات", "قيمة العقد", "عمولة المنصة", "الشهر"].map(
-                    (h, i) => (
-                      <th key={i} style={S.tblTh}>
-                        {h}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {revenueData.map((r, i) => (
-                  <tr
-                    key={i}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f2faf6")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                  >
-                    <td style={S.tblTd}>{r.org}</td>
-                    <td style={S.tblTd}>{r.inf}</td>
-                    <td style={S.tblTd}>{r.campaigns}</td>
-                    <td style={{ ...S.tblTd, fontWeight: 700 }}>{r.value.toLocaleString()} ر.س</td>
-                    <td style={{ ...S.tblTd, color: "#c9a84c", fontWeight: 700 }}>
-                      {r.commission.toLocaleString()} ر.س
-                    </td>
-                    <td style={S.tblTd}>{r.month}</td>
+            {matches.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#9ca3af", padding: 48 }}>لا توجد توافقات بعد</div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {["الجمعية", "المؤثر", "قيمة العقد", "عمولة المنصة (15%)", "تاريخ البدء", "الحالة"].map(
+                      (h, i) => (
+                        <th key={i} style={S.tblTh}>
+                          {h}
+                        </th>
+                      ),
+                    )}
                   </tr>
-                ))}
-                <tr style={{ background: "#f2faf6" }}>
-                  <td colSpan={3} style={{ ...S.tblTh, fontWeight: 800, color: "#111827" }}>
-                    الإجمالي
-                  </td>
-                  <td style={{ ...S.tblTh, fontWeight: 800, color: "#111827" }}>
-                    {totalRevenue.toLocaleString()} ر.س
-                  </td>
-                  <td style={{ ...S.tblTh, fontWeight: 800, color: "#c9a84c" }}>
-                    {totalCommission.toLocaleString()} ر.س
-                  </td>
-                  <td style={S.tblTh}></td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {matches.map((m) => {
+                    const commission = Math.round(m.value * 0.15);
+                    return (
+                      <tr
+                        key={m.id}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#f2faf6")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                      >
+                        <td style={S.tblTd}>{m.orgName}</td>
+                        <td style={S.tblTd}>{m.infName}</td>
+                        <td style={{ ...S.tblTd, fontWeight: 700 }}>{m.value.toLocaleString()} ر.س</td>
+                        <td style={{ ...S.tblTd, color: "#c9a84c", fontWeight: 700 }}>
+                          {commission.toLocaleString()} ر.س
+                        </td>
+                        <td style={S.tblTd}>{m.date}</td>
+                        <td style={S.tblTd}><StatusBadge status={m.status} /></td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ background: "#f2faf6" }}>
+                    <td colSpan={2} style={{ ...S.tblTh, fontWeight: 800, color: "#111827" }}>
+                      الإجمالي
+                    </td>
+                    <td style={{ ...S.tblTh, fontWeight: 800, color: "#111827" }}>
+                      {totalRevenue.toLocaleString()} ر.س
+                    </td>
+                    <td style={{ ...S.tblTh, fontWeight: 800, color: "#c9a84c" }}>
+                      {totalCommission.toLocaleString()} ر.س
+                    </td>
+                    <td colSpan={2} style={S.tblTh}></td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
@@ -2428,6 +2276,7 @@ function Admin() {
         html, body { direction: rtl; font-family: 'Tajawal', sans-serif; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .admin-page-anim { animation: fadeUp .3s ease; }
         .admin-content::-webkit-scrollbar { width: 4px; }
         .admin-content::-webkit-scrollbar-thumb { background: rgba(45,122,82,.12); border-radius: 4px; }
@@ -2619,6 +2468,7 @@ function Admin() {
                 (e.currentTarget as HTMLButtonElement).style.background = "transparent";
                 (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,.55)";
               }}
+              onClick={async () => { await signOut(); navigate({ to: "/login" }); }}
             >
               <span style={{ fontSize: ".92rem", width: 17, textAlign: "center" }}>🚪</span>
               <span>تسجيل الخروج</span>
@@ -2648,9 +2498,16 @@ function Admin() {
           </div>
           {/* Content */}
           <div className="admin-content" style={S.content}>
-            <div key={activePage} className="admin-page-anim">
-              {pageContent[activePage]}
-            </div>
+            {dataLoading ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", flexDirection: "column", gap: 14 }}>
+                <div style={{ width: 40, height: 40, border: "3px solid rgba(45,122,82,.15)", borderTopColor: "#2d7a52", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                <span style={{ color: "#6b7280", fontSize: ".88rem", fontFamily: "'Tajawal',sans-serif" }}>جاري تحميل البيانات...</span>
+              </div>
+            ) : (
+              <div key={activePage} className="admin-page-anim">
+                {pageContent[activePage]}
+              </div>
+            )}
           </div>
         </main>
       </div>
@@ -2658,6 +2515,7 @@ function Admin() {
       {/* ── Modals ── */}
       {orgModal.open && (
         <OrgModal
+          key={orgModal.data?.id ?? "new"}
           org={orgModal.data}
           onClose={() => setOrgModal({ open: false, data: null })}
           onSave={saveOrg}

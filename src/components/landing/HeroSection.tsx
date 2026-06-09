@@ -52,7 +52,7 @@ export function HeroSection() {
           <a href="#cta" style={{ background: "#c9a84c", color: "#1a5c3a", padding: "0.85rem 2rem", borderRadius: 50, textDecoration: "none", fontWeight: 700, fontSize: "1rem", transition: "all 0.3s", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
             ابدأ الشراكة معنا ←
           </a>
-          <button onClick={() => navigate({ to: "/gate" })}
+          <button onClick={() => navigate({ to: "/login" })}
             style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", padding: "0.85rem 1.6rem", background: "white", color: "#1a5c3a", border: "2px solid #1a5c3a", borderRadius: 50, fontSize: "1rem", fontWeight: 700, cursor: "pointer", fontFamily: "'Tajawal','Cairo',sans-serif", transition: "all 0.25s" }}>
             🔐 دخول المنصة
           </button>

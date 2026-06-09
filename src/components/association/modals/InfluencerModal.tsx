@@ -25,6 +25,17 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
   const [campaigns,  setCampaigns]  = useState(influencer?.campaigns ?? 0);
   const [niche,      setNiche]      = useState(influencer?.niche ?? "");
   const [notes,      setNotes]      = useState(influencer?.notes ?? "");
+  const [bio,        setBio]        = useState(influencer?.bio ?? "");
+  const [location,   setLocation]   = useState(influencer?.location ?? "");
+  const [audience,   setAudience]   = useState(influencer?.audience ?? "");
+  const [instagramHandle, setInstagramHandle] = useState(influencer?.instagramHandle ?? "");
+  const [xHandle, setXHandle] = useState(influencer?.xHandle ?? "");
+  const [tiktokHandle, setTiktokHandle] = useState(influencer?.tiktokHandle ?? "");
+  const [youtubeHandle, setYoutubeHandle] = useState(influencer?.youtubeHandle ?? "");
+  const [snapchatHandle, setSnapchatHandle] = useState(influencer?.snapchatHandle ?? "");
+  const [website, setWebsite] = useState(influencer?.website ?? "");
+  const [email, setEmail] = useState(influencer?.email ?? "");
+  const [phone, setPhone] = useState(influencer?.phone ?? "");
 
   useEffect(() => {
     setName(influencer?.name ?? "");
@@ -35,6 +46,17 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
     setCampaigns(influencer?.campaigns ?? 0);
     setNiche(influencer?.niche ?? "");
     setNotes(influencer?.notes ?? "");
+    setBio(influencer?.bio ?? "");
+    setLocation(influencer?.location ?? "");
+    setAudience(influencer?.audience ?? "");
+    setInstagramHandle(influencer?.instagramHandle ?? "");
+    setXHandle(influencer?.xHandle ?? "");
+    setTiktokHandle(influencer?.tiktokHandle ?? "");
+    setYoutubeHandle(influencer?.youtubeHandle ?? "");
+    setSnapchatHandle(influencer?.snapchatHandle ?? "");
+    setWebsite(influencer?.website ?? "");
+    setEmail(influencer?.email ?? "");
+    setPhone(influencer?.phone ?? "");
   }, [influencer]);
 
   return (
@@ -100,6 +122,59 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
             <label style={lbl}>ملاحظات</label>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="أي ملاحظات إضافية..." style={{ ...sel, minHeight: 72, resize: "vertical" }} />
           </div>
+
+          <div style={{ borderTop: "1px solid rgba(45,122,82,.08)", paddingTop: 10 }}>
+            <div style={{ fontSize: ".76rem", fontWeight: 700, color: "#2d7a52", marginBottom: 8 }}>
+              الملف الاجتماعي
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={lbl}>نبذة قصيرة</label>
+                <Textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="سطر أو سطرين عن المؤثر..." style={{ ...sel, minHeight: 72, resize: "vertical" }} />
+              </div>
+              <div>
+                <label style={lbl}>المنطقة / المدينة</label>
+                <Input value={location} onChange={e => setLocation(e.target.value)} placeholder="الرياض" style={sel} />
+                <div style={{ height: 10 }} />
+                <label style={lbl}>الجمهور المستهدف</label>
+                <Input value={audience} onChange={e => setAudience(e.target.value)} placeholder="شباب، عائلات..." style={sel} />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={lbl}>Instagram</label>
+                <Input value={instagramHandle} onChange={e => setInstagramHandle(e.target.value)} placeholder="@username" style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>X</label>
+                <Input value={xHandle} onChange={e => setXHandle(e.target.value)} placeholder="@username" style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>TikTok</label>
+                <Input value={tiktokHandle} onChange={e => setTiktokHandle(e.target.value)} placeholder="@username" style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>YouTube</label>
+                <Input value={youtubeHandle} onChange={e => setYoutubeHandle(e.target.value)} placeholder="youtube.com/@username" style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>Snapchat</label>
+                <Input value={snapchatHandle} onChange={e => setSnapchatHandle(e.target.value)} placeholder="@username" style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>الموقع</label>
+                <Input value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..." style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>البريد الإلكتروني</label>
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="hello@example.com" style={sel} />
+              </div>
+              <div>
+                <label style={lbl}>الهاتف</label>
+                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+9665..." style={sel} />
+              </div>
+            </div>
+          </div>
         </div>
 
         <DialogFooter style={{ justifyContent: "space-between", display: "flex", gap: 8, flexDirection: "row" }}>
@@ -110,7 +185,7 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
             <Button variant="outline" size="sm" onClick={onClose}>إلغاء</Button>
             <Button size="sm" onClick={() => {
               if (!name.trim()) return;
-              onSave({ id: influencer?.id, name, platform, followers, engagement, status, campaigns, niche, notes, basePrice: influencer?.basePrice ?? 250 });
+              onSave({ id: influencer?.id, name, platform, followers, engagement, status, campaigns, niche, notes, basePrice: influencer?.basePrice ?? 250, bio, location, audience, instagramHandle, xHandle, tiktokHandle, youtubeHandle, snapchatHandle, website, email, phone });
               onClose();
             }} style={{ background: "#2d7a52", color: "white" }}>
               حفظ

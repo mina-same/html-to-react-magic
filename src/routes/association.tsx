@@ -1,15 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Toaster } from "sonner";
+import { useEffect, useState, useCallback } from "react";
+import { Toaster, toast } from "sonner";
+
+import { useAuth } from "@/hooks/useAuth";
+import { employeesDb, tasksDb, influencersDb, campaignsDb, requestsDb } from "@/lib/db";
+import { INF_COLORS } from "@/components/association/data";
 
 import AssocSidebar from "@/components/association/AssocSidebar";
-import type { PageId, Task, Employee, Influencer } from "@/components/association/types";
+import type { PageId, Task, Employee, Influencer, Campaign } from "@/components/association/types";
 import { PAGE_TITLES } from "@/components/association/types";
-import {
-  INITIAL_INFLUENCERS,
-  INITIAL_EMPLOYEES,
-  INITIAL_TASKS,
-} from "@/components/association/data";
 
 import OverviewPage from "@/components/association/pages/OverviewPage";
 import ProfilePage from "@/components/association/pages/ProfilePage";
@@ -26,6 +25,7 @@ import SettingsPage from "@/components/association/pages/SettingsPage";
 import TaskModal from "@/components/association/modals/TaskModal";
 import EmployeeModal from "@/components/association/modals/EmployeeModal";
 import InfluencerModal from "@/components/association/modals/InfluencerModal";
+import InfluencerProfileModal from "@/components/association/modals/InfluencerProfileModal";
 import CampaignRequestModal from "@/components/association/modals/CampaignRequestModal";
 
 export const Route = createFileRoute("/association")({
@@ -33,85 +33,195 @@ export const Route = createFileRoute("/association")({
   component: Association,
 });
 
+const EMP_COLORS = ["#7c3aed", "#be185d", "#0369a1", "#b91c1c", "#166534", "#92400e", "#0f766e"];
+
 function Association() {
   const navigate = useNavigate();
+  const {
+    user,
+    role,
+    assocName: savedName,
+    updateAssocName,
+    signOut,
+    loading: authLoading,
+  } = useAuth();
 
   // Auth guard
   useEffect(() => {
-    if (sessionStorage.getItem("saaid_devAccess") !== "saaid2025dev") {
-      navigate({ to: "/gate" });
-    }
-  }, [navigate]);
+    if (!authLoading && !user) navigate({ to: "/login" });
+    if (!authLoading && user && role === "admin") navigate({ to: "/admin" });
+  }, [user, role, authLoading, navigate]);
 
   // Core state
   const [activePage, setActivePage] = useState<PageId>("overview");
-  const [assocName, setAssocName] = useState("");
+  const [assocName, setAssocName] = useState(savedName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentCount, setContentCount] = useState(0);
+  const [dataLoading, setDataLoading] = useState(true);
 
   // Data state
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [influencers, setInfluencers] = useState<Influencer[]>(INITIAL_INFLUENCERS);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [influencers, setInfluencers] = useState<Influencer[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   // Modal state
   const [taskModal, setTaskModal] = useState<{ open: boolean; task?: Task }>({ open: false });
-  const [empModal, setEmpModal] = useState(false);
+  const [empModal, setEmpModal] = useState<{ open: boolean; employee?: Employee }>({ open: false });
   const [infModal, setInfModal] = useState<{ open: boolean; inf?: Influencer }>({ open: false });
+  const [infProfileModal, setInfProfileModal] = useState<{ open: boolean; inf?: Influencer }>({
+    open: false,
+  });
   const [campaignModal, setCampaignModal] = useState<{ open: boolean; inf?: Influencer }>({
     open: false,
   });
 
-  function logout() {
-    sessionStorage.removeItem("saaid_devAccess");
-    navigate({ to: "/gate" });
+  // Sync assocName from auth
+  useEffect(() => {
+    if (savedName) setAssocName(savedName);
+  }, [savedName]);
+
+  // Load all data
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    setDataLoading(true);
+    const [emps, tks, infs, camps] = await Promise.all([
+      employeesDb.list(user.id),
+      tasksDb.list(user.id),
+      influencersDb.list(),
+      campaignsDb.list(user.id),
+    ]);
+    setEmployees(emps);
+    setTasks(tks);
+    setInfluencers(infs);
+    setCampaigns(camps);
+    setDataLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function logout() {
+    await signOut();
+    navigate({ to: "/login" });
   }
 
-  // Task CRUD
-  function saveTask(data: Omit<Task, "id">) {
+  // ── Task CRUD ────────────────────────────────────────────────
+  async function saveTask(data: Omit<Task, "id">) {
+    if (!user) return;
     if (taskModal.task) {
+      await tasksDb.update(taskModal.task.id, data);
       setTasks((prev) =>
         prev.map((t) => (t.id === taskModal.task!.id ? { ...data, id: t.id } : t)),
       );
     } else {
-      setTasks((prev) => [...prev, { ...data, id: Date.now() }]);
+      const created = await tasksDb.create(user.id, data);
+      if (created) setTasks((prev) => [...prev, created]);
     }
     setTaskModal({ open: false });
   }
-  function deleteTask(id: number) {
+  async function deleteTask(id: number) {
+    await tasksDb.delete(id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
     setTaskModal({ open: false });
   }
 
-  // Employee CRUD — EmployeeModal doesn't send a color, so we pick one
-  const EMP_COLORS = ["#7c3aed", "#be185d", "#0369a1", "#b91c1c", "#166534", "#92400e", "#0f766e"];
-  function saveEmployee(data: Omit<Employee, "id" | "color">) {
-    const color = EMP_COLORS[employees.length % EMP_COLORS.length];
-    setEmployees((prev) => [...prev, { ...data, color, id: Date.now() }]);
-    setEmpModal(false);
+  // ── Employee CRUD ────────────────────────────────────────────
+  async function saveEmployee(data: Employee) {
+    if (!user) return;
+    if (empModal.employee) {
+      await employeesDb.update(data.id, {
+        name: data.name,
+        role: data.role,
+        status: data.status,
+        color: data.color,
+      });
+      setEmployees((prev) => prev.map((e) => (e.id === data.id ? data : e)));
+    } else {
+      const color = EMP_COLORS[employees.length % EMP_COLORS.length];
+      const created = await employeesDb.create(user.id, {
+        name: data.name,
+        role: data.role,
+        status: data.status,
+        color,
+      });
+      if (created) setEmployees((prev) => [...prev, created]);
+    }
+    setEmpModal({ open: false });
   }
-  function deleteEmployee(id: number) {
+  async function deleteEmployee(id: number) {
+    await employeesDb.delete(id);
     setEmployees((prev) => prev.filter((e) => e.id !== id));
   }
 
-  // Influencer CRUD
-  function saveInfluencer(data: Omit<Influencer, "id">) {
+  async function changeEmployeeStatus(id: number, status: Employee["status"]) {
+    const employee = employees.find((e) => e.id === id);
+    if (!employee) return;
+    const updated = { ...employee, status };
+    await employeesDb.update(id, { status });
+    setEmployees((prev) => prev.map((e) => (e.id === id ? updated : e)));
+  }
+
+  // ── Influencer CRUD (admin or global list) ───────────────────
+  async function saveInfluencer(data: Omit<Influencer, "id">) {
     if (infModal.inf) {
+      await influencersDb.update(infModal.inf.id, data);
       setInfluencers((prev) =>
         prev.map((i) => (i.id === infModal.inf!.id ? { ...data, id: i.id } : i)),
       );
     } else {
-      setInfluencers((prev) => [...prev, { ...data, id: Date.now() }]);
+      const created = await influencersDb.create(data);
+      if (created) setInfluencers((prev) => [...prev, created]);
     }
     setInfModal({ open: false });
   }
-  function deleteInfluencer(id: number) {
+  async function deleteInfluencer(id: number) {
+    await influencersDb.delete(id);
     setInfluencers((prev) => prev.filter((i) => i.id !== id));
     setInfModal({ open: false });
   }
 
-  const urgentTasks = tasks.filter((t) => t.urgency === "urgent" && t.status !== "done").length;
+  // ── Campaign Request ─────────────────────────────────────────
+  async function submitCampaignRequest(
+    inf: Influencer,
+    payload: { type: string; budget: number; startDate: string; duration: string; message: string },
+  ) {
+    if (!user) return;
+    await requestsDb.create(user.id, inf.id, payload);
+    toast.success("تم إرسال طلب الحملة بنجاح!");
+    setCampaignModal({ open: false });
+  }
+
+  // ── Assoc name update ────────────────────────────────────────
+  async function handleNameChange(name: string) {
+    setAssocName(name);
+    await updateAssocName(name);
+  }
+
+  const incompleteTasksCount = tasks.filter((t) => t.status !== "done").length;
   const assocInitial = assocName ? assocName[0] : "ج";
+
+  if (authLoading) {
+    return (
+      <div
+        dir="rtl"
+        style={{
+          minHeight: "100dvh",
+          background: "#f4f7f5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'Tajawal','Cairo',sans-serif",
+          color: "#2d7a52",
+          fontSize: "1rem",
+          fontWeight: 600,
+        }}
+      >
+        جاري التحميل…
+      </div>
+    );
+  }
 
   function renderPage() {
     switch (activePage) {
@@ -127,7 +237,7 @@ function Association() {
         return (
           <ProfilePage
             onAnalysisComplete={(name, count) => {
-              if (name) setAssocName(name);
+              if (name) handleNameChange(name);
               setContentCount((c) => c + count);
             }}
           />
@@ -136,7 +246,9 @@ function Association() {
         return (
           <TeamPage
             employees={employees}
-            onAdd={() => setEmpModal(true)}
+            onAdd={() => setEmpModal({ open: true })}
+            onEdit={(employee) => setEmpModal({ open: true, employee })}
+            onStatusChange={changeEmployeeStatus}
             onDelete={deleteEmployee}
           />
         );
@@ -147,20 +259,24 @@ function Association() {
             employees={employees}
             onAddTask={() => setTaskModal({ open: true })}
             onEditTask={(task) => setTaskModal({ open: true, task })}
+            onStatusChange={async (id, status) => {
+              await tasksDb.update(id, { status });
+              setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+            }}
           />
         );
       case "donations":
-        return <DonationsPage />;
+        return <DonationsPage userId={user?.id} />;
       case "content":
-        return <ContentPage />;
+        return <ContentPage assocName={assocName ?? undefined} />;
       case "campaigns":
-        return <CampaignsPage />;
+        return <CampaignsPage campaigns={campaigns} userId={user?.id} onRefresh={loadData} />;
       case "influencers":
         return (
           <InfluencersPage
             influencers={influencers}
-            onAdd={() => setInfModal({ open: true })}
-            onEdit={(inf) => setInfModal({ open: true, inf })}
+            canManage={false}
+            onView={(inf) => setInfProfileModal({ open: true, inf })}
             onRequest={(inf) => setCampaignModal({ open: true, inf })}
           />
         );
@@ -169,7 +285,9 @@ function Association() {
       case "analytics":
         return <AnalyticsPage />;
       case "settings":
-        return <SettingsPage assocName={assocName} onNameChange={setAssocName} onLogout={logout} />;
+        return (
+          <SettingsPage assocName={assocName} onNameChange={handleNameChange} onLogout={logout} />
+        );
       default:
         return (
           <OverviewPage
@@ -184,6 +302,7 @@ function Association() {
   return (
     <div
       dir="rtl"
+      suppressHydrationWarning
       style={{
         display: "flex",
         height: "100dvh",
@@ -194,7 +313,6 @@ function Association() {
     >
       <Toaster position="top-center" richColors />
 
-      {/* Sidebar */}
       <AssocSidebar
         activePage={activePage}
         onNavigate={(page) => {
@@ -206,10 +324,9 @@ function Association() {
         onLogout={logout}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        urgentCount={urgentTasks}
+        tasksCount={incompleteTasksCount}
       />
 
-      {/* Main area */}
       <div
         style={{
           flex: 1,
@@ -232,7 +349,6 @@ function Association() {
             flexShrink: 0,
           }}
         >
-          {/* Mobile menu button */}
           <button
             className="md:hidden"
             onClick={() => setSidebarOpen(true)}
@@ -252,11 +368,9 @@ function Association() {
           >
             ☰
           </button>
-
           <div style={{ fontSize: "1.02rem", fontWeight: 700, color: "#111827", flex: 1 }}>
             {PAGE_TITLES[activePage]}
           </div>
-
           {assocName && (
             <span
               style={{
@@ -272,7 +386,9 @@ function Association() {
               {assocName}
             </span>
           )}
-
+          {dataLoading && (
+            <span style={{ fontSize: ".72rem", color: "#9ca3af" }}>جاري التحديث…</span>
+          )}
           <div
             style={{
               width: 32,
@@ -290,7 +406,7 @@ function Association() {
             }}
           >
             🔔
-            {urgentTasks > 0 && (
+            {incompleteTasksCount > 0 && (
               <span
                 style={{
                   position: "absolute",
@@ -308,10 +424,7 @@ function Association() {
         </div>
 
         {/* Page content */}
-        <div
-          style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}
-          className="scrollbar-thin scrollbar-thumb-green-100"
-        >
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto" }}>{renderPage()}</div>
         </div>
       </div>
@@ -326,9 +439,13 @@ function Association() {
           onClose={() => setTaskModal({ open: false })}
         />
       )}
-
-      {empModal && <EmployeeModal onSave={saveEmployee} onClose={() => setEmpModal(false)} />}
-
+      {empModal.open && (
+        <EmployeeModal
+          employee={empModal.employee ?? null}
+          onSave={saveEmployee}
+          onClose={() => setEmpModal({ open: false })}
+        />
+      )}
       {infModal.open && (
         <InfluencerModal
           influencer={infModal.inf ?? null}
@@ -337,12 +454,18 @@ function Association() {
           onClose={() => setInfModal({ open: false })}
         />
       )}
-
+      {infProfileModal.open && (
+        <InfluencerProfileModal
+          influencer={infProfileModal.inf ?? null}
+          onClose={() => setInfProfileModal({ open: false })}
+          onRequest={(inf) => setCampaignModal({ open: true, inf })}
+        />
+      )}
       {campaignModal.open && campaignModal.inf && (
         <CampaignRequestModal
           influencer={campaignModal.inf}
           influencerIndex={influencers.indexOf(campaignModal.inf)}
-          onSubmit={() => setCampaignModal({ open: false })}
+          onSubmit={(payload) => submitCampaignRequest(campaignModal.inf!, payload)}
           onClose={() => setCampaignModal({ open: false })}
         />
       )}

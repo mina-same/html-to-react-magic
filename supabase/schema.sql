@@ -56,6 +56,17 @@ create table if not exists public.influencers (
   niche      text not null default '',
   notes      text not null default '',
   base_price integer not null default 500,
+  bio               text not null default '',
+  location          text not null default '',
+  audience          text not null default '',
+  instagram_handle  text not null default '',
+  x_handle          text not null default '',
+  tiktok_handle     text not null default '',
+  youtube_handle    text not null default '',
+  snapchat_handle   text not null default '',
+  website           text not null default '',
+  email             text not null default '',
+  phone             text not null default '',
   created_at timestamptz not null default now()
 );
 
@@ -99,7 +110,7 @@ create table if not exists public.tasks (
   id         serial primary key,
   assoc_id   uuid not null references public.profiles(id) on delete cascade,
   title      text not null,
-  status     text not null default 'todo' check (status in ('todo','doing','done')),
+  status     text not null default 'todo' check (status in ('todo','doing','review','done')),
   urgency    text not null default 'normal' check (urgency in ('urgent','high','normal','low')),
   deadline   date,
   assignee   integer references public.employees(id) on delete set null,
@@ -210,3 +221,86 @@ on conflict do nothing;
 -- Replace 'YOUR_ADMIN_USER_ID' with the actual UUID from auth.users
 -- ============================================================
 -- update public.profiles set role = 'admin' where id = 'YOUR_ADMIN_USER_ID';
+
+-- ============================================================
+-- 9. Associations (extended org profile — managed by org + admin)
+-- ============================================================
+create table if not exists public.associations (
+  id          uuid primary key references public.profiles(id) on delete cascade,
+  license     text not null default '',
+  region      text not null default '',
+  phone       text not null default '',
+  email       text not null default '',
+  description text not null default '',
+  status      text not null default 'active'
+              check (status in ('active','new','pending','suspended')),
+  verified    boolean not null default false,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.associations enable row level security;
+
+create policy "Association owns details" on public.associations
+  for all using (auth.uid() = id);
+
+create policy "Admins manage associations" on public.associations
+  for all using (
+    exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- ============================================================
+-- 10. Matches (org ↔ influencer partnerships, admin-managed)
+-- ============================================================
+create table if not exists public.matches (
+  id            serial primary key,
+  assoc_id      uuid not null references public.profiles(id) on delete cascade,
+  influencer_id integer not null references public.influencers(id) on delete cascade,
+  status        text not null default 'active'
+                check (status in ('active','pending','completed')),
+  start_date    date not null default current_date,
+  budget        integer not null default 0,
+  notes         text not null default '',
+  created_at    timestamptz not null default now()
+);
+
+alter table public.matches enable row level security;
+
+create policy "Association views own matches" on public.matches
+  for select using (auth.uid() = assoc_id);
+
+create policy "Admins manage matches" on public.matches
+  for all using (
+    exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- ============================================================
+-- 11. Platform settings (admin key/value store)
+-- ============================================================
+create table if not exists public.platform_settings (
+  key        text primary key,
+  value      text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.platform_settings enable row level security;
+
+create policy "Admins manage settings" on public.platform_settings
+  for all using (
+    exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+  );
+
+create policy "Authenticated users read settings" on public.platform_settings
+  for select using (auth.role() = 'authenticated');
+
+-- ============================================================
+-- 12. Expand campaign_requests.status to include admin workflow values
+-- ============================================================
+do $$
+begin
+  alter table public.campaign_requests
+    drop constraint if exists campaign_requests_status_check;
+  alter table public.campaign_requests
+    add constraint campaign_requests_status_check
+    check (status in ('pending','approved','rejected','matched','completed'));
+exception when others then null;
+end $$;
