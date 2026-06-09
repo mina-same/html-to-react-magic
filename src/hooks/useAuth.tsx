@@ -2,13 +2,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-type UserRole = "admin" | "association" | null;
+export type UserRole = "admin" | "association" | "employee" | null;
 
 interface AuthState {
   user: User | null;
   session: Session | null;
   role: UserRole;
   assocName: string;
+  assocId: string | null;
   loading: boolean;
 }
 
@@ -28,13 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session: null,
     role: null,
     assocName: "",
+    assocId: null,
     loading: true,
   });
 
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from("profiles")
-      .select("role, assoc_name")
+      .select("role, assoc_name, assoc_id")
       .eq("id", userId)
       .single();
     return data;
@@ -76,10 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               session,
               role: (profile?.role as UserRole) ?? "association",
               assocName: profile?.assoc_name ?? "",
+              assocId: profile?.assoc_id ?? null,
             });
           } catch (err) {
             console.error("Auth init error:", err);
-            finish({ user: session.user, session, role: "association" }); // Fallback
+            finish({ user: session.user, session, role: "association", assocId: null }); // Fallback
           }
         } else {
           finish({ loading: false });
@@ -102,10 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             role: (profile?.role as UserRole) ?? "association",
             assocName: profile?.assoc_name ?? "",
+            assocId: profile?.assoc_id ?? null,
           });
         } catch (err) {
           console.error("Auth change error:", err);
-          finish({ user: session.user, session, role: "association" });
+          finish({ user: session.user, session, role: "association", assocId: null });
         }
       } else {
         finish({ user: null, session: null, role: null, assocName: "" });

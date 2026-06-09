@@ -80,7 +80,9 @@ function LoginPage() {
 
   useEffect(() => {
     if (!loading && session) {
-      navigate({ to: role === "admin" ? "/admin" : "/association" });
+      if (role === "admin") navigate({ to: "/admin" });
+      else if (role === "employee") navigate({ to: "/employee" });
+      else if (role === "association") navigate({ to: "/association" });
     }
   }, [session, loading, role, navigate]);
 
@@ -121,10 +123,12 @@ function LoginPage() {
 
   async function handleGoogle() {
     setGoogleBusy(true);
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/login` },
     });
+    if (error) { setError(error.message); setGoogleBusy(false); }
+    // if no error, browser redirects to Google — googleBusy stays true intentionally
   }
 
   return (

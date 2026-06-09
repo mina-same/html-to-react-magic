@@ -26,7 +26,7 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
   );
   const [isDragging, setIsDragging] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [step, setStep] = useState("جاري قراءة الملف التعريفي");
+  const [logs, setLogs] = useState<{ text: string; time: string; status: "pending" | "done" | "error" }[]>([]);
   const [done, setDone] = useState(false);
   const [tab, setTab] = useState<ContentTab>("post");
   const [hasExistingData, setHasExistingData] = useState(false);
@@ -116,6 +116,15 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
     }
   }
 
+  function addLog(text: string, status: "pending" | "done" | "error" = "pending") {
+    const time = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setLogs((prev) => [...prev, { text, time, status }]);
+  }
+
+  function markLastLog(status: "done" | "error") {
+    setLogs((prev) => prev.map((l, i) => i === prev.length - 1 ? { ...l, status } : l));
+  }
+
   async function analyzeProfile() {
     if (!user) return;
     if (!assocName.trim() && !assocDesc.trim() && !fileInfo) {
@@ -125,24 +134,31 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
 
     setAnalyzing(true);
     setDone(false);
+    setLogs([]);
 
     try {
-      setStep("جاري قراءة ومعالجة البيانات...");
+      addLog("جاري قراءة ومعالجة البيانات...");
       const finalDesc = fileInfo?.content
         ? `[اسم الجمعية: ${assocName}]\n[محتوى الملف: ${fileInfo.name}]\n${fileInfo.content}\n\n[وصف إضافي]: ${assocDesc}`
         : `[اسم الجمعية: ${assocName}]\n[الوصف]: ${assocDesc}`;
+      markLastLog("done");
 
-      setStep("تحليل المحتوى وتحديد الهوية بالذكاء الاصطناعي...");
+      addLog("حفظ البيانات في قاعدة البيانات...");
+      await assocProfileDb.update(user.id, finalDesc);
+      markLastLog("done");
+
+      addLog("إرسال البيانات إلى الذكاء الاصطناعي للتحليل...");
       const result = await runAIAnalysis(finalDesc);
       setAiResult(result);
+      markLastLog("done");
 
-      setStep("حفظ البيانات في النظام...");
-      // Persist to DB
-      await assocProfileDb.update(user.id, finalDesc);
       if (assocName.trim() && assocName.trim() !== savedName) {
+        addLog("تحديث اسم الجمعية...");
         await updateAssocName(assocName.trim());
+        markLastLog("done");
       }
 
+      addLog("اكتمل التحليل بنجاح ✓", "done");
       setAnalyzing(false);
       setDone(true);
       setHasExistingData(true);
@@ -150,6 +166,7 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
       toast.success("تم تحليل وحفظ بيانات الجمعية بنجاح");
     } catch (err) {
       console.error(err);
+      markLastLog("error");
       toast.error(err instanceof Error ? err.message : "حدث خطأ أثناء التحليل");
       setAnalyzing(false);
     }
@@ -413,24 +430,49 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
         </div>
       </div>
 
-      {/* Loading */}
-      {analyzing && (
-        <div style={{ textAlign: "center", padding: "28px 18px" }}>
-          <div
-            style={{
-              width: 38,
-              height: 38,
-              border: "3px solid #e8f5ee",
-              borderTopColor: "#2d7a52",
-              borderRadius: "50%",
-              animation: "spin .7s linear infinite",
-              margin: "0 auto 11px",
-            }}
-          />
-          <div style={{ fontSize: ".85rem", color: "#6b7280", fontWeight: 500 }}>
-            يجري الذكاء الاصطناعي التحليل...
+      {/* Log */}
+      {(analyzing || (done && logs.length > 0)) && (
+        <div
+          style={{
+            background: "#0d1117",
+            borderRadius: 11,
+            padding: "14px 16px",
+            marginBottom: 18,
+            fontFamily: "'Courier New', 'Menlo', monospace",
+            fontSize: ".78rem",
+            lineHeight: 1.7,
+            direction: "ltr",
+          }}
+        >
+          <div style={{ color: "#58a6ff", marginBottom: 8, fontWeight: 700, fontSize: ".72rem", letterSpacing: ".06em" }}>
+            ▸ SAAID AI LOG
           </div>
-          <div style={{ fontSize: ".76rem", color: "#9ca3af", marginTop: 4 }}>{step}</div>
+          {logs.map((entry, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span style={{ color: "#484f58", flexShrink: 0 }}>[{entry.time}]</span>
+              <span style={{ color: entry.status === "done" ? "#3fb950" : entry.status === "error" ? "#f85149" : "#e3b341" }}>
+                {entry.status === "done" ? "✔" : entry.status === "error" ? "✖" : "◌"}
+              </span>
+              <span style={{ color: entry.status === "done" ? "#c9d1d9" : entry.status === "error" ? "#f85149" : "#e3b341" }}>
+                {entry.text}
+              </span>
+            </div>
+          ))}
+          {analyzing && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <span style={{ color: "#484f58" }}>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#e3b341",
+                  display: "inline-block",
+                  animation: "blink 1s ease-in-out infinite",
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -753,7 +795,7 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
         </div>
       )}
 
-      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}`}</style>
     </div>
   );
 }

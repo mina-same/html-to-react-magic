@@ -45,11 +45,13 @@ function Association() {
     signOut,
     loading: authLoading,
   } = useAuth();
+  const assocId = user?.id ?? "";
 
   // Auth guard
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/login" });
     if (!authLoading && user && role === "admin") navigate({ to: "/admin" });
+    if (!authLoading && user && role === "employee") navigate({ to: "/employee" });
   }, [user, role, authLoading, navigate]);
 
   // Core state
@@ -442,6 +444,7 @@ function Association() {
       {empModal.open && (
         <EmployeeModal
           employee={empModal.employee ?? null}
+          assocId={assocId}
           onSave={saveEmployee}
           onClose={() => setEmpModal({ open: false })}
         />

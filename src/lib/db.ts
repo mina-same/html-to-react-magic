@@ -324,9 +324,11 @@ export const assocProfileDb = {
     return data;
   },
   async update(id: string, description: string) {
-    await supabase
+    const { error } = await supabase
       .from("associations")
-      .upsert({ id, description, updated_at: new Date().toISOString() });
+      .update({ description, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw new Error(`DB: ${error.message}`);
   },
 };
 

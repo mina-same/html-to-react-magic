@@ -8,6 +8,7 @@ import {
   type Country,
 } from "libphonenumber-js";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import { adminOrgsDb, adminRequestsDb, adminMatchesDb, influencersDb } from "@/lib/db";
 import type { AdminOrg, AdminRequest, AdminMatch } from "@/lib/db";
 import saaidLogo from "../assets/saaid-logo.png";
@@ -145,9 +146,10 @@ function OrgModal({
 }: {
   org: Partial<Org> | null;
   onClose: () => void;
-  onSave: (data: Partial<Org>) => void;
+  onSave: (data: Partial<Org> & { password?: string }) => void;
 }) {
   const [form, setForm] = useState<Partial<Org>>(org ?? {});
+  const [password, setPassword] = useState("");
   const [country, setCountry] = useState<Country>("SA");
   const isNew = !org?.id;
   function set(k: keyof Org, v: string) {
@@ -158,13 +160,25 @@ function OrgModal({
       toast.error("يجب إدخال اسم الجمعية");
       return;
     }
+    if (isNew) {
+      if (!form.email?.trim()) {
+        toast.error("يجب إدخال البريد الإلكتروني");
+        return;
+      }
+      if (password.length < 8) {
+        toast.error("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+        return;
+      }
+    }
     if (form.phone?.trim()) {
       const parsed = parsePhoneNumberFromString(form.phone.trim(), country);
       if (!parsed || !isValidPhoneNumber(form.phone.trim(), country)) {
         toast.error("رقم الهاتف غير صحيح، اختر الدولة وتأكد من الرقم");
         return;
       }
-      onSave({ ...form, phone: parsed.number });
+      onSave({ ...form, phone: parsed.number, password: isNew ? password : undefined });
+    } else if (isNew) {
+      onSave({ ...form, password });
     } else {
       toast.error("يجب إدخال رقم الهاتف");
       return;
@@ -275,37 +289,51 @@ function OrgModal({
                 placeholder="info@org.org"
               />
             </div>
-            <div>
-              <label style={labelStyle}>رقم الهاتف</label>
-              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-                <select
-                  style={{
-                    ...inputStyle,
-                    background: "white",
-                    width: 140,
-                    flexShrink: 0,
-                    direction: "ltr",
-                  }}
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value as Country)}
-                >
-                  {COUNTRY_OPTIONS.map((opt) => (
-                    <option key={opt.code} value={opt.code}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+            {isNew && (
+              <div>
+                <label style={labelStyle}>كلمة المرور (8 أحرف+)</label>
                 <input
-                  style={{ ...inputStyle, flex: 1, direction: "ltr" }}
-                  value={form.phone ?? ""}
-                  onChange={(e) => set("phone", e.target.value)}
-                  placeholder="501234567"
+                  style={inputStyle}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
                 />
               </div>
-              <div style={{ fontSize: ".7rem", color: "#6b7280", marginTop: 5 }}>
-                اختر الدولة أولاً ثم أدخل الرقم. سيتم حفظه بصيغة دولية صحيحة.
+            )}
+            {!isNew && (
+              <div>
+                <label style={labelStyle}>رقم الهاتف</label>
+                <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                  <select
+                    style={{
+                      ...inputStyle,
+                      background: "white",
+                      width: 140,
+                      flexShrink: 0,
+                      direction: "ltr",
+                    }}
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value as Country)}
+                  >
+                    {COUNTRY_OPTIONS.map((opt) => (
+                      <option key={opt.code} value={opt.code}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    style={{ ...inputStyle, flex: 1, direction: "ltr" }}
+                    value={form.phone ?? ""}
+                    onChange={(e) => set("phone", e.target.value)}
+                    placeholder="501234567"
+                  />
+                </div>
+                <div style={{ fontSize: ".7rem", color: "#6b7280", marginTop: 5 }}>
+                  اختر الدولة أولاً ثم أدخل الرقم. سيتم حفظه بصيغة دولية صحيحة.
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle}>الحالة</label>
@@ -1135,8 +1163,29 @@ function Admin() {
   const totalRevenue = matches.reduce((s, m) => s + m.value, 0);
 
   // ─ CRUD handlers ────────────────────────────────────────
-  async function saveOrg(data: Partial<Org>) {
-    if (!data.id) return;
+  async function saveOrg(data: Partial<Org> & { password?: string }) {
+    if (!data.id) {
+      // New org: create via Edge Function (uses service role key server-side)
+      const { error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: data.email ?? "",
+          password: data.password ?? "",
+          assocName: data.name ?? "",
+          license: data.license ?? "",
+          region: data.region ?? "",
+          phone: data.phone ?? "",
+          status: data.status ?? "new",
+        },
+      });
+      if (error) {
+        toast.error("فشل إنشاء الحساب: " + error.message);
+        return;
+      }
+      const refreshed = await adminOrgsDb.list();
+      setOrgs(refreshed.map((o) => ({ ...o, notes: o.description })));
+      toast.success("✅ تم إنشاء حساب الجمعية بنجاح");
+      return;
+    }
     await adminOrgsDb.upsert(
       data.id,
       data.name ?? "",

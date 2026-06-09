@@ -13,9 +13,9 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; role: UserRole; assoc_name: string | null; created_at: string };
-        Insert: { id: string; role?: UserRole; assoc_name?: string | null; created_at?: string };
-        Update: { role?: UserRole; assoc_name?: string | null };
+        Row: { id: string; role: UserRole; assoc_name: string | null; assoc_id: string | null; created_at: string };
+        Insert: { id: string; role?: UserRole; assoc_name?: string | null; assoc_id?: string | null; created_at?: string };
+        Update: { role?: UserRole; assoc_name?: string | null; assoc_id?: string | null };
         Relationships: [];
       };
       influencers: {
@@ -93,6 +93,8 @@ export interface Database {
         Row: {
           id: number;
           assoc_id: string;
+          user_id: string | null;
+          email: string | null;
           name: string;
           role: string;
           status: EmployeeStatus;
@@ -101,6 +103,8 @@ export interface Database {
         };
         Insert: {
           assoc_id: string;
+          user_id?: string | null;
+          email?: string | null;
           name: string;
           role?: string;
           status?: EmployeeStatus;
