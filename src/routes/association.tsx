@@ -3,11 +3,11 @@ import { useEffect, useState, useCallback } from "react";
 import { Toaster, toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
-import { employeesDb, tasksDb, influencersDb, campaignsDb, requestsDb } from "@/lib/db";
+import { employeesDb, tasksDb, influencersDb, campaignsDb, requestsDb, donationsDb } from "@/lib/db";
 import { INF_COLORS } from "@/components/association/data";
 
 import AssocSidebar from "@/components/association/AssocSidebar";
-import type { PageId, Task, Employee, Influencer, Campaign } from "@/components/association/types";
+import type { PageId, Task, Employee, Influencer, Campaign, Donation } from "@/components/association/types";
 import { PAGE_TITLES } from "@/components/association/types";
 
 import OverviewPage from "@/components/association/pages/OverviewPage";
@@ -66,6 +66,7 @@ function Association() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [influencers, setInfluencers] = useState<Influencer[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
 
   // Modal state
   const [taskModal, setTaskModal] = useState<{ open: boolean; task?: Task }>({ open: false });
@@ -87,16 +88,18 @@ function Association() {
   const loadData = useCallback(async () => {
     if (!user) return;
     setDataLoading(true);
-    const [emps, tks, infs, camps] = await Promise.all([
+    const [emps, tks, infs, camps, doms] = await Promise.all([
       employeesDb.list(user.id),
       tasksDb.list(user.id),
       influencersDb.list(),
       campaignsDb.list(user.id),
+      donationsDb.list(user.id),
     ]);
     setEmployees(emps);
     setTasks(tks);
     setInfluencers(infs);
     setCampaigns(camps);
+    setDonations(doms);
     setDataLoading(false);
   }, [user]);
 
@@ -232,6 +235,10 @@ function Association() {
           <OverviewPage
             assocName={assocName}
             statContent={contentCount}
+            tasks={tasks}
+            employees={employees}
+            campaigns={campaigns}
+            donations={donations}
             onNavigate={setActivePage}
           />
         );
@@ -295,6 +302,10 @@ function Association() {
           <OverviewPage
             assocName={assocName}
             statContent={contentCount}
+            tasks={tasks}
+            employees={employees}
+            campaigns={campaigns}
+            donations={donations}
             onNavigate={setActivePage}
           />
         );

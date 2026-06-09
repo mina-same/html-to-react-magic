@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Employee } from "../types";
 import { Button } from "@/components/ui/button";
 
@@ -16,11 +17,17 @@ const STATUS_LABELS: Record<Employee["status"], string> = {
 };
 const STATUS_STYLE: Record<Employee["status"], React.CSSProperties> = {
   active: { background: "#dcfce7", color: "#166534" },
-  away: { background: "#fef9c3", color: "#854d0e" },
-  off: { background: "#f1f5f9", color: "#94a3b8" },
+  away:   { background: "#fef9c3", color: "#854d0e" },
+  off:    { background: "#f1f5f9", color: "#94a3b8" },
+};
+const STATUS_DOT: Record<Employee["status"], string> = {
+  active: "#059669",
+  away:   "#f59e0b",
+  off:    "#9ca3af",
 };
 
 export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onDelete }: Props) {
+  const [confirmId, setConfirmId] = useState<number | null>(null);
   const activeCount = employees.filter((e) => e.status === "active").length;
 
   return (
@@ -91,47 +98,76 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
         </div>
       </div>
 
+      {employees.length === 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px 0",
+            color: "#9ca3af",
+            fontSize: ".85rem",
+          }}
+        >
+          لا يوجد موظفون بعد — ابدأ بإضافة أحد أفراد الفريق.
+        </div>
+      )}
+
       <div>
         {employees.map((emp) => (
           <div
             key={emp.id}
-            className="group"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "9px 16px",
+              padding: "10px 16px",
               borderBottom: "1px solid rgba(0,0,0,.04)",
               transition: "background .15s",
+              flexWrap: "wrap",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#f2faf6")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "")}
           >
+            {/* Avatar with status dot */}
             <div
               style={{
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 borderRadius: "50%",
                 background: emp.color,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: ".78rem",
+                fontSize: ".85rem",
                 fontWeight: 700,
                 color: "white",
                 flexShrink: 0,
+                position: "relative",
               }}
             >
               {emp.name.charAt(0)}
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 1,
+                  left: 1,
+                  width: 9,
+                  height: 9,
+                  borderRadius: "50%",
+                  background: STATUS_DOT[emp.status],
+                  border: "2px solid white",
+                }}
+              />
             </div>
-            <div>
-              <div
-                style={{ fontSize: ".84rem", fontWeight: 600, color: "#111827", lineHeight: 1.2 }}
-              >
+
+            {/* Name + role */}
+            <div style={{ flex: 1, minWidth: 80 }}>
+              <div style={{ fontSize: ".84rem", fontWeight: 600, color: "#111827", lineHeight: 1.2 }}>
                 {emp.name}
               </div>
-              <div style={{ fontSize: ".7rem", color: "#6b7280" }}>{emp.role}</div>
+              <div style={{ fontSize: ".7rem", color: "#6b7280" }}>{emp.role || "—"}</div>
             </div>
+
+            {/* Status badge */}
             <span
               style={{
                 fontSize: ".65rem",
@@ -139,58 +175,93 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                 borderRadius: 20,
                 fontWeight: 600,
                 whiteSpace: "nowrap",
-                marginRight: "auto",
                 ...STATUS_STYLE[emp.status],
               }}
             >
               {STATUS_LABELS[emp.status]}
             </span>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                flexShrink: 0,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onEdit(emp)}
+
+            {/* Actions */}
+            {confirmId === emp.id ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                <span style={{ fontSize: ".76rem", color: "#ef4444", fontWeight: 600 }}>
+                  تأكيد الحذف؟
+                </span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => { onDelete(emp.id); setConfirmId(null); }}
+                  style={{ fontSize: ".7rem", padding: "3px 10px" }}
+                >
+                  نعم، احذف
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmId(null)}
+                  style={{ fontSize: ".7rem", padding: "3px 9px" }}
+                >
+                  إلغاء
+                </Button>
+              </div>
+            ) : (
+              <div
                 style={{
-                  fontSize: ".7rem",
-                  padding: "3px 9px",
-                  borderColor: "rgba(45,122,82,.2)",
-                  color: "#2d7a52",
-                  background: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  flexShrink: 0,
+                  flexWrap: "wrap",
+                  justifyContent: "flex-end",
                 }}
               >
-                تعديل
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => onStatusChange(emp.id, emp.status === "active" ? "off" : "active")}
-                style={{
-                  fontSize: ".7rem",
-                  padding: "3px 9px",
-                  background: emp.status === "active" ? "#fef3c7" : "#dcfce7",
-                  color: emp.status === "active" ? "#92400e" : "#166534",
-                  border: "1px solid rgba(45,122,82,.12)",
-                }}
-              >
-                {emp.status === "active" ? "غير نشط" : "نشط"}
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => onDelete(emp.id)}
-                style={{ fontSize: ".7rem", padding: "3px 9px" }}
-              >
-                حذف
-              </Button>
-            </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onEdit(emp)}
+                  style={{
+                    fontSize: ".7rem",
+                    padding: "3px 9px",
+                    borderColor: "rgba(45,122,82,.2)",
+                    color: "#2d7a52",
+                    background: "white",
+                  }}
+                >
+                  تعديل
+                </Button>
+
+                {/* Full 3-state status selector */}
+                <select
+                  value={emp.status}
+                  onChange={(e) =>
+                    onStatusChange(emp.id, e.target.value as Employee["status"])
+                  }
+                  style={{
+                    fontSize: ".7rem",
+                    padding: "3px 6px",
+                    borderRadius: 7,
+                    border: "1px solid rgba(45,122,82,.18)",
+                    fontFamily: "'Tajawal','Cairo',sans-serif",
+                    color: "#374151",
+                    background: "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="active">✅ نشط</option>
+                  <option value="away">🌙 بعيد</option>
+                  <option value="off">⛔ خارج العمل</option>
+                </select>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setConfirmId(emp.id)}
+                  style={{ fontSize: ".7rem", padding: "3px 9px" }}
+                >
+                  حذف
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </div>

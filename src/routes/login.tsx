@@ -72,6 +72,8 @@ function LoginPage() {
   const [success,      setSuccess]      = useState("");
   const [submitting,   setSubmitting]   = useState(false);
   const [googleBusy,   setGoogleBusy]   = useState(false);
+  const [showPass,     setShowPass]     = useState(false);
+  const [showConfirm,  setShowConfirm]  = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute("dir", "rtl");
@@ -290,7 +292,13 @@ function LoginPage() {
               </div>
               <div>
                 <label style={lbl}>كلمة المرور</label>
-                <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inp} />
+                <div style={{ position: "relative" }}>
+                  <input type={showPass ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={{ ...inp, paddingLeft: 40 }} />
+                  <button type="button" onClick={() => setShowPass(v => !v)} tabIndex={-1}
+                    style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.4)", fontSize: "1rem", padding: 0, lineHeight: 1 }}>
+                    {showPass ? "🙈" : "👁"}
+                  </button>
+                </div>
               </div>
               <button type="submit" disabled={submitting} style={submitBtn(submitting)}>
                 {submitting ? "جاري الدخول..." : "دخول المنصة ←"}
@@ -311,11 +319,23 @@ function LoginPage() {
               </div>
               <div>
                 <label style={lbl}>كلمة المرور</label>
-                <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="6 أحرف على الأقل" style={inp} />
+                <div style={{ position: "relative" }}>
+                  <input type={showPass ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} placeholder="6 أحرف على الأقل" style={{ ...inp, paddingLeft: 40 }} />
+                  <button type="button" onClick={() => setShowPass(v => !v)} tabIndex={-1}
+                    style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.4)", fontSize: "1rem", padding: 0, lineHeight: 1 }}>
+                    {showPass ? "🙈" : "👁"}
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={lbl}>تأكيد كلمة المرور</label>
-                <input type="password" required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" style={inp} />
+                <div style={{ position: "relative" }}>
+                  <input type={showConfirm ? "text" : "password"} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" style={{ ...inp, paddingLeft: 40 }} />
+                  <button type="button" onClick={() => setShowConfirm(v => !v)} tabIndex={-1}
+                    style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.4)", fontSize: "1rem", padding: 0, lineHeight: 1 }}>
+                    {showConfirm ? "🙈" : "👁"}
+                  </button>
+                </div>
               </div>
               <button type="submit" disabled={submitting} style={submitBtn(submitting)}>
                 {submitting ? "جاري إنشاء الحساب..." : "إنشاء الحساب ←"}
