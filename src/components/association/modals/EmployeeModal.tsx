@@ -69,9 +69,10 @@ export default function EmployeeModal({ employee, assocId, onSave, onClose }: Pr
         const res = await supabase.functions.invoke("create-employee", {
           body: { email: email.trim(), password, name: name.trim(), role: role.trim(), status, assocId },
         });
-        console.log("create-employee response:", res);
-        if (res.error) throw new Error(String(res.error?.message ?? JSON.stringify(res.error)));
+        // Business errors come back as 200 + {error: "..."} — check data first
         if (res.data?.error) throw new Error(String(res.data.error));
+        // Network/auth errors come from res.error
+        if (res.error) throw new Error(String(res.error?.message ?? JSON.stringify(res.error)));
 
         toast.success("تم إنشاء حساب الموظف بنجاح");
         onSave({

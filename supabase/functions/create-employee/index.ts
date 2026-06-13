@@ -55,7 +55,22 @@ Deno.serve(async (req) => {
   if (!email || !password || !name || !assocId) {
     return new Response(
       JSON.stringify({ error: "الاسم والبريد والكلمة السرية ومعرف الجمعية مطلوبون" }),
-      { status: 400, headers: { ...CORS, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...CORS, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Check if email already exists in this association
+  const { data: existing } = await adminClient
+    .from("employees")
+    .select("id")
+    .eq("email", email.trim().toLowerCase())
+    .eq("assoc_id", assocId)
+    .maybeSingle();
+
+  if (existing) {
+    return new Response(
+      JSON.stringify({ error: "يوجد موظف بهذا البريد الإلكتروني في جمعيتك بالفعل" }),
+      { status: 200, headers: { ...CORS, "Content-Type": "application/json" } },
     );
   }
 
@@ -68,8 +83,17 @@ Deno.serve(async (req) => {
   });
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+    // Translate common Supabase auth errors to Arabic
+    let msg = error.message;
+    if (msg.includes("already registered") || msg.includes("already been registered")) {
+      msg = "هذا البريد الإلكتروني مسجّل مسبقاً في النظام";
+    } else if (msg.includes("invalid") && msg.includes("email")) {
+      msg = "صيغة البريد الإلكتروني غير صحيحة";
+    } else if (msg.includes("password")) {
+      msg = "كلمة المرور يجب أن تكون 6 أحرف على الأقل";
+    }
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 200,
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   }

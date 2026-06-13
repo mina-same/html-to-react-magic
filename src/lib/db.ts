@@ -34,12 +34,17 @@ function mapTask(row: Record<string, unknown>): Task {
 function mapDonation(row: Record<string, unknown>): Donation {
   return {
     id: row.id as number,
+    donationNumber: (row.donation_number as string) ?? "",
     name: row.name as string,
+    phone: (row.phone as string) ?? "",
+    projectName: (row.project_name as string) ?? "",
     amount: row.amount as number,
-    channel: row.channel as string,
-    date: row.date as string,
+    paymentMethod: (row.payment_method as string) ?? "نقد",
+    bank: (row.bank as string) ?? "",
+    accountNumber: (row.account_number as string) ?? "",
     status: row.status as Donation["status"],
-    org: (row.org as string) ?? "",
+    source: (row.source as string) ?? "",
+    date: row.date as string,
   };
 }
 
@@ -137,20 +142,82 @@ export const tasksDb = {
 // ── Donations ──────────────────────────────────────────────────
 export const donationsDb = {
   async list(assocId: string): Promise<Donation[]> {
-    const { data } = await supabase
-      .from("donations")
-      .select("*")
-      .eq("assoc_id", assocId)
-      .order("date", { ascending: false });
-    return (data ?? []).map(mapDonation);
+    try {
+      const { data, error } = await supabase
+        .from("donations")
+        .select("*")
+        .eq("assoc_id", assocId)
+        .order("date", { ascending: false });
+      
+      if (error) {
+        console.error("Error loading donations:", error);
+        return [];
+      }
+      
+      return (data ?? []).map(mapDonation);
+    } catch (e) {
+      console.error("Error in donationsDb.list:", e);
+      return [];
+    }
   },
-  async create(assocId: string, data: Omit<Donation, "id">): Promise<Donation | null> {
-    const { data: row } = await supabase
-      .from("donations")
-      .insert({ assoc_id: assocId, ...data })
-      .select()
-      .single();
-    return row ? mapDonation(row as Record<string, unknown>) : null;
+  async create(assocId: string, donationData: Omit<Donation, "id">): Promise<Donation | null> {
+    try {
+      console.log("Donation create data:", donationData);
+      // First, try inserting only the basic fields that definitely exist
+      const basicInsertData: Record<string, unknown> = {
+        assoc_id: assocId,
+        name: donationData.name,
+        amount: donationData.amount,
+        channel: donationData.paymentMethod || "نقد",
+        status: donationData.status,
+        date: donationData.date,
+      };
+      
+      console.log("Basic insert data:", basicInsertData);
+      
+      const { data: row, error } = await supabase
+        .from("donations")
+        .insert(basicInsertData)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error("Basic insert failed, full error details:", JSON.stringify(error, null, 2));
+        return null;
+      }
+      
+      console.log("Inserted row:", row);
+      
+      // If basic insert worked, try to update with new fields if they exist
+      if (row) {
+        try {
+          const updateData: Record<string, unknown> = {};
+          if (donationData.donationNumber) updateData.donation_number = donationData.donationNumber;
+          if (donationData.phone) updateData.phone = donationData.phone;
+          if (donationData.projectName) updateData.project_name = donationData.projectName;
+          if (donationData.paymentMethod) updateData.payment_method = donationData.paymentMethod;
+          if (donationData.bank) updateData.bank = donationData.bank;
+          if (donationData.accountNumber) updateData.account_number = donationData.accountNumber;
+          if (donationData.source) updateData.source = donationData.source;
+          
+          if (Object.keys(updateData).length > 0) {
+            console.log("Trying to update with new fields:", updateData);
+            await supabase
+              .from("donations")
+              .update(updateData)
+              .eq("id", row.id);
+          }
+        } catch (updateErr) {
+          // Ignore update errors (columns might not exist yet)
+          console.log("Update with new fields failed (columns might not exist yet):", updateErr);
+        }
+      }
+      
+      return row ? mapDonation(row as Record<string, unknown>) : null;
+    } catch (e) {
+      console.error("Error in donationsDb.create:", e);
+      return null;
+    }
   },
 };
 
@@ -313,20 +380,140 @@ export const adminOrgsDb = {
   },
 };
 
-// ── Association Profile Context ──────────────────────────────
-export const assocProfileDb = {
-  async get(id: string) {
+// ── Associations (for onboarding and profile) ──────────────────────────────
+export interface Association {
+  id: string;
+  license: string;
+  region: string;
+  phone: string;
+  email: string;
+  description: string;
+  status: "active" | "new" | "pending" | "suspended";
+  verified: boolean;
+  updated_at: string;
+}
+
+export const associationsDb = {
+  async get(id: string): Promise<Association | null> {
     const { data } = await supabase
       .from("associations")
-      .select("description")
+      .select("*")
       .eq("id", id)
       .single();
-    return data;
+    return data as Association | null;
   },
-  async update(id: string, description: string) {
+  async upsert(id: string, fields: Partial<Omit<Association, "id" | "updated_at" | "status" | "verified">>) {
     const { error } = await supabase
       .from("associations")
-      .update({ description, updated_at: new Date().toISOString() })
+      .upsert({ 
+        id, 
+        ...fields, 
+        status: "new", 
+        verified: false,
+        updated_at: new Date().toISOString() 
+      });
+    if (error) throw new Error(`DB: ${error.message}`);
+  },
+};
+
+// ── Association Profile Context ──────────────────────────────
+export type GeneratedContentItem = { text: string; visualDesc?: string; imageUrl?: string };
+export type GeneratedContent = Record<"post" | "story" | "donation" | "video", GeneratedContentItem>;
+
+export interface ContentGeneration {
+  id: number;
+  prompt: string;
+  content: GeneratedContent;
+  createdAt: string;
+}
+
+export const contentGenerationsDb = {
+  async list(assocId: string): Promise<ContentGeneration[]> {
+    const { data } = await supabase
+      .from("content_generations")
+      .select("id, prompt, content, created_at")
+      .eq("assoc_id", assocId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: row.id as number,
+      prompt: (row.prompt as string) ?? "",
+      content: row.content as GeneratedContent,
+      createdAt: row.created_at as string,
+    }));
+  },
+  async create(
+    assocId: string,
+    prompt: string,
+    content: GeneratedContent,
+  ): Promise<ContentGeneration | null> {
+    const { data: row } = await supabase
+      .from("content_generations")
+      .insert({ assoc_id: assocId, prompt, content })
+      .select("id, prompt, content, created_at")
+      .single();
+    if (!row) return null;
+    const r = row as Record<string, unknown>;
+    return {
+      id: r.id as number,
+      prompt: (r.prompt as string) ?? "",
+      content: r.content as GeneratedContent,
+      createdAt: r.created_at as string,
+    };
+  },
+  async update(id: number, content: GeneratedContent): Promise<void> {
+    await supabase.from("content_generations").update({ content }).eq("id", id);
+  },
+};
+
+export interface AssocProfile {
+  description: string | null;
+  ai_summary: string | null;
+  ai_ideas: string[] | null;
+  ai_pain_points: string[] | null;
+  ai_content: GeneratedContent | null;
+}
+
+export const assocProfileDb = {
+  async get(id: string): Promise<AssocProfile | null> {
+    const { data } = await supabase
+      .from("associations")
+      .select("description, ai_summary, ai_ideas, ai_pain_points, ai_content")
+      .eq("id", id)
+      .single();
+    return data as AssocProfile | null;
+  },
+  async update(
+    id: string,
+    description: string,
+    aiResult?: { summary: string; ideas: string[]; painPoints: string[] },
+  ) {
+    const now = new Date().toISOString();
+
+    // Always save description (column always exists)
+    const { error: descErr } = await supabase
+      .from("associations")
+      .upsert({ id, description, updated_at: now }, { onConflict: "id" });
+    if (descErr) throw new Error(`DB: ${descErr.message}`);
+
+    // Save AI fields separately — columns added via migration 009
+    if (aiResult) {
+      const { error: aiErr } = await supabase
+        .from("associations")
+        .update({
+          ai_summary: aiResult.summary,
+          ai_ideas: aiResult.ideas,
+          ai_pain_points: aiResult.painPoints,
+          updated_at: now,
+        })
+        .eq("id", id);
+      if (aiErr) throw new Error(`AI fields not saved (run migration 009): ${aiErr.message}`);
+    }
+  },
+  async saveContent(id: string, content: GeneratedContent) {
+    const { error } = await supabase
+      .from("associations")
+      .update({ ai_content: content, updated_at: new Date().toISOString() })
       .eq("id", id);
     if (error) throw new Error(`DB: ${error.message}`);
   },

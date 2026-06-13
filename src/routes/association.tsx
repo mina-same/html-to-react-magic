@@ -3,11 +3,26 @@ import { useEffect, useState, useCallback } from "react";
 import { Toaster, toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
-import { employeesDb, tasksDb, influencersDb, campaignsDb, requestsDb, donationsDb } from "@/lib/db";
+import {
+  employeesDb,
+  tasksDb,
+  influencersDb,
+  campaignsDb,
+  requestsDb,
+  donationsDb,
+} from "@/lib/db";
 import { INF_COLORS } from "@/components/association/data";
 
 import AssocSidebar from "@/components/association/AssocSidebar";
-import type { PageId, Task, Employee, Influencer, Campaign, Donation } from "@/components/association/types";
+import Onboarding from "@/components/association/Onboarding";
+import type {
+  PageId,
+  Task,
+  Employee,
+  Influencer,
+  Campaign,
+  Donation,
+} from "@/components/association/types";
 import { PAGE_TITLES } from "@/components/association/types";
 
 import OverviewPage from "@/components/association/pages/OverviewPage";
@@ -44,8 +59,18 @@ function Association() {
     updateAssocName,
     signOut,
     loading: authLoading,
+    associationProfile,
   } = useAuth();
   const assocId = user?.id ?? "";
+
+  // Check if onboarding is needed (association has no profile or missing required fields)
+  const needsOnboarding =
+    role === "association" &&
+    !authLoading &&
+    (!associationProfile ||
+      !associationProfile.license ||
+      !associationProfile.region ||
+      !associationProfile.phone);
 
   // Auth guard
   useEffect(() => {
@@ -54,8 +79,19 @@ function Association() {
     if (!authLoading && user && role === "employee") navigate({ to: "/employee" });
   }, [user, role, authLoading, navigate]);
 
-  // Core state
-  const [activePage, setActivePage] = useState<PageId>("overview");
+  // Core state — restore last active page from localStorage
+  const [activePage, _setActivePage] = useState<PageId>("overview");
+
+  // Restore from localStorage on client only
+  useEffect(() => {
+    const saved = localStorage.getItem("saaid_assoc_page") as PageId | null;
+    if (saved) _setActivePage(saved);
+  }, []);
+
+  function setActivePage(page: PageId) {
+    localStorage.setItem("saaid_assoc_page", page);
+    _setActivePage(page);
+  }
   const [assocName, setAssocName] = useState(savedName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentCount, setContentCount] = useState(0);
@@ -84,28 +120,34 @@ function Association() {
     if (savedName) setAssocName(savedName);
   }, [savedName]);
 
-  // Load all data
+  // Load all data — deps use user?.id (stable string) to avoid double-fire
+  // caused by useAuth calling finish() from both getSession + onAuthStateChange
   const loadData = useCallback(async () => {
     if (!user) return;
     setDataLoading(true);
-    const [emps, tks, infs, camps, doms] = await Promise.all([
-      employeesDb.list(user.id),
-      tasksDb.list(user.id),
-      influencersDb.list(),
-      campaignsDb.list(user.id),
-      donationsDb.list(user.id),
-    ]);
-    setEmployees(emps);
-    setTasks(tks);
-    setInfluencers(infs);
-    setCampaigns(camps);
-    setDonations(doms);
-    setDataLoading(false);
-  }, [user]);
+    try {
+      const [emps, tks, infs, camps, doms] = await Promise.all([
+        employeesDb.list(user.id),
+        tasksDb.list(user.id),
+        influencersDb.list(),
+        campaignsDb.list(user.id),
+        donationsDb.list(user.id),
+      ]);
+      setEmployees(emps);
+      setTasks(tks);
+      setInfluencers(infs);
+      setCampaigns(camps);
+      setDonations(doms);
+    } finally {
+      setDataLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!authLoading && user) loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading]);
 
   async function logout() {
     await signOut();
@@ -211,6 +253,7 @@ function Association() {
     return (
       <div
         dir="rtl"
+        suppressHydrationWarning={true}
         style={{
           minHeight: "100dvh",
           background: "#f4f7f5",
@@ -226,6 +269,11 @@ function Association() {
         جاري التحميل…
       </div>
     );
+  }
+
+  // Show onboarding if needed
+  if (needsOnboarding) {
+    return <Onboarding onComplete={() => {}} />;
   }
 
   function renderPage() {
@@ -249,6 +297,7 @@ function Association() {
               if (name) handleNameChange(name);
               setContentCount((c) => c + count);
             }}
+            onNavigate={setActivePage}
           />
         );
       case "team":

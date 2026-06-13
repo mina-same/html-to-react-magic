@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { AI_CONTENT, AI_ANALYSIS } from "../data";
+import { AI_ANALYSIS } from "../data";
 import { assocProfileDb } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 interface Props {
   onAnalysisComplete: (name: string, contentCount: number) => void;
+  onNavigate: (page: string) => void;
 }
-
-type ContentTab = "post" | "story" | "donation";
 
 interface AnalysisResult {
   summary: string;
@@ -17,19 +16,20 @@ interface AnalysisResult {
   painPoints: string[];
 }
 
-export default function ProfilePage({ onAnalysisComplete }: Props) {
+export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
   const { user, assocName: savedName, updateAssocName } = useAuth();
   const [assocName, setAssocName] = useState("");
   const [assocDesc, setAssocDesc] = useState("");
+  const [savedDesc, setSavedDesc] = useState("");
   const [fileInfo, setFileInfo] = useState<{ name: string; size: string; content?: string } | null>(
     null,
   );
+  const [inputMode, setInputMode] = useState<"file" | "text">("file");
   const [isDragging, setIsDragging] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [logs, setLogs] = useState<{ text: string; time: string; status: "pending" | "done" | "error" }[]>([]);
   const [done, setDone] = useState(false);
-  const [tab, setTab] = useState<ContentTab>("post");
-  const [hasExistingData, setHasExistingData] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [aiResult, setAiResult] = useState<AnalysisResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -38,17 +38,22 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
     if (user) {
       assocProfileDb.get(user.id).then((data) => {
         if (data?.description) {
-          // Try to extract raw description if it was saved with tags
           let rawDesc = data.description;
           const descMatch =
             data.description.match(/\[وصف إضافي\]:\s*([\s\S]*)$/) ||
             data.description.match(/\[الوصف\]:\s*([\s\S]*)$/);
-          if (descMatch) {
-            rawDesc = descMatch[1].trim();
-          }
-
+          if (descMatch) rawDesc = descMatch[1].trim();
           setAssocDesc(rawDesc);
-          setHasExistingData(true);
+          setSavedDesc(rawDesc);
+          if (rawDesc) setInputMode("text");
+        }
+        if (data?.ai_summary && data.ai_ideas && data.ai_pain_points) {
+          setAiResult({
+            summary: data.ai_summary,
+            ideas: data.ai_ideas as string[],
+            painPoints: data.ai_pain_points as string[],
+          });
+          setDone(true);
         }
       });
     }
@@ -57,6 +62,7 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
   async function processFile(file: File) {
     const kb = file.size / 1024;
     const content = await file.text();
+    setInputMode("file");
     setFileInfo({
       name: file.name,
       size: kb > 1024 ? (kb / 1024).toFixed(1) + "MB" : kb.toFixed(0) + "KB",
@@ -127,8 +133,9 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
 
   async function analyzeProfile() {
     if (!user) return;
-    if (!assocName.trim() && !assocDesc.trim() && !fileInfo) {
-      toast.error("يرجى إدخال اسم الجمعية أو وصفها أو رفع ملف");
+    const hasInput = inputMode === "file" ? !!fileInfo : assocDesc.trim().length > 0;
+    if (!assocName.trim() && !hasInput) {
+      toast.error(inputMode === "file" ? "يرجى رفع ملف أو إدخال اسم الجمعية" : "يرجى كتابة وصف الجمعية أو اسمها");
       return;
     }
 
@@ -137,37 +144,55 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
     setLogs([]);
 
     try {
-      addLog("جاري قراءة ومعالجة البيانات...");
-      const finalDesc = fileInfo?.content
-        ? `[اسم الجمعية: ${assocName}]\n[محتوى الملف: ${fileInfo.name}]\n${fileInfo.content}\n\n[وصف إضافي]: ${assocDesc}`
-        : `[اسم الجمعية: ${assocName}]\n[الوصف]: ${assocDesc}`;
+      addLog("قراءة ومعالجة البيانات...");
+      const finalDesc = inputMode === "file" && fileInfo?.content
+        ? `[اسم الجمعية: ${assocName}]\n[محتوى الملف: ${fileInfo.name}]\n${fileInfo.content}`
+        : `[اسم الجمعية: ${assocName}]\n[الوصف]: ${assocDesc || savedDesc}`;
       markLastLog("done");
 
-      addLog("حفظ البيانات في قاعدة البيانات...");
-      await assocProfileDb.update(user.id, finalDesc);
-      markLastLog("done");
-
-      addLog("إرسال البيانات إلى الذكاء الاصطناعي للتحليل...");
+      addLog("تحليل البيانات بالذكاء الاصطناعي...");
       const result = await runAIAnalysis(finalDesc);
       setAiResult(result);
       markLastLog("done");
 
-      if (assocName.trim() && assocName.trim() !== savedName) {
-        addLog("تحديث اسم الجمعية...");
-        await updateAssocName(assocName.trim());
+      addLog("حفظ النتائج في قاعدة البيانات...");
+      try {
+        await assocProfileDb.update(user.id, finalDesc, result);
+        setSavedDesc(inputMode === "file" ? (fileInfo?.name ?? "") : (assocDesc || savedDesc));
         markLastLog("done");
+      } catch (dbErr) {
+        const msg = dbErr instanceof Error ? dbErr.message : "";
+        if (msg.includes("migration 009")) {
+          // AI columns not yet added — description was saved, show warning only
+          setSavedDesc(inputMode === "file" ? (fileInfo?.name ?? "") : (assocDesc || savedDesc));
+          markLastLog("done");
+          toast.warning("تم حفظ الملف — لحفظ تحليل الذكاء الاصطناعي شغّل migration 009 في Supabase");
+        } else {
+          console.error("DB save failed:", dbErr);
+          markLastLog("error");
+        }
       }
 
-      addLog("اكتمل التحليل بنجاح ✓", "done");
-      setAnalyzing(false);
+      if (assocName.trim() && assocName.trim() !== savedName) {
+        addLog("تحديث اسم الجمعية...");
+        try {
+          await updateAssocName(assocName.trim());
+          markLastLog("done");
+        } catch {
+          markLastLog("error");
+        }
+      }
+
+      addLog("اكتمل التحليل بنجاح", "done");
       setDone(true);
-      setHasExistingData(true);
+      setEditing(false);
       onAnalysisComplete(assocName.trim() || "جمعيتكم", 3);
-      toast.success("تم تحليل وحفظ بيانات الجمعية بنجاح");
+      toast.success("تم تحليل بيانات الجمعية بنجاح");
     } catch (err) {
       console.error(err);
       markLastLog("error");
       toast.error(err instanceof Error ? err.message : "حدث خطأ أثناء التحليل");
+    } finally {
       setAnalyzing(false);
     }
   }
@@ -201,8 +226,121 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
 
   return (
     <div>
-      {/* Upload section */}
-      <div style={sc}>
+      {/* Saved profile view — shown when AI analysis exists and not re-editing */}
+      {done && !editing && (
+        <>
+          {/* Description card */}
+          <div style={sc}>
+            <div style={{ ...scH, justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 7, background: "#e8f5ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".95rem" }}>📄</div>
+                <div>
+                  <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>ملف الجمعية</div>
+                  <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>المحتوى المحفوظ</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditing(true)}
+                style={{ fontSize: ".78rem", padding: "5px 13px", borderRadius: 7, border: "1px solid rgba(45,122,82,.18)", background: "white", color: "#2d7a52", fontWeight: 600, cursor: "pointer", fontFamily: "'Tajawal',sans-serif" }}
+              >
+                ✏️ تعديل
+              </button>
+            </div>
+            <div style={{ padding: 18 }}>
+              {savedName && (
+                <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+                  🏛 {savedName}
+                </div>
+              )}
+              {savedDesc && (
+                <div style={{ fontSize: ".85rem", color: "#374151", lineHeight: 1.75, background: "#f9fafb", borderRadius: 9, padding: "12px 14px", border: "1px solid rgba(45,122,82,.1)" }}>
+                  {savedDesc}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* AI Summary */}
+          <div style={sc}>
+            <div style={scH}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#e8f5ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".95rem" }}>✦</div>
+              <div>
+                <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>ملخص الجمعية</div>
+                <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>تحليل AI للملف التعريفي</div>
+              </div>
+            </div>
+            <div style={{ padding: 18 }}>
+              <div style={{ background: "linear-gradient(135deg,#f0faf5,#e8f5ee)", border: "1px solid rgba(45,122,82,.15)", borderRadius: 11, padding: "16px 18px" }}>
+                <div style={{ fontSize: ".7rem", fontWeight: 700, letterSpacing: ".08em", color: "#2d7a52", textTransform: "uppercase", marginBottom: 7 }}>✦ ملخص تلقائي</div>
+                <div style={{ fontSize: ".88rem", lineHeight: 1.75, color: "#374151" }}>
+                  {aiResult?.summary ?? AI_ANALYSIS.summary}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Ideas & Pain Points */}
+          <div style={sc}>
+            <div style={scH}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#e8f5ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".95rem" }}>💡</div>
+              <div>
+                <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>أفكار وتحديات تسويقية</div>
+                <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>توصيات AI لتحسين الحضور الإعلامي</div>
+              </div>
+            </div>
+            <div style={{ padding: 18 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div style={{ background: "white", borderRadius: 11, border: "1px solid rgba(45,122,82,.12)", overflow: "hidden" }}>
+                  <div style={{ padding: "11px 13px", borderBottom: "1px solid rgba(45,122,82,.12)", background: "linear-gradient(135deg,#f0faf5,#e8f5ee)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>💡</span>
+                    <span style={{ fontSize: ".83rem", fontWeight: 700, color: "#111827" }}>أفكار للمحتوى التسويقي</span>
+                  </div>
+                  <div style={{ padding: "11px 13px" }}>
+                    {(aiResult?.ideas ?? AI_ANALYSIS.ideas).map((idea, i, arr) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "6px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,.04)" : "none", fontSize: ".8rem", color: "#374151", lineHeight: 1.5 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2d7a52", flexShrink: 0, marginTop: 5 }} />
+                        {idea}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ background: "white", borderRadius: 11, border: "1px solid rgba(45,122,82,.12)", overflow: "hidden" }}>
+                  <div style={{ padding: "11px 13px", borderBottom: "1px solid rgba(45,122,82,.12)", background: "linear-gradient(135deg,#fff8f0,#fdeee0)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>⚠️</span>
+                    <span style={{ fontSize: ".83rem", fontWeight: 700, color: "#111827" }}>تحديات ونقاط ضعف إعلامية</span>
+                  </div>
+                  <div style={{ padding: "11px 13px" }}>
+                    {(aiResult?.painPoints ?? AI_ANALYSIS.painPoints).map((pt, i, arr) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "6px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,.04)" : "none", fontSize: ".8rem", color: "#374151", lineHeight: 1.5 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d97706", flexShrink: 0, marginTop: 5 }} />
+                        {pt}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Link to content page */}
+          <button
+            onClick={() => onNavigate("content")}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderRadius: 13, border: "1.5px solid rgba(45,122,82,.18)", background: "linear-gradient(135deg,#f0faf5,#e8f5ee)", cursor: "pointer", fontFamily: "'Tajawal','Cairo',sans-serif", transition: "all .2s" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", boxShadow: "0 1px 6px rgba(45,122,82,.12)" }}>✍️</div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>المحتوى التسويقي</div>
+                <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 2 }}>اعرض وأدر المحتوى المُولَّد بالذكاء الاصطناعي</div>
+              </div>
+            </div>
+            <span style={{ fontSize: "1.1rem", color: "#2d7a52", opacity: 0.7 }}>←</span>
+          </button>
+        </>
+      )}
+
+      {/* Upload / Edit section — shown when no analysis yet or re-editing */}
+      {(!done || editing) && <div style={sc}>
         <div style={scH}>
           <div
             style={{
@@ -263,140 +401,137 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
             />
           </div>
 
-          {/* Drop zone */}
+          {/* Mode toggle */}
           <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              const f = e.dataTransfer.files[0];
-              if (f) processFile(f);
-            }}
-            onClick={() => fileRef.current?.click()}
             style={{
-              border: `2px dashed ${isDragging ? "#2d7a52" : "rgba(45,122,82,.12)"}`,
-              borderRadius: 11,
-              padding: "28px 20px",
-              textAlign: "center",
-              cursor: "pointer",
-              background: isDragging ? "#e8f5ee" : "#f2faf6",
-              transition: "all .25s",
-              position: "relative",
-              marginBottom: fileInfo ? 0 : 14,
+              display: "flex",
+              background: "#f2faf6",
+              borderRadius: 10,
+              padding: 3,
+              marginBottom: 16,
+              border: "1px solid rgba(45,122,82,.1)",
             }}
           >
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-              style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) processFile(f);
-              }}
-            />
-            <div style={{ fontSize: "2.2rem", marginBottom: 8, opacity: 0.5 }}>📄</div>
-            <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>
-              اسحب الملف هنا أو اضغط للرفع
-            </div>
-            <div style={{ fontSize: ".78rem", color: "#6b7280" }}>
-              الملف التعريفي للجمعية، التقرير السنوي، أو أي وثيقة تعريفية
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                justifyContent: "center",
-                marginTop: 9,
-                flexWrap: "wrap",
-              }}
-            >
-              {["PDF", "Word", "TXT", "صور JPG/PNG"].map((t) => (
-                <span
-                  key={t}
-                  style={{
-                    fontSize: ".68rem",
-                    background: "rgba(45,122,82,.08)",
-                    color: "#2d7a52",
-                    padding: "2px 8px",
-                    borderRadius: 20,
-                    fontWeight: 600,
-                  }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* File preview */}
-          {fileInfo && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "11px 13px",
-                background: "#e8f5ee",
-                borderRadius: 9,
-                marginBottom: 14,
-                marginTop: 11,
-                border: "1px solid rgba(45,122,82,.12)",
-              }}
-            >
-              <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>📄</span>
-              <div>
-                <div style={{ fontSize: ".85rem", fontWeight: 600, color: "#111827" }}>
-                  {fileInfo.name}
-                </div>
-                <div style={{ fontSize: ".73rem", color: "#6b7280" }}>{fileInfo.size}</div>
-              </div>
+            {(["file", "text"] as const).map((mode) => (
               <button
-                onClick={() => setFileInfo(null)}
+                key={mode}
+                onClick={() => {
+                  setInputMode(mode);
+                  if (mode === "file") setAssocDesc("");
+                  else setFileInfo(null);
+                }}
                 style={{
-                  marginRight: "auto",
-                  fontSize: ".73rem",
-                  color: "#dc2626",
-                  cursor: "pointer",
-                  background: "none",
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 7,
                   border: "none",
-                  fontFamily: "'Tajawal',sans-serif",
-                  fontWeight: 600,
+                  background: inputMode === mode ? "white" : "transparent",
+                  color: inputMode === mode ? "#1a5c3a" : "#6b7280",
+                  fontWeight: inputMode === mode ? 700 : 500,
+                  fontSize: ".85rem",
+                  cursor: "pointer",
+                  fontFamily: "'Tajawal','Cairo',sans-serif",
+                  boxShadow: inputMode === mode ? "0 1px 6px rgba(45,122,82,.12)" : "none",
+                  transition: "all .15s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
                 }}
               >
-                ✕ إزالة
+                {mode === "file" ? "📎 رفع ملف" : "✏️ كتابة نص"}
               </button>
+            ))}
+          </div>
+
+          {/* File upload mode */}
+          {inputMode === "file" && (
+            <>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const f = e.dataTransfer.files[0];
+                  if (f) processFile(f);
+                }}
+                onClick={() => fileRef.current?.click()}
+                style={{
+                  border: `2px dashed ${isDragging ? "#2d7a52" : "rgba(45,122,82,.12)"}`,
+                  borderRadius: 11,
+                  padding: "28px 20px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  background: isDragging ? "#e8f5ee" : "#f9fafb",
+                  transition: "all .25s",
+                  position: "relative",
+                  marginBottom: fileInfo ? 0 : 14,
+                }}
+              >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                  style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) processFile(f);
+                  }}
+                />
+                <div style={{ fontSize: "2.2rem", marginBottom: 8, opacity: fileInfo ? 1 : 0.4 }}>
+                  {fileInfo ? "✅" : "📄"}
+                </div>
+                <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>
+                  {fileInfo ? fileInfo.name : "اسحب الملف هنا أو اضغط للرفع"}
+                </div>
+                <div style={{ fontSize: ".78rem", color: "#6b7280" }}>
+                  {fileInfo ? fileInfo.size : "الملف التعريفي، التقرير السنوي، أو أي وثيقة تعريفية"}
+                </div>
+                {!fileInfo && (
+                  <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 9, flexWrap: "wrap" }}>
+                    {["PDF", "Word", "TXT", "JPG/PNG"].map((t) => (
+                      <span key={t} style={{ fontSize: ".68rem", background: "rgba(45,122,82,.08)", color: "#2d7a52", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {fileInfo && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 13px", background: "#e8f5ee", borderRadius: 9, marginBottom: 14, marginTop: 10, border: "1px solid rgba(45,122,82,.12)" }}>
+                  <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>📄</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: ".85rem", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fileInfo.name}</div>
+                    <div style={{ fontSize: ".73rem", color: "#6b7280" }}>{fileInfo.size}</div>
+                  </div>
+                  <button onClick={() => setFileInfo(null)} style={{ fontSize: ".73rem", color: "#dc2626", cursor: "pointer", background: "none", border: "none", fontFamily: "'Tajawal',sans-serif", fontWeight: 600, flexShrink: 0 }}>
+                    ✕ إزالة
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Text input mode */}
+          {inputMode === "text" && (
+            <div style={{ marginBottom: 14 }}>
+              <textarea
+                value={assocDesc}
+                onChange={(e) => setAssocDesc(e.target.value)}
+                placeholder="أكتب هنا نبذة عن الجمعية — مجال عملها، مشاريعها، أهدافها، وجمهورها المستهدف..."
+                rows={6}
+                style={{ ...inp, resize: "vertical", minHeight: 130, lineHeight: 1.7 }}
+              />
+              <div style={{ fontSize: ".73rem", color: "#9ca3af", marginTop: 5 }}>
+                كلما أضفت تفاصيل أكثر، كان تحليل الذكاء الاصطناعي أدق وأشمل.
+              </div>
             </div>
           )}
 
-          {/* Desc textarea */}
-          <div style={{ marginTop: 14 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".82rem",
-                fontWeight: 600,
-                color: "#374151",
-                marginBottom: 5,
-              }}
-            >
-              أو أكتب وصف الجمعية مباشرة
-            </label>
-            <textarea
-              value={assocDesc}
-              onChange={(e) => setAssocDesc(e.target.value)}
-              placeholder="أكتب هنا نبذة عن الجمعية، مجال عملها، مشاريعها، وأهدافها..."
-              style={{ ...inp, resize: "vertical", minHeight: 90, lineHeight: 1.65 }}
-            />
-          </div>
-
           <Button
             onClick={analyzeProfile}
-            disabled={analyzing || (!assocName.trim() && !assocDesc.trim() && !fileInfo)}
+            disabled={analyzing}
             style={{
               width: "100%",
               padding: 12,
@@ -418,372 +553,78 @@ export default function ProfilePage({ onAnalysisComplete }: Props) {
           >
             {analyzing ? (
               <>
-                <span style={{ animation: "spin .8s linear infinite", display: "inline-block" }}>
-                  ⟳
-                </span>{" "}
+                <span style={{ animation: "spin .8s linear infinite", display: "inline-block" }}>⟳</span>
                 يجري التحليل...
               </>
             ) : (
-              "✦ تحليل الملف بالذكاء الاصطناعي"
+              editing ? "✦ إعادة التحليل بالذكاء الاصطناعي" : "✦ تحليل الملف بالذكاء الاصطناعي"
             )}
           </Button>
         </div>
-      </div>
+      </div>}
 
-      {/* Log */}
-      {(analyzing || (done && logs.length > 0)) && (
-        <div
-          style={{
-            background: "#0d1117",
-            borderRadius: 11,
-            padding: "14px 16px",
-            marginBottom: 18,
-            fontFamily: "'Courier New', 'Menlo', monospace",
-            fontSize: ".78rem",
-            lineHeight: 1.7,
-            direction: "ltr",
-          }}
-        >
-          <div style={{ color: "#58a6ff", marginBottom: 8, fontWeight: 700, fontSize: ".72rem", letterSpacing: ".06em" }}>
-            ▸ SAAID AI LOG
+      {/* Progress steps */}
+      {(analyzing || logs.length > 0) && (
+        <div style={{ background: "white", borderRadius: 13, border: "1px solid rgba(45,122,82,.12)", marginBottom: 18, overflow: "hidden" }}>
+          {/* Header */}
+          <div style={{ padding: "13px 18px", background: "linear-gradient(135deg,#f0faf5,#e8f5ee)", borderBottom: "1px solid rgba(45,122,82,.1)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".9rem", boxShadow: "0 1px 4px rgba(45,122,82,.12)" }}>
+              {analyzing ? (
+                <span style={{ display: "inline-block", animation: "spin .8s linear infinite" }}>⟳</span>
+              ) : logs.some(l => l.status === "error") ? "⚠️" : "✦"}
+            </div>
+            <div>
+              <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
+                {analyzing ? "جاري التحليل بالذكاء الاصطناعي..." : logs.some(l => l.status === "error") ? "حدث خطأ أثناء التحليل" : "اكتمل التحليل بنجاح"}
+              </div>
+              <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 1 }}>
+                {logs.filter(l => l.status === "done").length} / {logs.length} خطوات مكتملة
+              </div>
+            </div>
+            {/* Progress bar */}
+            {logs.length > 0 && (
+              <div style={{ flex: 1, marginRight: "auto", marginLeft: 0 }}>
+                <div style={{ height: 5, background: "rgba(45,122,82,.1)", borderRadius: 99, overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg,#2d7a52,#4caf7a)", transition: "width .4s ease", width: `${(logs.filter(l => l.status === "done").length / logs.length) * 100}%` }} />
+                </div>
+              </div>
+            )}
           </div>
-          {logs.map((entry, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ color: "#484f58", flexShrink: 0 }}>[{entry.time}]</span>
-              <span style={{ color: entry.status === "done" ? "#3fb950" : entry.status === "error" ? "#f85149" : "#e3b341" }}>
-                {entry.status === "done" ? "✔" : entry.status === "error" ? "✖" : "◌"}
-              </span>
-              <span style={{ color: entry.status === "done" ? "#c9d1d9" : entry.status === "error" ? "#f85149" : "#e3b341" }}>
-                {entry.text}
-              </span>
-            </div>
-          ))}
-          {analyzing && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-              <span style={{ color: "#484f58" }}>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "#e3b341",
-                  display: "inline-block",
-                  animation: "blink 1s ease-in-out infinite",
-                }}
-              />
-            </div>
-          )}
+          {/* Steps */}
+          <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {logs.map((entry, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* Icon */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".85rem",
+                  background: entry.status === "done" ? "#e8f5ee" : entry.status === "error" ? "#fee2e2" : "#f0faf5",
+                  border: `2px solid ${entry.status === "done" ? "#2d7a52" : entry.status === "error" ? "#dc2626" : "rgba(45,122,82,.25)"}`,
+                  transition: "all .3s",
+                }}>
+                  {entry.status === "done" ? (
+                    <span style={{ color: "#2d7a52", fontWeight: 700, fontSize: "1rem" }}>✓</span>
+                  ) : entry.status === "error" ? (
+                    <span style={{ color: "#dc2626", fontWeight: 700 }}>✕</span>
+                  ) : (
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#2d7a52", display: "inline-block", animation: "blink 1s ease-in-out infinite" }} />
+                  )}
+                </div>
+                {/* Text */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: ".85rem", fontWeight: entry.status === "pending" ? 600 : 500, color: entry.status === "error" ? "#dc2626" : entry.status === "done" ? "#374151" : "#1a5c3a" }}>
+                    {entry.text}
+                  </div>
+                  <div style={{ fontSize: ".71rem", color: "#9ca3af", marginTop: 1 }}>{entry.time}</div>
+                </div>
+                {/* Connector line — all except last */}
+                {i < logs.length - 1 && (
+                  <div style={{ position: "absolute", right: 34, width: 2, height: 10, background: "rgba(45,122,82,.1)", marginTop: 32 }} />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      )}
-
-      {/* AI Results */}
-      {done && (
-        <>
-          {/* Summary */}
-          <div style={sc}>
-            <div style={scH}>
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 7,
-                  background: "#e8f5ee",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: ".95rem",
-                }}
-              >
-                ✦
-              </div>
-              <div>
-                <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>
-                  ملخص الجمعية
-                </div>
-                <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-                  تحليل AI للملف التعريفي
-                </div>
-              </div>
-            </div>
-            <div style={{ padding: 18 }}>
-              <div
-                style={{
-                  background: "linear-gradient(135deg,#f0faf5,#e8f5ee)",
-                  border: "1px solid rgba(45,122,82,.15)",
-                  borderRadius: 11,
-                  padding: "16px 18px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: ".7rem",
-                    fontWeight: 700,
-                    letterSpacing: ".08em",
-                    color: "#2d7a52",
-                    textTransform: "uppercase",
-                    marginBottom: 7,
-                  }}
-                >
-                  ✦ ملخص تلقائي
-                </div>
-                <div style={{ fontSize: ".88rem", lineHeight: 1.75, color: "#374151" }}>
-                  {aiResult?.summary || AI_ANALYSIS.summary}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Ideas & Pain Points */}
-          <div style={sc}>
-            <div style={scH}>
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 7,
-                  background: "#e8f5ee",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: ".95rem",
-                }}
-              >
-                💡
-              </div>
-              <div>
-                <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>
-                  أفكار وتحديات تسويقية
-                </div>
-                <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-                  توصيات AI لتحسين الحضور الإعلامي
-                </div>
-              </div>
-            </div>
-            <div style={{ padding: 18 }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 11,
-                    border: "1px solid rgba(45,122,82,.12)",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "11px 13px",
-                      borderBottom: "1px solid rgba(45,122,82,.12)",
-                      background: "linear-gradient(135deg,#f0faf5,#e8f5ee)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span>💡</span>
-                    <span style={{ fontSize: ".83rem", fontWeight: 700, color: "#111827" }}>
-                      أفكار للمحتوى التسويقي
-                    </span>
-                  </div>
-                  <div style={{ padding: "11px 13px" }}>
-                    {(aiResult?.ideas || AI_ANALYSIS.ideas).map((idea, i, arr) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 7,
-                          padding: "6px 0",
-                          borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,.04)" : "none",
-                          fontSize: ".8rem",
-                          color: "#374151",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: "#2d7a52",
-                            flexShrink: 0,
-                            marginTop: 5,
-                          }}
-                        />
-                        {idea}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 11,
-                    border: "1px solid rgba(45,122,82,.12)",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "11px 13px",
-                      borderBottom: "1px solid rgba(45,122,82,.12)",
-                      background: "linear-gradient(135deg,#fff8f0,#fdeee0)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span>⚠️</span>
-                    <span style={{ fontSize: ".83rem", fontWeight: 700, color: "#111827" }}>
-                      تحديات ونقاط ضعف إعلامية
-                    </span>
-                  </div>
-                  <div style={{ padding: "11px 13px" }}>
-                    {(aiResult?.painPoints || AI_ANALYSIS.painPoints).map((pt, i, arr) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 7,
-                          padding: "6px 0",
-                          borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,.04)" : "none",
-                          fontSize: ".8rem",
-                          color: "#374151",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: "#d97706",
-                            flexShrink: 0,
-                            marginTop: 5,
-                          }}
-                        />
-                        {pt}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Content tabs */}
-          <div style={sc}>
-            <div style={scH}>
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 7,
-                  background: "#e8f5ee",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: ".95rem",
-                }}
-              >
-                ✍️
-              </div>
-              <div>
-                <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>
-                  محتوى تسويقي مقترح
-                </div>
-                <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-                  محتوى جاهز للنشر مُولَّد بالذكاء الاصطناعي
-                </div>
-              </div>
-            </div>
-            <div style={{ padding: 18 }}>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 6,
-                  marginBottom: 13,
-                  borderBottom: "1px solid rgba(45,122,82,.12)",
-                  paddingBottom: 0,
-                }}
-              >
-                {(["post", "story", "donation"] as ContentTab[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(t)}
-                    style={{
-                      padding: "7px 13px",
-                      fontSize: ".81rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      color: tab === t ? "#1a5c3a" : "#6b7280",
-                      border: "none",
-                      background: "none",
-                      borderBottom: tab === t ? "2px solid #2d7a52" : "2px solid transparent",
-                      marginBottom: -1,
-                      fontFamily: "'Tajawal',sans-serif",
-                      transition: "all .17s",
-                    }}
-                  >
-                    {t === "post" ? "منشور سوشيال" : t === "story" ? "قصة إنسانية" : "نداء تبرع"}
-                  </button>
-                ))}
-              </div>
-              <div
-                style={{
-                  background: "#f2faf6",
-                  borderRadius: 9,
-                  border: "1px solid rgba(45,122,82,.12)",
-                  padding: 15,
-                  minHeight: 110,
-                  fontSize: ".85rem",
-                  color: "#374151",
-                  lineHeight: 1.75,
-                  position: "relative",
-                }}
-              >
-                <button
-                  onClick={() => navigator.clipboard?.writeText(AI_CONTENT[tab])}
-                  style={{
-                    position: "absolute",
-                    top: 9,
-                    left: 9,
-                    fontSize: ".7rem",
-                    padding: "3px 9px",
-                    borderRadius: 6,
-                    border: "1px solid rgba(45,122,82,.12)",
-                    background: "white",
-                    cursor: "pointer",
-                    fontFamily: "'Tajawal',sans-serif",
-                    color: "#6b7280",
-                  }}
-                >
-                  نسخ
-                </button>
-                {AI_CONTENT[tab]}
-              </div>
-              <button
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "7px 13px",
-                  borderRadius: 7,
-                  border: "1px solid rgba(45,122,82,.12)",
-                  background: "white",
-                  fontFamily: "'Tajawal',sans-serif",
-                  fontSize: ".8rem",
-                  color: "#374151",
-                  cursor: "pointer",
-                  marginTop: 9,
-                  transition: "all .2s",
-                }}
-              >
-                🔄 توليد نص جديد
-              </button>
-            </div>
-          </div>
-        </>
       )}
 
       {!analyzing && !done && (

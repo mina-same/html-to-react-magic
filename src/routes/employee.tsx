@@ -41,7 +41,14 @@ function EmployeeDashboard() {
   const navigate = useNavigate();
   const { user, role, assocId, loading: authLoading, signOut } = useAuth();
 
-  const [activePage, setActivePage] = useState<PageId>("tasks");
+  const [activePage, _setActivePage] = useState<PageId>(() => {
+    const saved = localStorage.getItem("saaid_employee_page") as PageId | null;
+    return saved ?? "tasks";
+  });
+  function setActivePage(page: PageId) {
+    localStorage.setItem("saaid_employee_page", page);
+    _setActivePage(page);
+  }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [team, setTeam] = useState<Employee[]>([]);
   const [myEmployee, setMyEmployee] = useState<Employee | null>(null);
@@ -110,11 +117,13 @@ function EmployeeDashboard() {
     } finally {
       setDataLoading(false);
     }
-  }, [user, assocId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, assocId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!authLoading && user && assocId) loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, assocId, authLoading]);
 
   async function updateTaskStatus(id: number, status: Task["status"]) {
     await supabase.from("tasks").update({ status }).eq("id", id);

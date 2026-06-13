@@ -43,12 +43,17 @@ export interface Task {
 
 export interface Donation {
   id: number;
+  donationNumber: string;
   name: string;
+  phone: string;
+  projectName: string;
   amount: number;
-  channel: string;
-  date: string;
+  paymentMethod: string;
+  bank: string;
+  accountNumber: string;
   status: "completed" | "pending";
-  org: string;
+  source: string;
+  date: string;
 }
 
 export interface Campaign {
