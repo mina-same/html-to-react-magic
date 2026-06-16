@@ -432,12 +432,14 @@ export interface ContentGeneration {
 
 export const contentGenerationsDb = {
   async list(assocId: string): Promise<ContentGeneration[]> {
-    const { data } = await supabase
+    console.log("[contentGenerationsDb.list] Called with assocId:", assocId);
+    const { data, error } = await supabase
       .from("content_generations")
       .select("id, prompt, content, created_at, tokens_used")
       .eq("assoc_id", assocId)
       .order("created_at", { ascending: false })
       .limit(50);
+    console.log("[contentGenerationsDb.list] Result data:", data, "error:", error);
     return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
       id: row.id as number,
       prompt: (row.prompt as string) ?? "",
@@ -484,11 +486,13 @@ export interface AssocProfile {
 
 export const assocProfileDb = {
   async get(id: string): Promise<AssocProfile | null> {
-    const { data } = await supabase
+    console.log("[assocProfileDb.get] Called with id:", id);
+    const { data, error } = await supabase
       .from("associations")
       .select("description, ai_summary, ai_ideas, ai_pain_points, ai_content")
       .eq("id", id)
       .maybeSingle();
+    console.log("[assocProfileDb.get] Result data:", data, "error:", error);
     return data as AssocProfile | null;
   },
   async update(

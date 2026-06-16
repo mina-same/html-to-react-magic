@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { associationsDb, type Association } from "@/lib/db";
@@ -45,6 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
 
+  // Track last user id to prevent duplicate updates
+  const lastUserIdRef = useRef<string | null>(null);
+
   async function loadProfile(userId: string) {
     // First get the user's profile
     const { data: profile } = await supabase
@@ -76,15 +79,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    console.log("[useAuth] useEffect started");
     let mounted = true;
     let timeout: NodeJS.Timeout;
 
     // Helper to finish loading
     const finish = (newState: Partial<AuthState>) => {
-      if (mounted) {
-        setState((s) => ({ ...s, ...newState, loading: false }));
-        clearTimeout(timeout);
+      console.log("[useAuth] finish() called with:", newState);
+      if (!mounted) return;
+
+      // Check if user is actually changing
+      const newUserId = newState.user?.id ?? null;
+      if (newUserId === lastUserIdRef.current && !newState.loading && !state.loading) {
+        console.log("[useAuth] Same user, skipping state update");
+        return;
       }
+
+      lastUserIdRef.current = newUserId;
+
+      setState((s) => {
+        const newS = { ...s, ...newState, loading: false };
+        console.log("[useAuth] Setting new state:", newS);
+        return newS;
+      });
+      clearTimeout(timeout);
     };
 
     // Safety timeout: force loading to false after 5s if still stuck
@@ -102,12 +120,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session
     const init = async () => {
+      console.log("[useAuth] init() called");
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        console.log("[useAuth] Got session from getSession:", session);
+
         if (session?.user) {
+          console.log("[useAuth] Loading profile for user.id:", session.user.id);
           const profile = await loadProfile(session.user.id);
+          console.log("[useAuth] Profile loaded:", profile);
+
           // If association is suspended, sign out immediately
           if (profile?.associationStatus === "suspended") {
             await supabase.auth.signOut();
@@ -138,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log("[useAuth] onAuthStateChange triggered, event:", _event, "session:", session);
       if (session?.user) {
         try {
           const profile = await loadProfile(session.user.id);

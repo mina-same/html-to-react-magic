@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Toaster, toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -97,6 +97,9 @@ function Association() {
   const [contentCount, setContentCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Track last loaded user id to prevent unnecessary reloading
+  const lastLoadedUserIdRef = useRef<string | null>(null);
+
   // Data state
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -124,6 +127,14 @@ function Association() {
   // caused by useAuth calling finish() from both getSession + onAuthStateChange
   const loadData = useCallback(async () => {
     if (!user) return;
+
+    // If we already loaded data for this user, skip
+    if (user.id === lastLoadedUserIdRef.current) {
+      console.log("[association.tsx] Already loaded data for this user, skipping");
+      return;
+    }
+
+    console.log("[association.tsx] Loading data for user:", user.id);
     setDataLoading(true);
     try {
       const [emps, tks, infs, camps, doms] = await Promise.all([
@@ -138,6 +149,8 @@ function Association() {
       setInfluencers(infs);
       setCampaigns(camps);
       setDonations(doms);
+
+      lastLoadedUserIdRef.current = user.id;
     } finally {
       setDataLoading(false);
     }
@@ -150,6 +163,7 @@ function Association() {
   }, [user?.id, authLoading]);
 
   async function logout() {
+    lastLoadedUserIdRef.current = null;
     await signOut();
     navigate({ to: "/login" });
   }

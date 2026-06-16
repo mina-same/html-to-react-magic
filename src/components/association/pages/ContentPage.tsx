@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { assocProfileDb, contentGenerationsDb } from "@/lib/db";
 import type { GeneratedContent, ContentGeneration } from "@/lib/db";
@@ -341,7 +341,7 @@ async function callDalle(
   if (!apiKey) throw new Error("VITE_OPENAI_API_KEY غير موجود");
 
   const clean = visualDesc
-    .replace(/[^\x00-\x7F]/g, " ")
+    .replace(/[^\x20-\x7E]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 600);
@@ -445,7 +445,10 @@ interface Props {
 }
 
 export default function ContentPage({ assocName = "الجمعية" }: Props) {
+  console.log("[ContentPage] Mounted");
+
   const { user } = useAuth();
+  console.log("[ContentPage] User from useAuth:", user);
 
   const [tab, setTab] = useState<Tab>("post");
   const [content, setContent] = useState<GeneratedContent>(EMPTY);
@@ -459,6 +462,9 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
   const [images, setImages] = useState<Partial<Record<Tab, string>>>({});
   const [sidebar, setSidebar] = useState(true);
   const [steps, setSteps] = useState<Step[]>([]);
+
+  // Track last loaded user id
+  const lastLoadedUserIdRef = useRef<string | null>(null);
 
   // ── Step helpers ──────────────────────────────────────────
   const initSteps = useCallback((labels: string[]) => {
@@ -517,16 +523,48 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
 
   // ── Load from DB ───────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
-    assocProfileDb.get(user.id).then((d) => {
-      if (d?.description) setContext(d.description);
-    });
-    setHistLoading(true);
-    contentGenerationsDb
-      .list(user.id)
-      .then((hist) => {
+    console.log("[ContentPage] Data loading useEffect triggered. User:", user);
+
+    const loadData = async () => {
+      console.log("[ContentPage] loadData() called");
+
+      if (!user) {
+        console.log("[ContentPage] No user, setting histLoading to false");
+        setHistLoading(false);
+        return;
+      }
+
+      // If we already loaded for this user, skip
+      if (user.id === lastLoadedUserIdRef.current) {
+        console.log("[ContentPage] Already loaded data for this user, skipping");
+        setHistLoading(false);
+        return;
+      }
+
+      try {
+        console.log("[ContentPage] Starting data load, setting histLoading to true");
+        setHistLoading(true);
+
+        // Load profile data
+        console.log("[ContentPage] Loading profile data for user.id:", user.id);
+        const profileData = await assocProfileDb.get(user.id);
+        console.log("[ContentPage] Profile data loaded:", profileData);
+
+        if (profileData?.description) {
+          console.log("[ContentPage] Setting context from profile data");
+          setContext(profileData.description);
+        } else {
+          console.log("[ContentPage] No description in profile data");
+        }
+
+        // Load content history
+        console.log("[ContentPage] Loading content history for user.id:", user.id);
+        const hist = await contentGenerationsDb.list(user.id);
+        console.log("[ContentPage] Content history loaded, length:", hist.length);
         setHistory(hist);
+
         if (hist.length > 0 && !localStorage.getItem(LS_KEY)) {
+          console.log("[ContentPage] History exists and no LS_KEY, loading first item");
           const item = hist[0];
           setActiveId(item.id);
           setPrompt(item.prompt);
@@ -537,9 +575,20 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
             if (img) imgs[k] = img;
           });
           setImages(imgs);
+        } else {
+          console.log("[ContentPage] Either no history or LS_KEY exists");
         }
-      })
-      .finally(() => setHistLoading(false));
+
+        lastLoadedUserIdRef.current = user.id;
+      } catch (err) {
+        console.error("[ContentPage] Error loading content page data:", err);
+      } finally {
+        console.log("[ContentPage] Finally block, setting histLoading to false");
+        setHistLoading(false);
+      }
+    };
+
+    loadData();
   }, [user]);
 
   const persist = useCallback((c: GeneratedContent, p: string, id: number | null) => {
@@ -756,6 +805,8 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
   const anyLoading = loading !== null;
   const isImgTab = IMAGE_TABS.includes(tab);
   const currentLabel = TABS.find((t) => t.key === tab)?.label ?? "";
+
+  console.log("[ContentPage] Rendering, histLoading:", histLoading, "user:", user);
 
   return (
     <>
