@@ -9,6 +9,7 @@ interface OrgsPageProps {
   setOrgStatusFilter: (val: string) => void;
   setOrgModal: (data: { open: boolean; data: Partial<Org> | null }) => void;
   suspendOrg: (id: number) => Promise<void>;
+  openOrgProfile: (org: Org) => void;
 }
 
 export function OrgsPage({
@@ -19,6 +20,7 @@ export function OrgsPage({
   setOrgStatusFilter,
   setOrgModal,
   suspendOrg,
+  openOrgProfile,
 }: OrgsPageProps) {
   return (
     <div>
@@ -120,6 +122,19 @@ export function OrgsPage({
                 <td style={S.tblTd}>{o.date}</td>
                 <td style={S.tblTd}>
                   <div style={{ display: "flex", gap: 5 }}>
+                    <button
+                      style={{
+                        ...S.btnPrimary,
+                        fontSize: ".74rem",
+                        padding: "5px 11px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                      onClick={() => openOrgProfile(o)}
+                    >
+                      🗂️ فتح الملف
+                    </button>
                     <button
                       style={S.btnGhost}
                       onClick={() => setOrgModal({ open: true, data: o })}

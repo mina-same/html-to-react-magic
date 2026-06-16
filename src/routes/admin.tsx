@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OverviewPage } from "@/components/admin/pages/OverviewPage";
 import { OrgsPage } from "@/components/admin/pages/OrgsPage";
+import { OrgProfilePage } from "@/components/admin/pages/OrgProfilePage";
 import { InfluencersPage } from "@/components/admin/pages/InfluencersPage";
 import { RequestsPage } from "@/components/admin/pages/RequestsPage";
 import { ReportsPage } from "@/components/admin/pages/ReportsPage";
@@ -27,12 +28,20 @@ function Admin() {
   const navigate = useNavigate();
   const { user, role, loading: authLoading, signOut } = useAuth();
 
-  const [activePage, _setActivePage] = useState<PageId>(() => {
-    return (localStorage.getItem("saaid_admin_page") ?? "overview") as PageId;
-  });
+  const [activePage, _setActivePage] = useState<PageId>("overview");
+  const [selectedOrg, setSelectedOrg] = useState<Org | null>(null);
+
+  useEffect(() => {
+    const savedPage = localStorage.getItem("saaid_admin_page") as PageId | null;
+    if (savedPage) {
+      _setActivePage(savedPage);
+    }
+  }, []);
+
   function setActivePage(page: PageId) {
     localStorage.setItem("saaid_admin_page", page);
     _setActivePage(page);
+    setSelectedOrg(null);
   }
 
   const [orgs, setOrgs] = useState<Org[]>([]);
@@ -107,7 +116,11 @@ function Admin() {
         ]);
         setOrgs(orgsData.map((o) => ({ ...o, notes: o.description })));
         setInfluencers(
-          infsData.map((i) => ({ ...i, price: i.basePrice, status: i.status as "active" | "pending" | "ended" })),
+          infsData.map((i) => ({
+            ...i,
+            price: i.basePrice,
+            status: i.status as "active" | "pending" | "ended",
+          })),
         );
         setRequests(reqsData);
       } finally {
@@ -173,9 +186,7 @@ function Admin() {
 
   async function suspendOrg(id: string) {
     await adminOrgsDb.setStatus(id, "suspended");
-    setOrgs((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: "suspended" } : o)),
-    );
+    setOrgs((prev) => prev.map((o) => (o.id === id ? { ...o, status: "suspended" } : o)));
     toast.success("تم توقيف الجمعية");
   }
 
@@ -232,7 +243,11 @@ function Admin() {
       if (created) {
         setInfluencers((prev) => [
           ...prev,
-          { ...created, price: created.basePrice, status: created.status as "active" | "pending" | "ended" },
+          {
+            ...created,
+            price: created.basePrice,
+            status: created.status as "active" | "pending" | "ended",
+          },
         ]);
       }
       toast.success("تمت إضافة المؤثر بنجاح");
@@ -262,22 +277,67 @@ function Admin() {
 
   async function rejectReq(reqId: number) {
     await adminRequestsDb.update(reqId, { status: "rejected" });
-    setRequests((prev) =>
-      prev.map((r) => (r.id === reqId ? { ...r, status: "rejected" } : r)),
-    );
+    setRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: "rejected" } : r)));
     toast.error("تم رفض الطلب");
   }
 
   function renderPage() {
     switch (activePage) {
       case "overview":
-        return <OverviewPage orgs={orgs} influencers={influencers} requests={requests} setActivePage={setActivePage} setOrgModal={setOrgModal} />;
+        return (
+          <OverviewPage
+            orgs={orgs}
+            influencers={influencers}
+            requests={requests}
+            setActivePage={setActivePage}
+            setOrgModal={setOrgModal}
+          />
+        );
       case "orgs":
-        return <OrgsPage filteredOrgs={filteredOrgs} orgSearch={orgSearch} setOrgSearch={setOrgSearch} orgStatusFilter={orgStatusFilter} setOrgStatusFilter={setOrgStatusFilter} setOrgModal={setOrgModal} suspendOrg={suspendOrg} />;
+        if (selectedOrg) {
+          return (
+            <OrgProfilePage
+              org={selectedOrg}
+              requests={requests}
+              onBack={() => setSelectedOrg(null)}
+            />
+          );
+        }
+        return (
+          <OrgsPage
+            filteredOrgs={filteredOrgs}
+            orgSearch={orgSearch}
+            setOrgSearch={setOrgSearch}
+            orgStatusFilter={orgStatusFilter}
+            setOrgStatusFilter={setOrgStatusFilter}
+            setOrgModal={setOrgModal}
+            suspendOrg={async (id: number) => await suspendOrg(id.toString())}
+            openOrgProfile={setSelectedOrg}
+          />
+        );
       case "influencers":
-        return <InfluencersPage filteredInfs={filteredInfs} infSearch={infSearch} setInfSearch={setInfSearch} infPlatFilter={infPlatFilter} setInfPlatFilter={setInfPlatFilter} setInfModal={setInfModal} deleteInf={deleteInf} />;
+        return (
+          <InfluencersPage
+            filteredInfs={filteredInfs}
+            infSearch={infSearch}
+            setInfSearch={setInfSearch}
+            infPlatFilter={infPlatFilter}
+            setInfPlatFilter={setInfPlatFilter}
+            setInfModal={setInfModal}
+            deleteInf={deleteInf}
+          />
+        );
       case "requests":
-        return <RequestsPage filteredReqs={filteredReqs} reqStatusFilter={reqStatusFilter} setReqStatusFilter={setReqStatusFilter} setReqModal={setReqModal} saveReq={saveReq} rejectReq={rejectReq} />;
+        return (
+          <RequestsPage
+            filteredReqs={filteredReqs}
+            reqStatusFilter={reqStatusFilter}
+            setReqStatusFilter={setReqStatusFilter}
+            setReqModal={setReqModal}
+            saveReq={saveReq}
+            rejectReq={rejectReq}
+          />
+        );
       case "reports":
         return <ReportsPage />;
       case "settings":
@@ -300,7 +360,13 @@ function Admin() {
         .admin-content::-webkit-scrollbar-thumb { background: rgba(45,122,82,.12); border-radius: 4px; }
       `}</style>
       <div style={S.app}>
-        <AdminSidebar activePage={activePage} setActivePage={setActivePage} orgs={orgs} influencers={influencers} requests={requests} />
+        <AdminSidebar
+          activePage={activePage}
+          setActivePage={setActivePage}
+          orgs={orgs}
+          influencers={influencers}
+          requests={requests}
+        />
 
         <div style={S.main}>
           <div style={S.topbar}>

@@ -39,9 +39,11 @@ export function LandingNav({ navRef }: Props) {
     >
       <a
         href="#hero"
+        suppressHydrationWarning
         style={{ display: "flex", alignItems: "center", gap: "0.75rem", textDecoration: "none" }}
       >
         <div
+          suppressHydrationWarning
           style={{
             width: 44,
             height: 44,
@@ -61,9 +63,9 @@ export function LandingNav({ navRef }: Props) {
             style={{ width: 28, filter: "brightness(0) invert(1)" }}
           />
         </div>
-        <div>
-          <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1a5c3a" }}>ساعِد</div>
-          <div style={{ fontSize: "0.65rem", color: "#4a9e70", letterSpacing: 2 }}>SAAID</div>
+        <div suppressHydrationWarning>
+          <div suppressHydrationWarning style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1a5c3a" }}>ساعِد</div>
+          <div suppressHydrationWarning style={{ fontSize: "0.65rem", color: "#4a9e70", letterSpacing: 2 }}>SAAID</div>
         </div>
       </a>
 
@@ -75,6 +77,7 @@ export function LandingNav({ navRef }: Props) {
           <li key={link.href}>
             <a
               href={link.href}
+              suppressHydrationWarning
               style={{
                 textDecoration: "none",
                 color: "#3a3a5c",

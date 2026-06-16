@@ -55,6 +55,7 @@ function Index() {
 
   return (
     <div
+      suppressHydrationWarning
       style={{
         fontFamily: "'Tajawal','Cairo',sans-serif",
         background: "#ffffff",

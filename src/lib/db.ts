@@ -148,12 +148,12 @@ export const donationsDb = {
         .select("*")
         .eq("assoc_id", assocId)
         .order("date", { ascending: false });
-      
+
       if (error) {
         console.error("Error loading donations:", error);
         return [];
       }
-      
+
       return (data ?? []).map(mapDonation);
     } catch (e) {
       console.error("Error in donationsDb.list:", e);
@@ -172,22 +172,22 @@ export const donationsDb = {
         status: donationData.status,
         date: donationData.date,
       };
-      
+
       console.log("Basic insert data:", basicInsertData);
-      
+
       const { data: row, error } = await supabase
         .from("donations")
         .insert(basicInsertData)
         .select()
         .single();
-        
+
       if (error) {
         console.error("Basic insert failed, full error details:", JSON.stringify(error, null, 2));
         return null;
       }
-      
+
       console.log("Inserted row:", row);
-      
+
       // If basic insert worked, try to update with new fields if they exist
       if (row) {
         try {
@@ -199,20 +199,17 @@ export const donationsDb = {
           if (donationData.bank) updateData.bank = donationData.bank;
           if (donationData.accountNumber) updateData.account_number = donationData.accountNumber;
           if (donationData.source) updateData.source = donationData.source;
-          
+
           if (Object.keys(updateData).length > 0) {
             console.log("Trying to update with new fields:", updateData);
-            await supabase
-              .from("donations")
-              .update(updateData)
-              .eq("id", row.id);
+            await supabase.from("donations").update(updateData).eq("id", row.id);
           }
         } catch (updateErr) {
           // Ignore update errors (columns might not exist yet)
           console.log("Update with new fields failed (columns might not exist yet):", updateErr);
         }
       }
-      
+
       return row ? mapDonation(row as Record<string, unknown>) : null;
     } catch (e) {
       console.error("Error in donationsDb.create:", e);
@@ -395,43 +392,49 @@ export interface Association {
 
 export const associationsDb = {
   async get(id: string): Promise<Association | null> {
-    const { data } = await supabase
-      .from("associations")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const { data } = await supabase.from("associations").select("*").eq("id", id).maybeSingle();
     return data as Association | null;
   },
-  async upsert(id: string, fields: Partial<Omit<Association, "id" | "updated_at" | "status" | "verified">>) {
-    const { error } = await supabase
-      .from("associations")
-      .upsert({ 
-        id, 
-        ...fields, 
-        status: "new", 
-        verified: false,
-        updated_at: new Date().toISOString() 
-      });
+  async upsert(
+    id: string,
+    fields: Partial<Omit<Association, "id" | "updated_at" | "status" | "verified">>,
+  ) {
+    const { error } = await supabase.from("associations").upsert({
+      id,
+      ...fields,
+      status: "new",
+      verified: false,
+      updated_at: new Date().toISOString(),
+    });
     if (error) throw new Error(`DB: ${error.message}`);
   },
 };
 
 // ── Association Profile Context ──────────────────────────────
-export type GeneratedContentItem = { text: string; visualDesc?: string; imageUrl?: string };
-export type GeneratedContent = Record<"post" | "story" | "donation" | "video", GeneratedContentItem>;
+export type GeneratedContentItem = {
+  text: string;
+  visualDesc?: string;
+  imageUrl?: string;
+  imageBase64?: string;
+};
+export type GeneratedContent = Record<
+  "post" | "story" | "donation" | "video",
+  GeneratedContentItem
+>;
 
 export interface ContentGeneration {
   id: number;
   prompt: string;
   content: GeneratedContent;
   createdAt: string;
+  tokensUsed: number;
 }
 
 export const contentGenerationsDb = {
   async list(assocId: string): Promise<ContentGeneration[]> {
     const { data } = await supabase
       .from("content_generations")
-      .select("id, prompt, content, created_at")
+      .select("id, prompt, content, created_at, tokens_used")
       .eq("assoc_id", assocId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -440,17 +443,19 @@ export const contentGenerationsDb = {
       prompt: (row.prompt as string) ?? "",
       content: row.content as GeneratedContent,
       createdAt: row.created_at as string,
+      tokensUsed: (row.tokens_used as number) ?? 0,
     }));
   },
   async create(
     assocId: string,
     prompt: string,
     content: GeneratedContent,
+    tokensUsed = 0,
   ): Promise<ContentGeneration | null> {
     const { data: row } = await supabase
       .from("content_generations")
-      .insert({ assoc_id: assocId, prompt, content })
-      .select("id, prompt, content, created_at")
+      .insert({ assoc_id: assocId, prompt, content, tokens_used: tokensUsed })
+      .select("id, prompt, content, created_at, tokens_used")
       .single();
     if (!row) return null;
     const r = row as Record<string, unknown>;
@@ -459,10 +464,13 @@ export const contentGenerationsDb = {
       prompt: (r.prompt as string) ?? "",
       content: r.content as GeneratedContent,
       createdAt: r.created_at as string,
+      tokensUsed: (r.tokens_used as number) ?? 0,
     };
   },
-  async update(id: number, content: GeneratedContent): Promise<void> {
-    await supabase.from("content_generations").update({ content }).eq("id", id);
+  async update(id: number, content: GeneratedContent, tokensUsed?: number): Promise<void> {
+    const payload: Record<string, unknown> = { content };
+    if (tokensUsed !== undefined) payload.tokens_used = tokensUsed;
+    await supabase.from("content_generations").update(payload).eq("id", id);
   },
 };
 
@@ -480,7 +488,7 @@ export const assocProfileDb = {
       .from("associations")
       .select("description, ai_summary, ai_ideas, ai_pain_points, ai_content")
       .eq("id", id)
-      .single();
+      .maybeSingle();
     return data as AssocProfile | null;
   },
   async update(
