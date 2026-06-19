@@ -478,7 +478,7 @@ export const contentGenerationsDb = {
   },
   async updatePrompt(id: number, prompt: string): Promise<void> {
     const { error } = await supabase.from("content_generations").update({ prompt }).eq("id", id);
-    if (error) console.error("[contentGenerationsDb.updatePrompt] error:", error.code, error.message);
+    if (error) throw new Error(error.message);
   },
   async update(id: number, content: GeneratedContent, tokensUsed?: number, prompt?: string): Promise<void> {
     console.log("[contentGenerationsDb.update] id:", id);

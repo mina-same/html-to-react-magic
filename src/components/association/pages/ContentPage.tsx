@@ -831,16 +831,25 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
           return;
         }
       } else {
-        // Existing record: update prompt in DB before AI call
+        // Existing record: only update prompt in DB if it actually changed
         const promptToSave = prompt.trim() || "توليد عام";
-        try {
-          await contentGenerationsDb.updatePrompt(currentId as number, promptToSave);
-          setHistory((prev) =>
-            prev.map((h) => (h.id === currentId ? { ...h, prompt: promptToSave } : h)),
-          );
-          advanceStep(0, "تم حفظ البرومت");
-        } catch {
-          advanceStep(0, "البرومت محلي فقط");
+        const savedPrompt = history.find((h) => h.id === currentId)?.prompt ?? "";
+        if (promptToSave !== savedPrompt) {
+          try {
+            await Promise.race([
+              contentGenerationsDb.updatePrompt(currentId as number, promptToSave),
+              new Promise<void>((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000)),
+            ]);
+            setHistory((prev) =>
+              prev.map((h) => (h.id === currentId ? { ...h, prompt: promptToSave } : h)),
+            );
+            advanceStep(0, "تم حفظ البرومت");
+          } catch {
+            // Don't block generation on prompt-save failure
+            advanceStep(0, "البرومت محلي فقط");
+          }
+        } else {
+          advanceStep(0, "البرومت لم يتغير");
         }
       }
 
