@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AI_ANALYSIS } from "../data";
-import { assocProfileDb } from "@/lib/db";
+import { assocProfileDb, contentGenerationsDb } from "@/lib/db";
+import type { GeneratedContent } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -22,9 +23,8 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
   const [assocName, setAssocName] = useState("");
   const [assocDesc, setAssocDesc] = useState("");
   const [savedDesc, setSavedDesc] = useState("");
-  const [fileInfo, setFileInfo] = useState<{ name: string; size: string; content?: string } | null>(
-    null,
-  );
+  const [fileInfo, setFileInfo] = useState<{ name: string; size: string; content?: string } | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [fileObj, setFileObj] = useState<File | null>(null);
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
   const [isDragging, setIsDragging] = useState(false);
@@ -35,6 +35,8 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
   const [done, setDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [aiResult, setAiResult] = useState<AnalysisResult | null>(null);
+  const [latestContent, setLatestContent] = useState<GeneratedContent | null>(null);
+  const [contentTab, setContentTab] = useState<"post" | "story" | "donation" | "video">("post");
   const [dataLoading, setDataLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -80,6 +82,11 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
           setDone(true);
         }
 
+        if (data?.pdf_url) setPdfUrl(data.pdf_url);
+
+        const generations = await contentGenerationsDb.list(user.id);
+        if (generations.length > 0) setLatestContent(generations[0].content);
+
         lastLoadedUserIdRef.current = user.id;
       } catch (err) {
         console.error("Error loading profile data:", err);
@@ -93,29 +100,25 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
 
   async function processFile(file: File) {
     const kb = file.size / 1024;
-    let content = "";
     setFileObj(file);
 
+    let content = "";
     if (file.name.toLowerCase().endsWith(".pdf")) {
       try {
         const pdfjsLib = await import("pdfjs-dist");
         const pdfWorkerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
         pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let text = "";
         for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
-          // limit to 10 pages to avoid freezing
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
           text += textContent.items.map((item: any) => item.str).join(" ") + "\n";
         }
         content = text;
       } catch (err) {
-        console.error("PDF parsing error:", err);
-        toast.error("حدث خطأ أثناء قراءة ملف الـ PDF. جرب نسخه ولصقه كنص بدلاً من ذلك.");
-        return;
+        console.error("PDF text extraction error:", err);
       }
     } else {
       content = await file.text();
@@ -125,11 +128,86 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
     setFileInfo({
       name: file.name,
       size: kb > 1024 ? (kb / 1024).toFixed(1) + "MB" : kb.toFixed(0) + "KB",
-      content: content.slice(0, 10000), // Ensure we get enough context
+      content: content.slice(0, 10000),
     });
   }
 
-  async function runAIAnalysis(context: string, fileObj?: File | null): Promise<AnalysisResult> {
+  async function compressPdf(file: File): Promise<File> {
+    const [pdfjsLib, { PDFDocument }] = await Promise.all([
+      import("pdfjs-dist"),
+      import("pdf-lib"),
+    ]);
+    const pdfWorkerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const outDoc = await PDFDocument.create();
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+    const scale = 1.2; // ~86 DPI — readable but compact
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      const jpegBlob = await fetch(jpegDataUrl).then((r) => r.blob());
+      const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+      const jpegImage = await outDoc.embedJpg(jpegBytes);
+      const pg = outDoc.addPage([viewport.width, viewport.height]);
+      pg.drawImage(jpegImage, { x: 0, y: 0, width: viewport.width, height: viewport.height });
+    }
+
+    const compressed = await outDoc.save();
+    return new File([compressed], file.name, { type: "application/pdf" });
+  }
+
+  async function extractBrandFromPdf(pdfUrl: string): Promise<string> {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string;
+    if (!apiKey) return "";
+    try {
+      const pdfjsLib = await import("pdfjs-dist");
+      const pdfWorkerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+      const arrayBuffer = await (await fetch(pdfUrl)).arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: "Analyze this charity brochure. Extract concisely in English: primary brand colors (hex if visible), logo style/shape, overall visual style. Under 80 words. Used as DALL-E context." },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}`, detail: "low" } },
+            ],
+          }],
+          max_tokens: 150,
+        }),
+      });
+      if (!res.ok) return "";
+      return (await res.json()).choices[0]?.message?.content ?? "";
+    } catch (err) {
+      console.warn("Brand extraction failed:", err);
+      return "";
+    }
+  }
+
+  async function runAIAnalysis(context: string, fileObj?: File | null): Promise<AnalysisResult & { _openaiFileId?: string }> {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     if (!apiKey) {
       console.warn("VITE_OPENAI_API_KEY غير موجود، سيتم استخدام بيانات تجريبية");
@@ -169,7 +247,9 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
         if (res.status === 429) throw new Error("Quota Exceeded");
         if (!res.ok) throw new Error(`فشل الاتصال بـ OpenAI: ${res.status}`);
         const data = await res.json();
-        return JSON.parse(data.choices[0].message.content);
+        const raw = data.choices[0].message.content;
+        const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+        return JSON.parse(clean);
       }
 
       // --- FILE UPLOAD (Assistants API) ---
@@ -180,7 +260,7 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
       };
 
       // 1. Upload File
-      addLog("رفع الملف إلى OpenAI Assistants...", "pending");
+      addLog("رفع الملف إلى OpenAI Assistants...");
       const formData = new FormData();
       formData.append("purpose", "assistants");
       formData.append("file", fileObj);
@@ -191,9 +271,10 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
       });
       if (!fileRes.ok) throw new Error("فشل رفع الملف إلى خوادم OpenAI");
       const fileId = (await fileRes.json()).id;
+      markLastLog("done");
 
       // 2. Create Assistant
-      addLog("إنشاء مساعد ذكاء اصطناعي للتحليل...", "pending");
+      addLog("إنشاء مساعد ذكاء اصطناعي للتحليل...");
       const asstRes = await fetch("https://api.openai.com/v1/assistants", {
         method: "POST",
         headers,
@@ -206,25 +287,23 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
         }),
       });
       const assistantId = (await asstRes.json()).id;
+      markLastLog("done");
 
-      // 3. Create Thread
+      // 3. Create Thread + Run
+      addLog("جاري قراءة الملف وتحليله (قد يستغرق 30 ثانية)...");
       const thRes = await fetch("https://api.openai.com/v1/threads", {
         method: "POST",
         headers,
         body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: "يرجى تحليل هذا الملف المرفق واستخراج البيانات المطلوبة بصيغة JSON.",
-              attachments: [{ file_id: fileId, tools: [{ type: "file_search" }] }],
-            },
-          ],
+          messages: [{
+            role: "user",
+            content: "يرجى تحليل هذا الملف المرفق واستخراج البيانات المطلوبة بصيغة JSON.",
+            attachments: [{ file_id: fileId, tools: [{ type: "file_search" }] }],
+          }],
         }),
       });
       const threadId = (await thRes.json()).id;
 
-      // 4. Run Thread
-      addLog("جاري قراءة الملف وتحليله (قد يستغرق 30 ثانية)...", "pending");
       const runRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
         method: "POST",
         headers,
@@ -232,34 +311,31 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
       });
       const runId = (await runRes.json()).id;
 
-      // 5. Poll Run
+      // 4. Poll Run
       let runStatus = "queued";
       while (runStatus === "queued" || runStatus === "in_progress") {
         await new Promise((r) => setTimeout(r, 2000));
-        const chk = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
-          headers,
-        });
+        const chk = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, { headers });
         runStatus = (await chk.json()).status;
         if (runStatus === "failed") throw new Error("فشل الذكاء الاصطناعي في قراءة الملف");
       }
+      markLastLog("done");
 
-      // 6. Get Messages
-      const msgsRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-        headers,
-      });
+      // 5. Get Messages
+      const msgsRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, { headers });
       const msgs = await msgsRes.json();
       const lastMsg = msgs.data[0].content[0].text.value;
 
-      // Cleanup
-      fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
-        method: "DELETE",
-        headers,
-      }).catch(() => {});
-      fetch(`https://api.openai.com/v1/threads/${threadId}`, { method: "DELETE", headers }).catch(
-        () => {},
-      );
+      // Delete assistant + thread but keep the file — its ID is saved in DB for reuse
+      fetch(`https://api.openai.com/v1/assistants/${assistantId}`, { method: "DELETE", headers }).catch(() => {});
+      fetch(`https://api.openai.com/v1/threads/${threadId}`, { method: "DELETE", headers }).catch(() => {});
 
-      return JSON.parse(lastMsg);
+      const cleanMsg = lastMsg
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/, "")
+        .replace(/【[^】]*】/g, "") // strip file citation markers
+        .trim();
+      return { ...JSON.parse(cleanMsg), _openaiFileId: fileId };
     } catch (err) {
       console.error("AI Analysis error:", err);
       toast.error(
@@ -286,7 +362,7 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
 
   async function analyzeProfile() {
     if (!user) return;
-    const hasInput = inputMode === "file" ? !!fileInfo : assocDesc.trim().length > 0;
+    const hasInput = inputMode === "file" ? (!!fileInfo || !!pdfUrl) : assocDesc.trim().length > 0;
     if (!hasInput) {
       toast.error(
         inputMode === "file"
@@ -307,57 +383,72 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
     try {
       addLog("قراءة ومعالجة البيانات...");
       let finalDesc =
-        inputMode === "file" && fileInfo?.content
-          ? `[اسم الجمعية: ${assocName}]\n[محتوى الملف: ${fileInfo.name}]\n${fileInfo.content}`
+        inputMode === "file" && fileInfo
+          ? `[اسم الجمعية: ${assocName}]\n[الملف المرفق: ${fileInfo.name}]${fileInfo.content ? `\n${fileInfo.content}` : ""}${pdfUrl ? `\n[رابط الملف]: ${pdfUrl}` : ""}`
+          : inputMode === "file" && pdfUrl
+          ? `[اسم الجمعية: ${assocName}]\n[رابط الملف المحفوظ]: ${pdfUrl}`
           : `[اسم الجمعية: ${assocName}]\n[الوصف]: ${assocDesc || savedDesc}`;
       markLastLog("done");
 
+      // Only compress/upload if a NEW file was selected
+      let compressedFileForAI: File | null = null;
       if (inputMode === "file" && fileObj) {
-        addLog("رفع الملف لقاعدة البيانات...");
-        console.log("Starting file upload:", {
-          name: fileObj.name,
-          size: fileObj.size,
-          type: fileObj.type,
-        });
+        addLog("ضغط الملف قبل الرفع...");
+        let uploadFile = fileObj;
+        try {
+          if (fileObj.name.toLowerCase().endsWith(".pdf")) {
+            uploadFile = await compressPdf(fileObj);
+            console.log(`Compressed: ${(fileObj.size / 1024 / 1024).toFixed(1)}MB → ${(uploadFile.size / 1024 / 1024).toFixed(1)}MB`);
+          }
+          compressedFileForAI = uploadFile;
+          markLastLog("done");
+        } catch (e) {
+          console.warn("Compression failed, uploading original:", e);
+          markLastLog("done");
+          uploadFile = fileObj;
+          compressedFileForAI = fileObj;
+        }
 
+        addLog("رفع الملف لقاعدة البيانات...");
         try {
           const safeName = assocName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
           const ext = fileObj.name.split(".").pop() || "pdf";
           const fileName = `profiles/${safeName}_${Date.now()}.${ext}`;
 
-          // Add a timeout to the upload (30 seconds)
-          const uploadPromise = supabase.storage.from("images").upload(fileName, fileObj, {
+          const { error: uploadError } = await supabase.storage.from("images").upload(fileName, uploadFile, {
             cacheControl: "3600",
             upsert: false,
           });
 
-          const timeoutPromise = new Promise<{ error: Error }>((_, reject) => {
-            setTimeout(() => reject(new Error("Upload timed out after 30 seconds")), 30000);
-          });
-
-          const { error: uploadError } = (await Promise.race([
-            uploadPromise,
-            timeoutPromise,
-          ])) as any;
-
           if (uploadError) {
-            console.warn("Upload failed:", uploadError);
-            // Even if upload fails, continue with AI analysis using text
-            markLastLog("done");
-            toast.warning("لم يتم رفع الملف، لكن سيتم تحليل النص المستخرج منه");
+            console.error("Upload failed:", uploadError);
+            markLastLog("error");
+            toast.error("فشل رفع الملف إلى قاعدة البيانات. يرجى المحاولة مرة أخرى.");
+            return;
           } else {
             const {
               data: { publicUrl },
             } = supabase.storage.from("images").getPublicUrl(fileName);
             finalDesc += `\n[رابط الملف المرفق]: ${publicUrl}`;
+            setPdfUrl(publicUrl);
+            await assocProfileDb.savePdfUrl(user.id, publicUrl).catch(console.error);
             markLastLog("done");
-            console.log("File upload successful, public URL:", publicUrl);
+
+            // Extract brand identity once and save — reused by ContentPage for free
+            addLog("استخراج الهوية البصرية للجمعية...");
+            try {
+              const brand = await extractBrandFromPdf(publicUrl);
+              if (brand) await assocProfileDb.saveBrand(user.id, brand).catch(console.error);
+              markLastLog("done");
+            } catch {
+              markLastLog("done"); // non-fatal
+            }
           }
         } catch (e) {
           console.error("Upload error:", e);
-          // Even if upload fails, continue with AI analysis using text
-          markLastLog("done");
-          toast.warning("لم يتم رفع الملف، لكن سيتم تحليل النص المستخرج منه");
+          markLastLog("error");
+          toast.error("فشل رفع الملف إلى قاعدة البيانات. يرجى المحاولة مرة أخرى.");
+          return;
         }
       }
 
@@ -372,13 +463,15 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
       }
 
       addLog("تحليل البيانات بالذكاء الاصطناعي...");
-      const result = await runAIAnalysis(finalDesc, inputMode === "file" ? fileObj : null);
-      setAiResult(result);
+      const result = await runAIAnalysis(finalDesc, inputMode === "file" ? (compressedFileForAI ?? fileObj) : null);
+      const { _openaiFileId, ...aiResult } = result;
+      if (_openaiFileId) assocProfileDb.saveOpenAiFileId(user.id, _openaiFileId).catch(console.error);
+      setAiResult(aiResult);
       markLastLog("done");
 
       addLog("حفظ نتائج التحليل في قاعدة البيانات...");
       try {
-        await assocProfileDb.update(user.id, finalDesc, result);
+        await assocProfileDb.update(user.id, finalDesc, aiResult);
         markLastLog("done");
       } catch (dbErr) {
         const msg = dbErr instanceof Error ? dbErr.message : "";
@@ -540,6 +633,45 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
                   )}
                 </div>
               </div>
+
+              {/* PDF file card */}
+              {pdfUrl && (
+                <div style={sc}>
+                  <div style={{ ...scH, justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 7, background: "#e8f5ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".95rem" }}>
+                        📎
+                      </div>
+                      <div>
+                        <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>الملف التعريفي المحفوظ</div>
+                        <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>الملف المضغوط المرفوع</div>
+                      </div>
+                    </div>
+                    <a
+                      href={pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: ".78rem",
+                        padding: "5px 13px",
+                        borderRadius: 7,
+                        border: "1px solid rgba(45,122,82,.18)",
+                        background: "linear-gradient(135deg,#e8f5ee,#d4eddf)",
+                        color: "#1a5c3a",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "'Tajawal',sans-serif",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      👁 عرض الملف
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* AI Summary */}
               <div style={sc}>
@@ -735,6 +867,79 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
                 </div>
               </div>
 
+              {/* Generated content preview */}
+              {latestContent && (
+                <div style={sc}>
+                  <div style={{ ...scH, justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 7, background: "#e8f5ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".95rem" }}>✍️</div>
+                      <div>
+                        <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>المحتوى التسويقي المُولَّد</div>
+                        <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>آخر جلسة توليد بالذكاء الاصطناعي</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onNavigate("content")}
+                      style={{ fontSize: ".78rem", padding: "5px 13px", borderRadius: 7, border: "1px solid rgba(45,122,82,.18)", background: "white", color: "#2d7a52", fontWeight: 600, cursor: "pointer", fontFamily: "'Tajawal',sans-serif" }}
+                    >
+                      عرض الكل ←
+                    </button>
+                  </div>
+                  <div style={{ padding: "12px 18px 18px" }}>
+                    {/* Tab bar */}
+                    <div style={{ display: "flex", gap: 3, marginBottom: 14, background: "#f2faf6", borderRadius: 9, padding: 3, border: "1px solid rgba(45,122,82,.1)" }}>
+                      {([
+                        { key: "post", label: "منشور", icon: "📱" },
+                        { key: "story", label: "قصة", icon: "✨" },
+                        { key: "donation", label: "تبرع", icon: "💚" },
+                        { key: "video", label: "سيناريو", icon: "🎬" },
+                      ] as const).map(({ key, label, icon }) => (
+                        <button
+                          key={key}
+                          onClick={() => setContentTab(key)}
+                          style={{
+                            flex: 1, padding: "7px 0", borderRadius: 6, border: "none",
+                            background: contentTab === key ? "white" : "transparent",
+                            color: contentTab === key ? "#1a5c3a" : "#6b7280",
+                            fontWeight: contentTab === key ? 700 : 500,
+                            fontSize: ".78rem", cursor: "pointer",
+                            fontFamily: "'Tajawal','Cairo',sans-serif",
+                            boxShadow: contentTab === key ? "0 1px 4px rgba(45,122,82,.12)" : "none",
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                          }}
+                        >
+                          <span>{icon}</span>{label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Content */}
+                    {latestContent[contentTab]?.text ? (
+                      <>
+                        <div style={{
+                          background: "#f9fafb", borderRadius: 9, padding: "12px 14px",
+                          border: "1px solid rgba(45,122,82,.1)", fontSize: ".84rem",
+                          lineHeight: 1.8, color: "#374151", whiteSpace: "pre-wrap",
+                          maxHeight: 160, overflowY: "auto",
+                        }}>
+                          {latestContent[contentTab].text}
+                        </div>
+                        {latestContent[contentTab].imageUrl && (
+                          <img
+                            src={latestContent[contentTab].imageUrl}
+                            alt="صورة مُولَّدة"
+                            style={{ width: "100%", borderRadius: 9, marginTop: 10, maxHeight: 220, objectFit: "cover" }}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "22px 0", color: "#9ca3af", fontSize: ".82rem" }}>
+                        لم يُولَّد هذا النوع بعد
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Link to content page */}
               <button
                 onClick={() => onNavigate("content")}
@@ -780,6 +985,44 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
                 <span style={{ fontSize: "1.1rem", color: "#2d7a52", opacity: 0.7 }}>←</span>
               </button>
             </>
+          )}
+
+          {/* PDF card when no AI yet but file already saved */}
+          {(!done || editing) && pdfUrl && (
+            <div style={{ ...sc, marginBottom: 14 }}>
+              <div style={{ ...scH, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 7, background: "#e8f5ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".95rem" }}>
+                    📎
+                  </div>
+                  <div>
+                    <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>الملف التعريفي المحفوظ</div>
+                    <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>الملف المضغوط المرفوع</div>
+                  </div>
+                </div>
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: ".78rem",
+                    padding: "5px 13px",
+                    borderRadius: 7,
+                    border: "1px solid rgba(45,122,82,.18)",
+                    background: "linear-gradient(135deg,#e8f5ee,#d4eddf)",
+                    color: "#1a5c3a",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontFamily: "'Tajawal',sans-serif",
+                  }}
+                >
+                  👁 عرض الملف
+                </a>
+              </div>
+            </div>
           )}
 
           {/* Upload / Edit section — shown when no analysis yet or re-editing */}
@@ -894,6 +1137,32 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
                 {/* File upload mode */}
                 {inputMode === "file" && (
                   <>
+                    {/* Show saved PDF when no new file selected */}
+                    {pdfUrl && !fileInfo && (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "13px 16px", background: "#e8f5ee", borderRadius: 11,
+                        border: "1.5px solid rgba(45,122,82,.2)", marginBottom: 14,
+                      }}>
+                        <span style={{ fontSize: "1.6rem", flexShrink: 0 }}>📎</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#1a5c3a" }}>الملف التعريفي المحفوظ</div>
+                          <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: ".73rem", color: "#2d7a52", textDecoration: "underline" }}>
+                            عرض الملف ↗
+                          </a>
+                        </div>
+                        <button
+                          onClick={() => { setPdfUrl(null); assocProfileDb.savePdfUrl(user!.id, "").catch(() => {}); }}
+                          style={{ fontSize: ".73rem", color: "#dc2626", cursor: "pointer", background: "none", border: "none", fontFamily: "'Tajawal',sans-serif", fontWeight: 600, flexShrink: 0 }}
+                        >
+                          ✕ إزالة
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Dropzone — only when no saved PDF or user wants to replace */}
+                    {(!pdfUrl || fileInfo) && <>
                     <div
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -1029,6 +1298,7 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
                         </button>
                       </div>
                     )}
+                    </>}
                   </>
                 )}
 
@@ -1125,11 +1395,16 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
                   }}
                 >
                   {analyzing ? (
-                    <span
-                      style={{ display: "inline-block", animation: "spin .8s linear infinite" }}
-                    >
-                      ⟳
-                    </span>
+                    <div
+                      style={{
+                        width: 16,
+                        height: 16,
+                        border: "2.5px solid rgba(45,122,82,.25)",
+                        borderTopColor: "#2d7a52",
+                        borderRadius: "50%",
+                        animation: "spin .7s linear infinite",
+                      }}
+                    />
                   ) : logs.some((l) => l.status === "error") ? (
                     "⚠️"
                   ) : (

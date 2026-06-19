@@ -416,6 +416,7 @@ export type GeneratedContentItem = {
   visualDesc?: string;
   imageUrl?: string;
   imageBase64?: string;
+  videoUrl?: string;
 };
 export type GeneratedContent = Record<
   "post" | "story" | "donation" | "video",
@@ -454,13 +455,19 @@ export const contentGenerationsDb = {
     content: GeneratedContent,
     tokensUsed = 0,
   ): Promise<ContentGeneration | null> {
-    const { data: row } = await supabase
+    console.log("[contentGenerationsDb.create] assocId:", assocId, "prompt:", prompt.slice(0, 40));
+    const { data: row, error } = await supabase
       .from("content_generations")
       .insert({ assoc_id: assocId, prompt, content, tokens_used: tokensUsed })
       .select("id, prompt, content, created_at, tokens_used")
       .single();
+    if (error) {
+      console.error("[contentGenerationsDb.create] Supabase error:", error.code, error.message, error.details, error.hint);
+      throw new Error(`DB create failed: ${error.message}`);
+    }
     if (!row) return null;
     const r = row as Record<string, unknown>;
+    console.log("[contentGenerationsDb.create] created row id:", r.id);
     return {
       id: r.id as number,
       prompt: (r.prompt as string) ?? "",
@@ -469,10 +476,17 @@ export const contentGenerationsDb = {
       tokensUsed: (r.tokens_used as number) ?? 0,
     };
   },
-  async update(id: number, content: GeneratedContent, tokensUsed?: number): Promise<void> {
+  async updatePrompt(id: number, prompt: string): Promise<void> {
+    const { error } = await supabase.from("content_generations").update({ prompt }).eq("id", id);
+    if (error) console.error("[contentGenerationsDb.updatePrompt] error:", error.code, error.message);
+  },
+  async update(id: number, content: GeneratedContent, tokensUsed?: number, prompt?: string): Promise<void> {
+    console.log("[contentGenerationsDb.update] id:", id);
     const payload: Record<string, unknown> = { content };
     if (tokensUsed !== undefined) payload.tokens_used = tokensUsed;
-    await supabase.from("content_generations").update(payload).eq("id", id);
+    if (prompt !== undefined) payload.prompt = prompt;
+    const { error } = await supabase.from("content_generations").update(payload).eq("id", id);
+    if (error) console.error("[contentGenerationsDb.update] error:", error.code, error.message);
   },
 };
 
@@ -482,6 +496,9 @@ export interface AssocProfile {
   ai_ideas: string[] | null;
   ai_pain_points: string[] | null;
   ai_content: GeneratedContent | null;
+  pdf_url: string | null;
+  ai_brand: string | null;
+  openai_file_id: string | null;
 }
 
 export const assocProfileDb = {
@@ -489,7 +506,7 @@ export const assocProfileDb = {
     console.log("[assocProfileDb.get] Called with id:", id);
     const { data, error } = await supabase
       .from("associations")
-      .select("description, ai_summary, ai_ideas, ai_pain_points, ai_content")
+      .select("description, ai_summary, ai_ideas, ai_pain_points, ai_content, pdf_url, ai_brand, openai_file_id")
       .eq("id", id)
       .maybeSingle();
     console.log("[assocProfileDb.get] Result data:", data, "error:", error);
@@ -526,6 +543,27 @@ export const assocProfileDb = {
     const { error } = await supabase
       .from("associations")
       .update({ ai_content: content, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw new Error(`DB: ${error.message}`);
+  },
+  async savePdfUrl(id: string, pdf_url: string) {
+    const { error } = await supabase
+      .from("associations")
+      .update({ pdf_url, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw new Error(`DB: ${error.message}`);
+  },
+  async saveBrand(id: string, ai_brand: string) {
+    const { error } = await supabase
+      .from("associations")
+      .update({ ai_brand, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw new Error(`DB: ${error.message}`);
+  },
+  async saveOpenAiFileId(id: string, openai_file_id: string) {
+    const { error } = await supabase
+      .from("associations")
+      .update({ openai_file_id, updated_at: new Date().toISOString() })
       .eq("id", id);
     if (error) throw new Error(`DB: ${error.message}`);
   },

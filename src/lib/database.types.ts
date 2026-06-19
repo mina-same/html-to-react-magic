@@ -261,6 +261,8 @@ export interface Database {
           status: AssocStatus;
           verified: boolean;
           updated_at: string;
+          pdf_url: string | null;
+          ai_brand: string | null;
         };
         Insert: {
           id: string;
@@ -272,6 +274,8 @@ export interface Database {
           status?: AssocStatus;
           verified?: boolean;
           updated_at?: string;
+          pdf_url?: string | null;
+          ai_brand?: string | null;
         };
         Update: {
           license?: string;
@@ -282,6 +286,8 @@ export interface Database {
           status?: AssocStatus;
           verified?: boolean;
           updated_at?: string;
+          pdf_url?: string | null;
+          ai_brand?: string | null;
         };
         Relationships: [];
       };

@@ -107,7 +107,7 @@ export function AdminSidebar({ activePage, setActivePage, orgs, influencers, req
       style={{
         width: "252px",
         minWidth: "252px",
-        height: "100vh",
+        height: "100dvh",
         background: "#0d3322",
         display: "flex",
         flexDirection: "column" as const,

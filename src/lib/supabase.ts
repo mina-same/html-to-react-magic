@@ -15,8 +15,13 @@ export const supabase = createClient<Database>(url, key, {
   },
   global: {
     fetch: (input, init) => {
+      const reqUrl = typeof input === "string" ? input : (input as Request).url;
+      // Skip timeout for storage uploads — large files need more than 6s
+      if (reqUrl.includes("/storage/v1/object")) {
+        return fetch(input, init);
+      }
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       return fetch(input, { ...init, signal: controller.signal })
         .then((res) => {
           clearTimeout(timeoutId);

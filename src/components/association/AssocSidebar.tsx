@@ -66,7 +66,7 @@ export default function AssocSidebar({
     <aside
       style={{
         width: 260,
-        height: "100vh",
+        height: "100dvh",
         background: "#1a5c3a",
         display: "flex",
         flexDirection: "column",

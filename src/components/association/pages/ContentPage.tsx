@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { Player } from "@remotion/player";
 import { assocProfileDb, contentGenerationsDb } from "@/lib/db";
-import type { GeneratedContent, ContentGeneration } from "@/lib/db";
+import type { GeneratedContent, ContentGeneration, GeneratedContentItem } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { ContentVideo } from "@/remotion/ContentVideo";
 // ── Types ────────────────────────────────────────────────────
 type Tab = "post" | "story" | "donation" | "video";
 
@@ -14,7 +16,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "video", label: "سيناريو", icon: "🎬" },
 ];
 
-const IMAGE_TABS: Tab[] = ["post", "story", "donation"];
+const IMAGE_TABS: Tab[] = ["post", "story", "donation", "video"];
 
 const EMPTY: GeneratedContent = {
   post: { text: "" },
@@ -332,10 +334,121 @@ async function callAI(
   };
 }
 
+async function extractBrandFromFileId(fileId: string, apiKey: string): Promise<string> {
+  try {
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      "OpenAI-Beta": "assistants=v2",
+      "Content-Type": "application/json",
+    };
+
+    const asstRes = await fetch("https://api.openai.com/v1/assistants", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: "Brand Extractor",
+        model: "gpt-4o",
+        instructions:
+          "Analyze the attached charity organization brochure. Extract concisely in English: 1) primary brand colors (hex if visible), 2) logo style/shape description, 3) overall visual style and mood. Keep it under 80 words. This will be used as DALL-E context.",
+        tools: [{ type: "file_search" }],
+      }),
+    });
+    const assistantId = (await asstRes.json()).id;
+
+    const thRes = await fetch("https://api.openai.com/v1/threads", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        messages: [{
+          role: "user",
+          content: "Extract brand identity from this file.",
+          attachments: [{ file_id: fileId, tools: [{ type: "file_search" }] }],
+        }],
+      }),
+    });
+    const threadId = (await thRes.json()).id;
+
+    const runRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ assistant_id: assistantId }),
+    });
+    const runId = (await runRes.json()).id;
+
+    let status = "queued";
+    while (status === "queued" || status === "in_progress") {
+      await new Promise((r) => setTimeout(r, 2000));
+      const chk = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, { headers });
+      status = (await chk.json()).status;
+      if (status === "failed") throw new Error("failed");
+    }
+
+    const msgsRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, { headers });
+    const msgs = await msgsRes.json();
+    const brand = msgs.data[0]?.content[0]?.text?.value ?? "";
+
+    fetch(`https://api.openai.com/v1/assistants/${assistantId}`, { method: "DELETE", headers }).catch(() => {});
+    fetch(`https://api.openai.com/v1/threads/${threadId}`, { method: "DELETE", headers }).catch(() => {});
+
+    return brand.replace(/【[^】]*】/g, "").trim().slice(0, 200);
+  } catch (err) {
+    console.warn("Brand extraction from file ID failed:", err);
+    return "";
+  }
+}
+
+async function extractBrandFromPdf(pdfUrl: string, apiKey: string): Promise<string> {
+  try {
+    const pdfjsLib = await import("pdfjs-dist");
+    const pdfWorkerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+    const resp = await fetch(pdfUrl);
+    const arrayBuffer = await resp.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+    const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analyze this charity organization's brochure page. Extract concisely in English: 1) primary brand colors (hex if visible), 2) logo style/shape description, 3) overall visual style and mood. Keep it under 80 words. This will be used as DALL-E context.",
+              },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}`, detail: "low" } },
+            ],
+          },
+        ],
+        max_tokens: 150,
+      }),
+    });
+    if (!res.ok) throw new Error("vision failed");
+    return (await res.json()).choices[0]?.message?.content ?? "";
+  } catch (err) {
+    console.warn("Brand extraction failed:", err);
+    return "";
+  }
+}
+
 async function callDalle(
   visualDesc: string,
   assocName: string,
   setImgStep: (s: StepStatus, detail: string) => void,
+  brandContext?: string,
+  onB64Ready?: (base64: string) => Promise<void>,
 ): Promise<{ url: string; base64?: string }> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) throw new Error("VITE_OPENAI_API_KEY غير موجود");
@@ -345,62 +458,83 @@ async function callDalle(
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 600);
+  const brandNote = brandContext ? ` Brand identity: ${brandContext}.` : "";
   const prompt = clean
-    ? `Charity organization marketing photo: ${clean}. Professional, warm Gulf atmosphere, no text.`
-    : `Charity organization professional marketing photo. Community, warmth, Gulf region, no text.`;
+    ? `Charity organization marketing photo: ${clean}.${brandNote} Professional, warm Gulf atmosphere, no text.`
+    : `Charity organization professional marketing photo.${brandNote} Community, warmth, Gulf region, no text.`;
+
+  console.log("[callDalle] prompt length:", prompt.length, "| prompt:", prompt.slice(0, 120));
 
   for (const model of ["gpt-image-1", "dall-e-3", "dall-e-2"] as const) {
+    console.log(`[callDalle] trying model: ${model}`);
     setImgStep("loading", `إرسال الطلب إلى ${model}...`);
     const res = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, prompt, n: 1, size: "1024x1024", response_format: "b64_json" }),
+      body: JSON.stringify({ model, prompt, n: 1, size: "1024x1024" }),
     });
+    console.log(`[callDalle] ${model} → status ${res.status}`);
+
     if (res.ok) {
       const json = (await res.json()) as { data: { url?: string; b64_json?: string }[] };
       const item = json.data[0];
+      console.log(`[callDalle] ${model} success — has b64_json: ${!!item.b64_json}, has url: ${!!item.url}`);
 
       let finalUrl = item.url || "";
       let finalBase64 = item.b64_json || "";
 
       if (item.b64_json) {
-        try {
-          setImgStep("loading", "جاري رفع الصورة إلى التخزين الدائم...");
+        // Save b64 to DB immediately before upload attempt
+        if (onB64Ready) {
+          setImgStep("loading", "حفظ الصورة مؤقتاً في قاعدة البيانات...");
+          await onB64Ready(item.b64_json).catch((e) => console.warn("[callDalle] onB64Ready failed:", e));
+        }
+        setImgStep("loading", "جاري رفع الصورة إلى التخزين الدائم...");
+        const blob = await fetch(`data:image/png;base64,${item.b64_json}`).then((r) => r.blob());
+        const safeName = assocName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
+        const fileName = `generated/${safeName}_${Date.now()}.png`;
 
-          // Convert base64 to Blob
-          const res = await fetch(`data:image/png;base64,${item.b64_json}`);
-          const blob = await res.blob();
-
-          const safeName = assocName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
-          const fileName = `generated/${safeName}_${Date.now()}.png`;
-
-          const { error } = await supabase.storage
-            .from("images")
-            .upload(fileName, blob, { contentType: "image/png" });
-
-          if (!error) {
-            const {
-              data: { publicUrl },
-            } = supabase.storage.from("images").getPublicUrl(fileName);
-            finalUrl = publicUrl;
-          } else {
-            console.warn("فشل رفع الصورة إلى Storage، جاري استخدام رابط مؤقت:", error);
-            finalUrl = `data:image/png;base64,${item.b64_json}`;
+        // Retry upload up to 3 times with backoff (Supabase may be cold)
+        let uploaded = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            if (attempt > 1) {
+              setImgStep("loading", `إعادة رفع الصورة... (محاولة ${attempt}/3)`);
+              await new Promise((r) => setTimeout(r, attempt * 1500));
+            }
+            const { error } = await supabase.storage
+              .from("images")
+              .upload(fileName, blob, { contentType: "image/png" });
+            if (!error) {
+              const { data: { publicUrl } } = supabase.storage.from("images").getPublicUrl(fileName);
+              finalUrl = publicUrl;
+              uploaded = true;
+              console.log("[callDalle] Supabase upload OK →", publicUrl);
+              break;
+            }
+            console.warn(`[callDalle] upload attempt ${attempt} failed:`, error.message);
+          } catch (uploadErr) {
+            console.warn(`[callDalle] upload attempt ${attempt} threw:`, uploadErr);
           }
-        } catch (uploadErr) {
-          console.error("Upload error:", uploadErr);
-          finalUrl = `data:image/png;base64,${item.b64_json}`;
+        }
+
+        if (!uploaded) {
+          // Keep finalUrl empty — caller will display from base64 and show warning
+          console.warn("[callDalle] all upload attempts failed — b64 fallback only");
+          finalUrl = "";
         }
       }
 
+      console.log("[callDalle] returning finalUrl type:", finalUrl.startsWith("data:") ? "data URL" : "public URL");
       setImgStep("ok", model);
       return { url: finalUrl, base64: finalBase64 };
     }
+
     const err = (await res.json().catch(() => ({}))) as {
       error?: { message?: string; code?: string };
     };
     const msg = err.error?.message ?? "";
-    console.error(`[DALL-E ${model}] Error ${res.status}:`, err);
+    console.error(`[callDalle] ${model} error ${res.status} — code: ${err.error?.code} — msg: ${msg}`);
 
     if (
       msg.includes("does not exist") ||
@@ -439,6 +573,27 @@ function getDisplayableImage(item: GeneratedContentItem): string | undefined {
   return undefined;
 }
 
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, font: string): string[] {
+  ctx.font = font;
+  const lines: string[] = [];
+  const paragraphs = text.split("\n");
+  for (const para of paragraphs) {
+    const words = para.split(" ");
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  return lines.slice(0, 10); // cap lines to fit canvas
+}
+
 // ── Component ────────────────────────────────────────────────
 interface Props {
   assocName?: string;
@@ -462,6 +617,11 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
   const [images, setImages] = useState<Partial<Record<Tab, string>>>({});
   const [sidebar, setSidebar] = useState(true);
   const [steps, setSteps] = useState<Step[]>([]);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [brandContext, setBrandContext] = useState<string>("");
+  const [openaiFileId, setOpenaiFileId] = useState<string | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0); // 0-100
 
   // Track last loaded user id
   const lastLoadedUserIdRef = useRef<string | null>(null);
@@ -557,6 +717,10 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
           console.log("[ContentPage] No description in profile data");
         }
 
+        if (profileData?.pdf_url) setPdfUrl(profileData.pdf_url);
+        if (profileData?.ai_brand) setBrandContext(profileData.ai_brand);
+        if (profileData?.openai_file_id) setOpenaiFileId(profileData.openai_file_id);
+
         // Load content history
         console.log("[ContentPage] Loading content history for user.id:", user.id);
         const hist = await contentGenerationsDb.list(user.id);
@@ -633,9 +797,9 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
     const tabLabel = which === "all" ? "4 أنواع" : (TABS.find((t) => t.key === which)?.label ?? "");
 
     initSteps([
-      isNew && !regen ? "إنشاء سجل فارغ" : "إعداد الطلب",
+      isNew && !regen ? "إنشاء سجل فارغ" : "حفظ البرومت",
       `توليد ${tabLabel} بالذكاء الاصطناعي`,
-      "حفظ في قاعدة البيانات",
+      "حفظ المحتوى في قاعدة البيانات",
       "اكتمل التوليد",
     ]);
     setLoading(which);
@@ -645,11 +809,14 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
     try {
       // Step 0: Create DB record first (if new)
       if (isNew && !regen) {
+        console.log("[generate] creating DB record for user:", user!.id);
         let saved = null;
+        let createErr: string | null = null;
         try {
           saved = await contentGenerationsDb.create(user!.id, prompt.trim() || "توليد عام", EMPTY);
         } catch (dbErr) {
-          console.warn("DB Create failed/timeout, continuing locally", dbErr);
+          createErr = dbErr instanceof Error ? dbErr.message : String(dbErr);
+          console.error("[generate] DB create failed:", createErr);
         }
 
         if (saved) {
@@ -659,20 +826,22 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
           persist(EMPTY, prompt, saved.id);
           advanceStep(0, `سجل #${saved.id}`);
         } else {
-          // fallback to local UI temp
-          const opt: ContentGeneration = {
-            id: TEMP_ID,
-            prompt: prompt.trim(),
-            content: EMPTY,
-            createdAt: new Date().toISOString(),
-          };
-          setHistory((prev) => [opt, ...prev.filter((h) => h.id !== TEMP_ID)]);
-          setActiveId(TEMP_ID);
-          currentId = TEMP_ID;
-          advanceStep(0, "محفوظ محلياً (DB لا يستجيب)");
+          markStep(0, "error", createErr ?? "فشل إنشاء السجل");
+          toast.error(`فشل حفظ الجلسة في قاعدة البيانات: ${createErr ?? "خطأ غير معروف"}`);
+          return;
         }
       } else {
-        advanceStep(0, "الطلب جاهز");
+        // Existing record: update prompt in DB before AI call
+        const promptToSave = prompt.trim() || "توليد عام";
+        try {
+          await contentGenerationsDb.updatePrompt(currentId as number, promptToSave);
+          setHistory((prev) =>
+            prev.map((h) => (h.id === currentId ? { ...h, prompt: promptToSave } : h)),
+          );
+          advanceStep(0, "تم حفظ البرومت");
+        } catch {
+          advanceStep(0, "البرومت محلي فقط");
+        }
       }
 
       // Step 1: AI call
@@ -748,44 +917,90 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
       return;
     }
 
-    initSteps(["إعداد الوصف", "توليد الصورة", "حفظ في السجل"]);
+    const stepLabels = (openaiFileId || pdfUrl) && !brandContext
+      ? ["إعداد الوصف", "استخراج الهوية البصرية من الملف", "توليد الصورة", "حفظ في السجل"]
+      : ["إعداد الوصف", "توليد الصورة", "حفظ في السجل"];
+
+    initSteps(stepLabels);
     setImgLoading(tab);
 
     try {
+      // Wake up Supabase before long AI call
+      supabase.from("content_generations").select("id").limit(1).then(() => {}).catch(() => {});
       advanceStep(0, "الوصف جاهز");
 
-      const { url, base64 } = await callDalle(desc, assocName, (status, detail) => {
-        setSteps((prev) => prev.map((s, i) => (i === 1 ? { ...s, status, detail } : s)));
-      });
+      let activeBrand = brandContext;
+      if (!activeBrand && (openaiFileId || pdfUrl)) {
+        const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string;
+        if (apiKey) {
+          // Prefer saved OpenAI file ID (no re-upload) over re-downloading from Supabase
+          activeBrand = openaiFileId
+            ? await extractBrandFromFileId(openaiFileId, apiKey)
+            : await extractBrandFromPdf(pdfUrl!, apiKey);
+          if (activeBrand) {
+            setBrandContext(activeBrand);
+            if (user) assocProfileDb.saveBrand(user.id, activeBrand).catch(console.error);
+          }
+        }
+        advanceStep(1, activeBrand ? "تم استخراج الهوية البصرية" : "تعذّر الاستخراج، سيتم التوليد بدونه");
+      }
 
-      console.log("✅ تم توليد الصورة بنجاح! الرابط:", url);
+      const imgStepIdx = stepLabels.length - 2;
+      const { url, base64 } = await callDalle(
+        desc,
+        assocName,
+        (status, detail) => {
+          setSteps((prev) => prev.map((s, i) => (i === imgStepIdx ? { ...s, status, detail } : s)));
+        },
+        activeBrand,
+        activeId && activeId > 0
+          ? async (b64) => {
+              const interim: GeneratedContent = {
+                ...content,
+                [tab]: { ...content[tab], imageUrl: "", imageBase64: b64 },
+              };
+              await contentGenerationsDb.update(activeId, interim);
+              setContent(interim);
+            }
+          : undefined,
+      );
 
+      const uploadedToCloud = !!url;
+      console.log("✅ image generated — cloud:", uploadedToCloud, "url:", url?.slice(0, 60));
+
+      // If storage upload failed, display from base64 but don't store data URL in DB
+      const displaySrc = url || (base64 ? `data:image/png;base64,${base64}` : "");
       const next: GeneratedContent = {
         ...content,
-        [tab]: { ...content[tab], imageUrl: url, imageBase64: base64 },
+        [tab]: {
+          ...content[tab],
+          imageUrl: uploadedToCloud ? url : "",
+          imageBase64: uploadedToCloud ? "" : (base64 || ""), // clear b64 once cloud URL exists
+        },
       };
       setContent(next);
-      setImages((prev) => ({ ...prev, [tab]: url }));
-      advanceStep(1);
+      if (displaySrc) setImages((prev) => ({ ...prev, [tab]: displaySrc }));
+      advanceStep(imgStepIdx, uploadedToCloud ? "تم الرفع" : "محلي فقط — التحميل فشل");
 
+      const dbStepIdx = imgStepIdx + 1;
       if (activeId && activeId > 0) {
         try {
           await contentGenerationsDb.update(activeId, next);
           setHistory((prev) => prev.map((h) => (h.id === activeId ? { ...h, content: next } : h)));
           persist(next, prompt, activeId);
-          markStep(2, "ok", `السجل #${activeId}`);
+          markStep(dbStepIdx, uploadedToCloud ? "ok" : "warn",
+            uploadedToCloud ? `السجل #${activeId}` : "الصورة b64 محلياً — أعد التوليد لرفعها");
         } catch (dbErr) {
           console.warn("DB Update failed/timeout on genImage", dbErr);
-          setHistory((prev) => prev.map((h) => (h.id === activeId ? { ...h, content: next } : h)));
           persist(next, prompt, activeId);
-          markStep(2, "warn", "تم التوليد لكن الحفظ محلي فقط");
+          markStep(dbStepIdx, "warn", "فشل الحفظ في DB — محفوظ محلياً");
         }
       } else {
         persist(next, prompt, null);
-        markStep(2, "warn", "محفوظة محلياً فقط");
+        markStep(dbStepIdx, "warn", "محفوظة محلياً فقط");
       }
 
-      toast.success("تم توليد الصورة وحفظها!");
+      toast.success(uploadedToCloud ? "تم توليد الصورة وحفظها!" : "تم التوليد — الصورة مؤقتة (فشل الرفع)");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "خطأ في الصورة";
       setSteps((prev) =>
@@ -794,6 +1009,263 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
       toast.error(msg);
     } finally {
       setImgLoading(null);
+    }
+  }
+
+  // ── Download image ────────────────────────────────────────
+  async function downloadImage(url: string, name = "generated-image.png") {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = obj;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(obj);
+    } catch {
+      toast.error("فشل تنزيل الصورة");
+    }
+  }
+
+  // ── Render video (canvas + MediaRecorder) ─────────────────
+  async function renderVideo() {
+    if (!content.video.text) {
+      toast.error("يجب توليد نص الفيديو أولاً");
+      return;
+    }
+    if (!activeId || activeId <= 0) {
+      toast.error("يجب حفظ المحتوى في قاعدة البيانات أولاً");
+      return;
+    }
+
+    setVideoLoading(true);
+    setVideoProgress(0);
+
+    initSteps([
+      "إنشاء الفيديو في المتصفح...",
+      "رفع الفيديو للسحابة...",
+      "حفظ في قاعدة البيانات...",
+      "اكتمل",
+    ]);
+
+    try {
+      const W = 1080, H = 1080, FPS = 30, TOTAL = 600; // 20 seconds
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+
+      // Pre-load background image
+      let bgImg: HTMLImageElement | null = null;
+      const bgUrl = images["video"] || images["post"] || images["story"] || images["donation"];
+      if (bgUrl && !bgUrl.startsWith("data:")) {
+        try {
+          bgImg = new Image();
+          bgImg.crossOrigin = "anonymous";
+          await new Promise<void>((res, rej) => {
+            bgImg!.onload = () => res();
+            bgImg!.onerror = () => { bgImg = null; res(); }; // ignore failure
+            bgImg!.src = bgUrl;
+          });
+        } catch { bgImg = null; }
+      }
+
+      // Load Arabic font
+      const font = new FontFace("Tajawal", "url(https://fonts.gstatic.com/s/tajawal/v9/Iura6YBj_oCad4k1l7A.woff2)");
+      try { await font.load(); document.fonts.add(font); } catch { /* fallback */ }
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : "video/webm";
+      const stream = canvas.captureStream(FPS);
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      const done = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+      });
+
+      recorder.start(100); // collect every 100ms
+      advanceStep(0);
+
+      const videoText = content.video.text;
+      const name = assocName ?? "الجمعية";
+      const initial = name[0] || "ج";
+      const charsPerFrame = 4;
+
+      await new Promise<void>((resolve) => {
+        let frame = 0;
+        function drawFrame() {
+          const t = frame / TOTAL;
+          const titleOp = Math.min(1, frame / 25);
+          const contentOp = frame < 60 ? 0 : Math.min(1, (frame - 60) / 30);
+          const exitOp = frame > TOTAL - 25 ? Math.max(0, (TOTAL - frame) / 25) : 1;
+
+          // Background
+          const grad = ctx.createLinearGradient(0, 0, W, H);
+          grad.addColorStop(0, "#0f3d26");
+          grad.addColorStop(0.55, "#1a5c3a");
+          grad.addColorStop(1, "#0d3322");
+          ctx.globalAlpha = exitOp;
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, W, H);
+
+          // BG image overlay
+          if (bgImg) {
+            ctx.globalAlpha = exitOp * 0.22;
+            ctx.drawImage(bgImg, 0, 0, W, H);
+            ctx.globalAlpha = exitOp;
+          }
+
+          // Gold top bar
+          ctx.globalAlpha = titleOp * exitOp;
+          const barGrad = ctx.createLinearGradient(0, 0, W, 0);
+          barGrad.addColorStop(0, "#c9a84c");
+          barGrad.addColorStop(0.5, "#e8c96e");
+          barGrad.addColorStop(1, "#c9a84c");
+          ctx.fillStyle = barGrad;
+          ctx.fillRect(0, 0, W, 10);
+
+          // Association avatar
+          const AX = W - 80 - 64, AY = 80;
+          ctx.globalAlpha = titleOp * exitOp;
+          const avatarGrad = ctx.createLinearGradient(AX, AY, AX + 64, AY + 64);
+          avatarGrad.addColorStop(0, "#c9a84c");
+          avatarGrad.addColorStop(1, "#e8c96e");
+          ctx.fillStyle = avatarGrad;
+          ctx.beginPath();
+          ctx.roundRect(AX, AY, 64, 64, 16);
+          ctx.fill();
+          ctx.fillStyle = "#1a5c3a";
+          ctx.font = `bold 32px Tajawal, Cairo, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(initial, AX + 32, AY + 32);
+
+          // Association name
+          ctx.fillStyle = "white";
+          ctx.font = `bold 38px Tajawal, Cairo, sans-serif`;
+          ctx.textAlign = "right";
+          ctx.textBaseline = "alphabetic";
+          ctx.fillText(name, W - 80, AY + 44);
+
+          // Platform label
+          ctx.fillStyle = "rgba(201,168,76,0.7)";
+          ctx.font = `500 22px Tajawal, Cairo, sans-serif`;
+          ctx.fillText("ساعِد · SAAID PLATFORM", W - 80, AY + 72);
+
+          // Gold separator
+          ctx.fillStyle = "#c9a84c";
+          ctx.fillRect(W - 80 - 70, 180, 70, 4);
+
+          // Text content
+          ctx.globalAlpha = contentOp * exitOp;
+          const visibleChars = Math.max(0, (frame - 90) * charsPerFrame);
+          const visibleText = videoText.slice(0, visibleChars);
+          const lines = wrapText(ctx, visibleText, W - 140, "500 34px Tajawal, Cairo, sans-serif");
+          ctx.fillStyle = "rgba(255,255,255,0.93)";
+          ctx.font = "500 34px Tajawal, Cairo, sans-serif";
+          ctx.textAlign = "right";
+          ctx.textBaseline = "top";
+          lines.forEach((line, i) => {
+            ctx.fillText(line, W - 70, 210 + i * 70);
+          });
+
+          // Bottom bar
+          ctx.globalAlpha = titleOp * exitOp;
+          ctx.strokeStyle = "rgba(201,168,76,0.25)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(70, H - 80);
+          ctx.lineTo(W - 70, H - 80);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          ctx.font = "500 22px Tajawal, Cairo, sans-serif";
+          ctx.textAlign = "right";
+          ctx.textBaseline = "middle";
+          ctx.fillText("محتوى تسويقي احترافي", W - 80, H - 50);
+
+          ctx.globalAlpha = 1;
+          frame++;
+          setVideoProgress(Math.round((frame / TOTAL) * 70)); // 70% = rendering done
+
+          if (frame < TOTAL) {
+            setTimeout(drawFrame, 1000 / FPS);
+          } else {
+            resolve();
+          }
+        }
+        drawFrame();
+      });
+
+      recorder.stop();
+      markStep(0, "ok", "تم إنشاء الفيديو");
+      advanceStep(1);
+
+      const blob = await done;
+
+      // Upload to Supabase Storage
+      const safeAssoc = (assocName ?? "assoc").replace(/\s+/g, "_").slice(0, 20);
+      const fileName = `videos/${safeAssoc}_${Date.now()}.webm`;
+      const { error: upErr } = await supabase.storage
+        .from("images")
+        .upload(fileName, blob, { contentType: mimeType, upsert: false });
+
+      let videoUrl = "";
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName);
+        videoUrl = urlData?.publicUrl ?? "";
+        markStep(1, "ok", "تم الرفع");
+      } else {
+        markStep(1, "warn", "فشل الرفع — تنزيل محلي فقط");
+        // Still let user download locally
+        const obj = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = obj;
+        a.download = `video_${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(obj);
+      }
+
+      advanceStep(2);
+
+      // Save videoUrl to DB
+      if (videoUrl && activeId && activeId > 0) {
+        const next: GeneratedContent = {
+          ...content,
+          video: { ...content.video, videoUrl },
+        };
+        try {
+          await contentGenerationsDb.update(activeId, next);
+          setContent(next);
+          setHistory((prev) => prev.map((h) => (h.id === activeId ? { ...h, content: next } : h)));
+          persist(next, prompt, activeId);
+          markStep(2, "ok", `#${activeId}`);
+        } catch {
+          markStep(2, "warn", "فشل الحفظ في DB");
+        }
+      } else {
+        markStep(2, "warn", "لا رابط للحفظ");
+      }
+
+      markStep(3, "ok", "اكتمل");
+      setVideoProgress(100);
+      toast.success(videoUrl ? "تم إنشاء الفيديو وحفظه!" : "تم إنشاء الفيديو (محلي فقط)");
+
+      // Trigger download if we have a cloud URL
+      if (videoUrl) {
+        await downloadImage(videoUrl, `video_${Date.now()}.webm`);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطأ في توليد الفيديو";
+      toast.error(msg);
+      setSteps((prev) =>
+        prev.map((s) => (s.status === "loading" ? { ...s, status: "error", detail: msg } : s)),
+      );
+    } finally {
+      setVideoLoading(false);
     }
   }
 
@@ -1612,10 +2084,20 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
 
                       {isImgTab && (
                         <div style={{ marginBottom: 16 }}>
+                          {(!activeId || activeId <= 0) && tabContent.visualDesc && (
+                            <div style={{
+                              marginBottom: 10, padding: "8px 13px", borderRadius: 9,
+                              background: "#fffbeb", border: "1px solid #fde68a",
+                              fontSize: ".73rem", color: "#92400e",
+                              display: "flex", alignItems: "center", gap: 6,
+                            }}>
+                              ⚠️ يجب حفظ المحتوى في قاعدة البيانات أولاً قبل توليد الصورة
+                            </div>
+                          )}
                           <button
                             className="cg-imgbtn"
                             onClick={genImage}
-                            disabled={imgLoading !== null || !tabContent.visualDesc}
+                            disabled={imgLoading !== null || !tabContent.visualDesc || !activeId || activeId <= 0}
                             style={{
                               width: "100%",
                               padding: "15px 0",
@@ -1626,7 +2108,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                               fontSize: ".84rem",
                               fontWeight: 700,
                               cursor:
-                                !tabContent.visualDesc || imgLoading !== null
+                                !tabContent.visualDesc || imgLoading !== null || !activeId || activeId <= 0
                                   ? "not-allowed"
                                   : "pointer",
                               fontFamily: "'Tajawal',Cairo,sans-serif",
@@ -1635,7 +2117,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                               justifyContent: "center",
                               gap: 9,
                               transition: "all .2s",
-                              opacity: imgLoading !== null && imgLoading !== tab ? 0.4 : 1,
+                              opacity: (imgLoading !== null && imgLoading !== tab) || !activeId || activeId <= 0 ? 0.4 : 1,
                               marginBottom: images[tab] ? 16 : 0,
                             }}
                           >
@@ -1650,8 +2132,34 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                             )}
                           </button>
 
+                          {/* No image yet: show visual desc hint */}
+                          {!images[tab] && tabContent.visualDesc && activeId && activeId > 0 && imgLoading !== tab && (
+                            <div style={{
+                              marginTop: 10, padding: "10px 14px", borderRadius: 10,
+                              background: "#f8fafc", border: "1.5px dashed #e2e8f0",
+                              fontSize: ".75rem", color: "#64748b", lineHeight: 1.65,
+                            }}>
+                              <span style={{ fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>
+                                وصف الصورة المقترح:
+                              </span>
+                              <span style={{ fontStyle: "italic" }}>{tabContent.visualDesc}</span>
+                            </div>
+                          )}
+
+                          {/* Has image */}
                           {images[tab] && (
                             <div>
+                              {/* b64-only warning */}
+                              {images[tab].startsWith("data:") && (
+                                <div style={{
+                                  marginBottom: 8, padding: "7px 12px", borderRadius: 8,
+                                  background: "#fffbeb", border: "1px solid #fde68a",
+                                  fontSize: ".72rem", color: "#92400e",
+                                  display: "flex", alignItems: "center", gap: 6,
+                                }}>
+                                  ⚠️ الصورة مؤقتة (لم ترفع للسحابة) — أعد التوليد للحصول على رابط دائم
+                                </div>
+                              )}
                               <div
                                 style={{
                                   fontSize: ".7rem",
@@ -1662,7 +2170,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                                   marginBottom: 9,
                                 }}
                               >
-                                الصورة المُولَّدة · محفوظة في السجل
+                                الصورة المُولَّدة · {images[tab].startsWith("data:") ? "مؤقتة" : "محفوظة في السجل"}
                               </div>
                               <div
                                 style={{
@@ -1683,6 +2191,148 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                                   }}
                                 />
                               </div>
+                              {/* Download image button */}
+                              <button
+                                onClick={() => downloadImage(images[tab]!, `image_${tab}_${Date.now()}.png`)}
+                                style={{
+                                  marginTop: 10,
+                                  width: "100%",
+                                  padding: "10px 0",
+                                  borderRadius: 10,
+                                  border: "1.5px solid #bbf7d0",
+                                  background: "#f0fdf4",
+                                  color: "#16a34a",
+                                  fontSize: ".82rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  fontFamily: "'Tajawal',Cairo,sans-serif",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 7,
+                                }}
+                              >
+                                ⬇️ تنزيل الصورة
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Video tab: Remotion preview + render ── */}
+                      {tab === "video" && tabContent.text && (
+                        <div style={{ marginTop: 8, marginBottom: 16 }}>
+                          {/* Remotion Player preview */}
+                          <div
+                            style={{
+                              fontSize: ".7rem",
+                              fontWeight: 700,
+                              color: "#475569",
+                              textTransform: "uppercase",
+                              letterSpacing: ".05em",
+                              marginBottom: 10,
+                            }}
+                          >
+                            معاينة الفيديو (Remotion)
+                          </div>
+                          <div style={{ borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.1)" }}>
+                            <Player
+                              component={ContentVideo}
+                              inputProps={{
+                                text: tabContent.text,
+                                assocName: assocName ?? "الجمعية",
+                                assocInitial: assocName ? assocName[0] : "ج",
+                                imageUrl: images["video"] || images["post"] || images["story"] || images["donation"],
+                              }}
+                              durationInFrames={600}
+                              compositionWidth={1080}
+                              compositionHeight={1080}
+                              fps={30}
+                              style={{ width: "100%", aspectRatio: "1" }}
+                              controls
+                            />
+                          </div>
+
+                          {/* Saved video link */}
+                          {content.video.videoUrl && (
+                            <div style={{
+                              marginTop: 10, padding: "10px 14px", borderRadius: 10,
+                              background: "#f0fdf4", border: "1.5px solid #bbf7d0",
+                              fontSize: ".76rem", color: "#15803d",
+                              display: "flex", alignItems: "center", gap: 8,
+                            }}>
+                              <span>✅</span>
+                              <span>فيديو محفوظ · </span>
+                              <a
+                                href={content.video.videoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: "#16a34a", fontWeight: 700, textDecoration: "underline" }}
+                              >
+                                عرض / تنزيل
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Progress bar */}
+                          {videoLoading && (
+                            <div style={{ marginTop: 12 }}>
+                              <div style={{
+                                fontSize: ".72rem", color: "#64748b", marginBottom: 6,
+                                display: "flex", justifyContent: "space-between",
+                              }}>
+                                <span>جاري إنشاء الفيديو...</span>
+                                <span>{videoProgress}%</span>
+                              </div>
+                              <div style={{ height: 6, background: "#e2e8f0", borderRadius: 3, overflow: "hidden" }}>
+                                <div style={{
+                                  height: "100%",
+                                  width: `${videoProgress}%`,
+                                  background: "linear-gradient(90deg,#16a34a,#22c55e)",
+                                  borderRadius: 3,
+                                  transition: "width .3s",
+                                }} />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Render button */}
+                          <button
+                            onClick={renderVideo}
+                            disabled={videoLoading || !activeId || activeId <= 0}
+                            style={{
+                              marginTop: 12,
+                              width: "100%",
+                              padding: "14px 0",
+                              borderRadius: 12,
+                              border: "2px dashed #bbf7d0",
+                              background: "#f0fdf4",
+                              color: "#16a34a",
+                              fontSize: ".84rem",
+                              fontWeight: 700,
+                              cursor: videoLoading || !activeId || activeId <= 0 ? "not-allowed" : "pointer",
+                              fontFamily: "'Tajawal',Cairo,sans-serif",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 9,
+                              opacity: videoLoading || !activeId || activeId <= 0 ? 0.5 : 1,
+                              transition: "all .2s",
+                            }}
+                          >
+                            {videoLoading ? (
+                              <><Spin size={14} light={false} /> جاري إنشاء الفيديو...</>
+                            ) : (
+                              <><span>🎬</span> {content.video.videoUrl ? "إعادة توليد الفيديو" : "توليد الفيديو وتنزيله"}</>
+                            )}
+                          </button>
+                          {(!activeId || activeId <= 0) && (
+                            <div style={{
+                              marginTop: 8, padding: "7px 12px", borderRadius: 8,
+                              background: "#fffbeb", border: "1px solid #fde68a",
+                              fontSize: ".71rem", color: "#92400e",
+                            }}>
+                              ⚠️ يجب حفظ المحتوى في قاعدة البيانات أولاً قبل توليد الفيديو
                             </div>
                           )}
                         </div>
