@@ -417,6 +417,7 @@ export type GeneratedContentItem = {
   imageUrl?: string;
   imageBase64?: string;
   videoUrl?: string;
+  audioUrl?: string;
 };
 export type GeneratedContent = Record<
   "post" | "story" | "donation" | "video",
@@ -481,12 +482,11 @@ export const contentGenerationsDb = {
     if (error) throw new Error(error.message);
   },
   async update(id: number, content: GeneratedContent, tokensUsed?: number, prompt?: string): Promise<void> {
-    console.log("[contentGenerationsDb.update] id:", id);
     const payload: Record<string, unknown> = { content };
     if (tokensUsed !== undefined) payload.tokens_used = tokensUsed;
     if (prompt !== undefined) payload.prompt = prompt;
     const { error } = await supabase.from("content_generations").update(payload).eq("id", id);
-    if (error) console.error("[contentGenerationsDb.update] error:", error.code, error.message);
+    if (error) throw new Error(error.message);
   },
 };
 

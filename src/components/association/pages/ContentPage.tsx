@@ -16,7 +16,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "video", label: "سيناريو", icon: "🎬" },
 ];
 
-const IMAGE_TABS: Tab[] = ["post", "story", "donation", "video"];
+const IMAGE_TABS: Tab[] = ["post", "story", "donation"];
 
 const EMPTY: GeneratedContent = {
   post: { text: "" },
@@ -30,7 +30,12 @@ const PROMPTS: Record<Tab, string> = {
   story:
     "اكتب نص قصة (5-6 أسطر) لـ Instagram Stories عن أثر الجمعية. أضف وصف الخلفية بالإنجليزية فقط.",
   donation: "اكتب نداء تبرع مقنع (4-5 أسطر) مع CTA واضح. أضف وصف صورة مؤثرة بالإنجليزية فقط.",
-  video: "اكتب سيناريو فيديو (30-60 ثانية) بالمشاهد والتعليق الصوتي. ركز على إنجازات الجمعية.",
+  video: `اكتب نصاً تسويقياً احترافياً للفيديو (5-6 أسطر فقط) مُهيأ للتحريك الاحترافي:
+• السطر 1: hook عاطفي قوي يجذب الانتباه فوراً
+• السطر 2-3: إنجازات الجمعية بأرقام حقيقية ملموسة
+• السطر 4: رسالة إنسانية مؤثرة تلمس القلوب
+• السطر 5-6: CTA مباشر وقوي يحفز التبرع
+القواعد: كل سطر 6-10 كلمات فقط، أسلوب خطابي مؤثر، بدون عناوين أو ترقيم أو تنسيق، النص المباشر فقط.`,
 };
 
 const LS_KEY = "saaid_content_v2";
@@ -334,6 +339,86 @@ async function callAI(
   };
 }
 
+// Generate ambient background music using Web Audio API synthesis
+function generateAmbientMusic(audioCtx: AudioContext, duration: number): AudioBuffer {
+  const sr = audioCtx.sampleRate;
+  const buf = audioCtx.createBuffer(2, Math.ceil(duration * sr), sr);
+
+  // E minor pentatonic — calm, emotional, universal
+  const melody = [164.81, 196.00, 220.00, 246.94, 293.66, 329.63, 246.94, 220.00];
+  const BPM = 62;
+  const beat = 60 / BPM;
+
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    const stereoOffset = ch === 1 ? 0.003 : 0; // tiny stereo spread
+
+    for (let i = 0; i < d.length; i++) {
+      const t = i / sr + stereoOffset;
+      let s = 0;
+
+      // ── Bass drone (E2 + B2) ─────────────────────────────────
+      s += 0.045 * Math.sin(2 * Math.PI * 82.41 * t);
+      s += 0.025 * Math.sin(2 * Math.PI * 123.47 * t);
+      // subtle chorus
+      s += 0.012 * Math.sin(2 * Math.PI * 82.52 * t);
+
+      // ── Soft pad chords — change every 4 beats ───────────────
+      const chordBeat = Math.floor(t / (beat * 4)) % 2;
+      const padFreqs = chordBeat === 0
+        ? [164.81, 196.00, 246.94]   // Em chord
+        : [174.61, 220.00, 261.63];  // Am chord
+      padFreqs.forEach((f, pi) => {
+        const v = [0.038, 0.03, 0.025][pi];
+        const lfo = 0.96 + 0.04 * Math.sin(2 * Math.PI * 0.18 * t + pi);
+        s += v * Math.sin(2 * Math.PI * f * t) * lfo;
+      });
+
+      // ── Melodic plucks — one note every 2 beats ──────────────
+      const noteIdx  = Math.floor(t / (beat * 2)) % melody.length;
+      const notePos  = (t % (beat * 2)) / (beat * 2);
+      const pluckEnv = notePos < 0.015
+        ? notePos / 0.015
+        : Math.exp(-6 * (notePos - 0.015));
+      const freq = melody[noteIdx];
+      s += 0.055 * Math.sin(2 * Math.PI * freq * t) * pluckEnv;
+      s += 0.018 * Math.sin(2 * Math.PI * freq * 2 * t) * pluckEnv; // octave harmonic
+
+      // ── Light shimmer — high freq at low vol ─────────────────
+      const shimmer = Math.sin(2 * Math.PI * 659.25 * t) * 0.008
+        * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.07 * t));
+      s += shimmer;
+
+      // ── Gentle tremolo ────────────────────────────────────────
+      s *= 0.96 + 0.04 * Math.sin(2 * Math.PI * 3.8 * t);
+
+      // ── Fade in / fade out ────────────────────────────────────
+      const env = Math.min(1, t / 2.0) * Math.min(1, (duration - t) / 2.0);
+      d[i] = Math.max(-1, Math.min(1, s * env * 0.72));
+    }
+  }
+  return buf;
+}
+
+// Generate Arabic TTS via OpenAI — returns ArrayBuffer (MP3)
+async function generateTTS(text: string, apiKey: string): Promise<ArrayBuffer> {
+  const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "tts-1",
+      voice: "alloy",   // works well with Arabic
+      input: text,
+      speed: 0.95,
+    }),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? `TTS error ${res.status}`);
+  }
+  return res.arrayBuffer();
+}
+
 async function extractBrandFromFileId(fileId: string, apiKey: string): Promise<string> {
   try {
     const headers = {
@@ -573,6 +658,24 @@ function getDisplayableImage(item: GeneratedContentItem): string | undefined {
   return undefined;
 }
 
+function textToSlides(text: string): { line: string; icon: string }[] {
+  const sentences = text
+    .replace(/([.؟!\n])\s*/g, "$1\n")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 4);
+  return sentences.map((line) => {
+    let icon = "✨";
+    if (/\d/.test(line)) icon = "📊";
+    else if (/تبرع|تبرع|هب|أعط|دعم/.test(line)) icon = "💚";
+    else if (/صح|طب|علاج|دواء|مجانية/.test(line)) icon = "🏥";
+    else if (/أسرة|عائل|أطفال/.test(line)) icon = "❤️";
+    else if (/ربيع|فصل|زهر|تتفتح/.test(line)) icon = "🌸";
+    else if (/ريال|مال/.test(line)) icon = "💰";
+    return { line, icon };
+  });
+}
+
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, font: string): string[] {
   ctx.font = font;
   const lines: string[] = [];
@@ -622,6 +725,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
   const [openaiFileId, setOpenaiFileId] = useState<string | null>(null);
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0); // 0-100
+  const [audioDurationSec, setAudioDurationSec] = useState(0);
 
   // Track last loaded user id
   const lastLoadedUserIdRef = useRef<string | null>(null);
@@ -652,6 +756,8 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
   }, []);
 
   // ── Restore from localStorage ──────────────────────────────
+  useEffect(() => { setAudioDurationSec(0); }, [content.video.audioUrl]);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -886,18 +992,21 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
       setContent(next);
       advanceStep(1, "تم التوليد");
 
-      // Step 2: DB Update
+      // Step 2: DB Update (8s timeout — never blocks completion)
       if (currentId && currentId > 0) {
         try {
-          await contentGenerationsDb.update(currentId, next);
+          await Promise.race([
+            contentGenerationsDb.update(currentId, next),
+            new Promise<void>((_, rej) => setTimeout(() => rej(new Error("timeout")), 8000)),
+          ]);
           setHistory((prev) => prev.map((h) => (h.id === currentId ? { ...h, content: next } : h)));
           persist(next, prompt, currentId);
           advanceStep(2, "تم الحفظ");
         } catch (dbErr) {
-          console.warn("DB Update failed/timeout, continuing locally", dbErr);
+          console.error("[generate] DB update failed:", dbErr instanceof Error ? dbErr.message : dbErr);
           setHistory((prev) => prev.map((h) => (h.id === currentId ? { ...h, content: next } : h)));
           persist(next, prompt, currentId);
-          markStep(2, "warn", "فشل الحفظ - محفوظ محلياً");
+          markStep(2, "warn", `فشل الحفظ - ${dbErr instanceof Error ? dbErr.message : "خطأ"}`);
         }
       } else {
         persist(next, prompt, null);
@@ -907,6 +1016,16 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
       // Step 3: complete
       markStep(3, "ok");
       toast.success(which === "all" ? "تم توليد المحتوى الكامل!" : `تم توليد ${tabLabel}!`);
+
+      // Auto-generate TTS in background for video tab
+      const videoNeedsAudio =
+        (which === "video" || which === "all") &&
+        next.video?.text &&
+        !next.video?.audioUrl &&
+        currentId && currentId > 0;
+      if (videoNeedsAudio) {
+        generateTTSAndSave(next.video.text, currentId as number, next).catch(console.error);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "خطأ غير معروف";
       setSteps((prev) =>
@@ -1021,6 +1140,54 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
     }
   }
 
+  // ── TTS: generate audio + upload to Supabase + save to DB ───
+  async function generateTTSAndSave(
+    text: string,
+    recordId: number,
+    currentContent: GeneratedContent,
+  ) {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string;
+    console.log("[TTS] starting, apiKey present:", !!apiKey, "text length:", text.length, "recordId:", recordId);
+    if (!apiKey) { console.error("[TTS] no API key"); return; }
+    try {
+      toast.info("جاري توليد الصوت...", { duration: 3000 });
+      console.log("[TTS] calling OpenAI TTS...");
+      const buffer = await generateTTS(text, apiKey);
+      console.log("[TTS] got buffer size:", buffer.byteLength);
+      const blob = new Blob([buffer], { type: "audio/mpeg" });
+      const safeAssoc = (assocName ?? "assoc").replace(/\s+/g, "_").slice(0, 20);
+      const fileName = `audio/${safeAssoc}_${recordId}_${Date.now()}.mp3`;
+      const { error: upErr } = await supabase.storage
+        .from("images")
+        .upload(fileName, blob, { contentType: "audio/mpeg", upsert: true });
+      if (upErr) { console.error("TTS upload failed:", upErr.message); return; }
+      const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName);
+      const audioUrl = urlData?.publicUrl ?? "";
+      if (!audioUrl) return;
+      const next: GeneratedContent = {
+        ...currentContent,
+        video: { ...currentContent.video, audioUrl },
+      };
+      console.log("[TTS] saving to DB, recordId:", recordId);
+      try {
+        await Promise.race([
+          contentGenerationsDb.update(recordId, next),
+          new Promise<void>((_, rej) => setTimeout(() => rej(new Error("timeout")), 8000)),
+        ]);
+        console.log("[TTS] DB save ok");
+      } catch (dbErr) {
+        console.error("[TTS] DB save failed:", dbErr);
+      }
+      setContent(next);
+      setHistory((prev) => prev.map((h) => (h.id === recordId ? { ...h, content: next } : h)));
+      persist(next, prompt, recordId);
+      toast.success("تم توليد الصوت وحفظه! 🔊");
+    } catch (e) {
+      console.error("[TTS] failed:", e instanceof Error ? e.message : e);
+      toast.error("فشل توليد الصوت — تحقق من الـ console");
+    }
+  }
+
   // ── Download image ────────────────────────────────────────
   async function downloadImage(url: string, name = "generated-image.png") {
     try {
@@ -1059,7 +1226,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
     ]);
 
     try {
-      const W = 1080, H = 1080, FPS = 30, TOTAL = 600; // 20 seconds
+      const W = 1080, H = 1080, FPS = 30;
       const canvas = document.createElement("canvas");
       canvas.width = W;
       canvas.height = H;
@@ -1072,9 +1239,9 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
         try {
           bgImg = new Image();
           bgImg.crossOrigin = "anonymous";
-          await new Promise<void>((res, rej) => {
+          await new Promise<void>((res) => {
             bgImg!.onload = () => res();
-            bgImg!.onerror = () => { bgImg = null; res(); }; // ignore failure
+            bgImg!.onerror = () => { bgImg = null; res(); };
             bgImg!.src = bgUrl;
           });
         } catch { bgImg = null; }
@@ -1084,11 +1251,63 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
       const font = new FontFace("Tajawal", "url(https://fonts.gstatic.com/s/tajawal/v9/Iura6YBj_oCad4k1l7A.woff2)");
       try { await font.load(); document.fonts.add(font); } catch { /* fallback */ }
 
+      // ── Load + setup audio (TTS + ambient music) ─────────────
+      let audioCtx: AudioContext | null = null;
+      let audioDuration = 0;
+      let audioSource: AudioBufferSourceNode | null = null;
+      let musicSource: AudioBufferSourceNode | null = null;
+      var combinedStream: MediaStream | undefined;
+      const audioUrl = content.video.audioUrl;
+
+      const slides0 = textToSlides(content.video.text);
+      const estimatedDuration = (slides0.length * 90 + 60) / FPS;
+
+      try {
+        audioCtx = new AudioContext();
+        const dest = audioCtx.createMediaStreamDestination();
+
+        // TTS
+        if (audioUrl) {
+          try {
+            const ab = await fetch(audioUrl).then((r) => r.arrayBuffer());
+            const tsBuf = await audioCtx.decodeAudioData(ab);
+            audioDuration = tsBuf.duration;
+            audioSource = audioCtx.createBufferSource();
+            audioSource.buffer = tsBuf;
+            const ttsGain = audioCtx.createGain();
+            ttsGain.gain.value = 1.0;
+            audioSource.connect(ttsGain);
+            ttsGain.connect(dest);
+            ttsGain.connect(audioCtx.destination);
+          } catch (e) {
+            console.warn("TTS load failed:", e);
+          }
+        }
+
+        // Ambient music
+        const musicDuration = audioDuration > 0 ? audioDuration + 2 : estimatedDuration + 2;
+        const musicBuf = generateAmbientMusic(audioCtx, musicDuration);
+        musicSource = audioCtx.createBufferSource();
+        musicSource.buffer = musicBuf;
+        const musicGain = audioCtx.createGain();
+        musicGain.gain.value = audioUrl ? 0.32 : 0.62;
+        musicSource.connect(musicGain);
+        musicGain.connect(dest);
+
+        const videoTrack = canvas.captureStream(FPS).getVideoTracks()[0];
+        const audioTrack = dest.stream.getAudioTracks()[0];
+        combinedStream = new MediaStream([videoTrack, audioTrack]);
+      } catch (e) {
+        console.warn("Audio setup failed, recording without audio:", e);
+        audioCtx = null;
+        musicSource = null;
+      }
+
       const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
         ? "video/webm;codecs=vp9"
         : "video/webm";
-      const stream = canvas.captureStream(FPS);
-      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+      const recordStream = combinedStream ?? canvas.captureStream(FPS);
+      const recorder = new MediaRecorder(recordStream, { mimeType, videoBitsPerSecond: 5_000_000 });
       const chunks: Blob[] = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
@@ -1096,110 +1315,132 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
         recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
       });
 
-      recorder.start(100); // collect every 100ms
+      recorder.start(100);
+      if (audioSource && audioCtx) audioSource.start(0);
+      if (musicSource && audioCtx) musicSource.start(0);
       advanceStep(0);
 
-      const videoText = content.video.text;
       const name = assocName ?? "الجمعية";
       const initial = name[0] || "ج";
-      const charsPerFrame = 4;
+      const slides = textToSlides(content.video.text);
+      const SLIDE_F = 90;
+      const OUTRO_F = 60;
+      const slidesTotal = slides.length * SLIDE_F;
+      const dynamicTotal = audioCtx && audioDuration > 0
+        ? Math.ceil(audioDuration * FPS) + 30
+        : slidesTotal + OUTRO_F;
+      const TOTAL = Math.max(dynamicTotal, 120);
+
+      function easeInOut(t: number) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+      function clamp01(v: number) { return Math.max(0, Math.min(1, v)); }
 
       await new Promise<void>((resolve) => {
         let frame = 0;
         function drawFrame() {
-          const t = frame / TOTAL;
-          const titleOp = Math.min(1, frame / 25);
-          const contentOp = frame < 60 ? 0 : Math.min(1, (frame - 60) / 30);
-          const exitOp = frame > TOTAL - 25 ? Math.max(0, (TOTAL - frame) / 25) : 1;
+          // ── Global alpha ──────────────────────────────────────
+          const exitOp = frame > TOTAL - 20 ? clamp01((TOTAL - frame) / 20) : 1;
+          const headerOp = clamp01(frame / 20);
 
-          // Background
+          // ── Which slide ───────────────────────────────────────
+          const rawSlideIdx = Math.floor(frame / SLIDE_F);
+          const slideIdx = Math.min(rawSlideIdx, slides.length - 1);
+          const slideFrame = frame - slideIdx * SLIDE_F;
+          const fadeIn  = clamp01(slideFrame / 18);
+          const fadeOut = slideFrame > 72 ? clamp01((90 - slideFrame) / 18) : 1;
+          const slideOp = Math.min(fadeIn, fadeOut);
+          const slideY  = (1 - easeInOut(clamp01(slideFrame / 18))) * 28;
+          const slide   = slides[slideIdx] ?? { line: content.video.text, icon: "✨" };
+
+          // ── Background ────────────────────────────────────────
+          ctx.globalAlpha = exitOp;
           const grad = ctx.createLinearGradient(0, 0, W, H);
           grad.addColorStop(0, "#0f3d26");
           grad.addColorStop(0.55, "#1a5c3a");
           grad.addColorStop(1, "#0d3322");
-          ctx.globalAlpha = exitOp;
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, W, H);
-
-          // BG image overlay
           if (bgImg) {
-            ctx.globalAlpha = exitOp * 0.22;
+            ctx.globalAlpha = exitOp * 0.18;
             ctx.drawImage(bgImg, 0, 0, W, H);
-            ctx.globalAlpha = exitOp;
           }
 
-          // Gold top bar
-          ctx.globalAlpha = titleOp * exitOp;
-          const barGrad = ctx.createLinearGradient(0, 0, W, 0);
-          barGrad.addColorStop(0, "#c9a84c");
-          barGrad.addColorStop(0.5, "#e8c96e");
-          barGrad.addColorStop(1, "#c9a84c");
-          ctx.fillStyle = barGrad;
+          // ── Gold top bar ──────────────────────────────────────
+          ctx.globalAlpha = headerOp * exitOp;
+          const barG = ctx.createLinearGradient(0, 0, W, 0);
+          barG.addColorStop(0, "#c9a84c"); barG.addColorStop(0.5, "#e8c96e"); barG.addColorStop(1, "#c9a84c");
+          ctx.fillStyle = barG;
           ctx.fillRect(0, 0, W, 10);
 
-          // Association avatar
-          const AX = W - 80 - 64, AY = 80;
-          ctx.globalAlpha = titleOp * exitOp;
-          const avatarGrad = ctx.createLinearGradient(AX, AY, AX + 64, AY + 64);
-          avatarGrad.addColorStop(0, "#c9a84c");
-          avatarGrad.addColorStop(1, "#e8c96e");
-          ctx.fillStyle = avatarGrad;
-          ctx.beginPath();
-          ctx.roundRect(AX, AY, 64, 64, 16);
-          ctx.fill();
+          // ── Header: avatar + name ─────────────────────────────
+          ctx.globalAlpha = headerOp * exitOp;
+          // Avatar
+          const avG = ctx.createLinearGradient(60, 36, 124, 100);
+          avG.addColorStop(0, "#c9a84c"); avG.addColorStop(1, "#e8c96e");
+          ctx.fillStyle = avG;
+          ctx.beginPath(); ctx.roundRect(60, 36, 64, 64, 15); ctx.fill();
           ctx.fillStyle = "#1a5c3a";
-          ctx.font = `bold 32px Tajawal, Cairo, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(initial, AX + 32, AY + 32);
-
-          // Association name
+          ctx.font = "bold 30px Tajawal, Cairo, sans-serif";
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(initial, 92, 68);
+          // Name
           ctx.fillStyle = "white";
-          ctx.font = `bold 38px Tajawal, Cairo, sans-serif`;
-          ctx.textAlign = "right";
-          ctx.textBaseline = "alphabetic";
-          ctx.fillText(name, W - 80, AY + 44);
-
-          // Platform label
-          ctx.fillStyle = "rgba(201,168,76,0.7)";
-          ctx.font = `500 22px Tajawal, Cairo, sans-serif`;
-          ctx.fillText("ساعِد · SAAID PLATFORM", W - 80, AY + 72);
-
-          // Gold separator
+          ctx.font = "bold 36px Tajawal, Cairo, sans-serif";
+          ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+          ctx.fillText(name, W - 60, 82);
+          ctx.fillStyle = "rgba(201,168,76,0.65)";
+          ctx.font = "500 20px Tajawal, Cairo, sans-serif";
+          ctx.fillText("ساعِد · SAAID PLATFORM", W - 60, 108);
+          // Divider
           ctx.fillStyle = "#c9a84c";
-          ctx.fillRect(W - 80 - 70, 180, 70, 4);
+          ctx.fillRect(W - 60 - 70, 148, 70, 3);
 
-          // Text content
-          ctx.globalAlpha = contentOp * exitOp;
-          const visibleChars = Math.max(0, (frame - 90) * charsPerFrame);
-          const visibleText = videoText.slice(0, visibleChars);
-          const lines = wrapText(ctx, visibleText, W - 140, "500 34px Tajawal, Cairo, sans-serif");
+          // ── Slide content ─────────────────────────────────────
+          ctx.globalAlpha = slideOp * exitOp;
+          const cy = H / 2 + slideY;
+
+          // Icon circle
+          ctx.fillStyle = "rgba(201,168,76,0.15)";
+          ctx.beginPath(); ctx.arc(W / 2, cy - 120, 80, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "rgba(201,168,76,0.35)";
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(W / 2, cy - 120, 80, 0, Math.PI * 2); ctx.stroke();
+          ctx.font = "68px serif";
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "white";
+          ctx.fillText(slide.icon, W / 2, cy - 120);
+
+          // Sentence text (wrapped)
+          ctx.font = "700 44px Tajawal, Cairo, sans-serif";
           ctx.fillStyle = "rgba(255,255,255,0.93)";
-          ctx.font = "500 34px Tajawal, Cairo, sans-serif";
-          ctx.textAlign = "right";
-          ctx.textBaseline = "top";
-          lines.forEach((line, i) => {
-            ctx.fillText(line, W - 70, 210 + i * 70);
+          ctx.textAlign = "center"; ctx.textBaseline = "top";
+          const wrapped = wrapText(ctx, slide.line, W - 160, "700 44px Tajawal, Cairo, sans-serif");
+          const lineH = 64;
+          const textTop = cy - 30;
+          wrapped.forEach((ln, i) => ctx.fillText(ln, W / 2, textTop + i * lineH));
+
+          // ── Slide dots ────────────────────────────────────────
+          ctx.globalAlpha = headerOp * exitOp;
+          const dotY = H - 55;
+          const dotTotal = slides.length * 12 + (slides.length - 1) * 10;
+          let dotX = (W - dotTotal) / 2;
+          slides.forEach((_, i) => {
+            const active = i === slideIdx;
+            ctx.fillStyle = active ? "#c9a84c" : "rgba(255,255,255,0.3)";
+            ctx.beginPath();
+            ctx.roundRect(dotX, dotY, active ? 24 : 10, 10, 5);
+            ctx.fill();
+            dotX += (active ? 24 : 10) + 10;
           });
 
-          // Bottom bar
-          ctx.globalAlpha = titleOp * exitOp;
-          ctx.strokeStyle = "rgba(201,168,76,0.25)";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(70, H - 80);
-          ctx.lineTo(W - 70, H - 80);
-          ctx.stroke();
-          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          // Counter
+          ctx.fillStyle = "rgba(255,255,255,0.3)";
           ctx.font = "500 22px Tajawal, Cairo, sans-serif";
-          ctx.textAlign = "right";
-          ctx.textBaseline = "middle";
-          ctx.fillText("محتوى تسويقي احترافي", W - 80, H - 50);
+          ctx.textAlign = "right"; ctx.textBaseline = "middle";
+          ctx.fillText(`${slideIdx + 1} / ${slides.length}`, W - 60, H - 30);
 
           ctx.globalAlpha = 1;
           frame++;
-          setVideoProgress(Math.round((frame / TOTAL) * 70)); // 70% = rendering done
-
+          setVideoProgress(Math.round((frame / TOTAL) * 70));
           if (frame < TOTAL) {
             setTimeout(drawFrame, 1000 / FPS);
           } else {
@@ -2245,27 +2486,64 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                             معاينة الفيديو (Remotion)
                           </div>
                           <div style={{ borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.1)" }}>
-                            <Player
-                              component={ContentVideo}
-                              inputProps={{
-                                text: tabContent.text,
-                                assocName: assocName ?? "الجمعية",
-                                assocInitial: assocName ? assocName[0] : "ج",
-                                imageUrl: images["video"] || images["post"] || images["story"] || images["donation"],
-                              }}
-                              durationInFrames={600}
-                              compositionWidth={1080}
-                              compositionHeight={1080}
-                              fps={30}
-                              style={{ width: "100%", aspectRatio: "1" }}
-                              controls
-                            />
+                            {(() => {
+                              const slides = textToSlides(tabContent.text);
+                              const slidesDur = Math.max(slides.length * 90 + 60, 120);
+                              const audioDur = audioDurationSec > 0 ? Math.ceil(audioDurationSec * 30) + 30 : 0;
+                              const dur = Math.max(slidesDur, audioDur);
+                              return (
+                                <div dir="ltr" style={{ borderRadius: 14, overflow: "hidden" }}>
+                                  <Player
+                                    component={ContentVideo}
+                                    inputProps={{
+                                      text: tabContent.text,
+                                      assocName: assocName ?? "الجمعية",
+                                      assocInitial: assocName ? assocName[0] : "ج",
+                                      imageUrl: images["video"] || images["post"] || images["story"] || images["donation"],
+                                      audioUrl: content.video.audioUrl,
+                                    }}
+                                    durationInFrames={dur}
+                                    compositionWidth={1080}
+                                    compositionHeight={1080}
+                                    fps={30}
+                                    numberOfSharedAudioTags={5}
+                                    style={{ width: "100%", aspectRatio: "1" }}
+                                    controls
+                                  />
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Audio status */}
+                          <div style={{
+                            marginTop: 10, padding: "10px 14px", borderRadius: 10,
+                            background: content.video.audioUrl ? "#f0fdf4" : "#fafafa",
+                            border: `1.5px solid ${content.video.audioUrl ? "#bbf7d0" : "#e2e8f0"}`,
+                            fontSize: ".76rem",
+                            display: "flex", alignItems: "center", gap: 8,
+                            color: content.video.audioUrl ? "#15803d" : "#94a3b8",
+                          }}>
+                            <span>{content.video.audioUrl ? "🔊" : "⏳"}</span>
+                            {content.video.audioUrl ? (
+                              <>
+                                <span>صوت عربي جاهز · </span>
+                                <audio
+                                  controls
+                                  src={content.video.audioUrl}
+                                  style={{ height: 24, flex: 1 }}
+                                  onLoadedMetadata={(e) => setAudioDurationSec((e.target as HTMLAudioElement).duration)}
+                                />
+                              </>
+                            ) : (
+                              <span>جاري توليد الصوت تلقائياً بعد توليد النص...</span>
+                            )}
                           </div>
 
                           {/* Saved video link */}
                           {content.video.videoUrl && (
                             <div style={{
-                              marginTop: 10, padding: "10px 14px", borderRadius: 10,
+                              marginTop: 6, padding: "10px 14px", borderRadius: 10,
                               background: "#f0fdf4", border: "1.5px solid #bbf7d0",
                               fontSize: ".76rem", color: "#15803d",
                               display: "flex", alignItems: "center", gap: 8,
