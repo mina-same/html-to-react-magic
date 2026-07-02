@@ -418,6 +418,15 @@ export type GeneratedContentItem = {
   imageBase64?: string;
   videoUrl?: string;
   audioUrl?: string;
+  slideFrames?: number[]; // per-slide duration in frames (video tab only)
+  showLogo?: boolean;     // whether to show header watermark (video tab only)
+  logoOverlayUrl?: string;  // user-uploaded logo URL (video tab only)
+  logoAnimation?: string;   // LogoAnimation type
+  logoPosition?: string;    // LogoPosition type
+  // BrandedVideo fields
+  brandColors?: string[];   // [primary, secondary, accent] hex
+  transitionStyle?: string; // "slide" | "wipe" | "fade"
+  showOutro?: boolean;
 };
 export type GeneratedContent = Record<
   "post" | "story" | "donation" | "video",

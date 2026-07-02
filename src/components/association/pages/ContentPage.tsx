@@ -1,19 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Player } from "@remotion/player";
-import { assocProfileDb, contentGenerationsDb } from "@/lib/db";
+import { assocProfileDb, associationsDb, contentGenerationsDb } from "@/lib/db";
+import VideoEditorModal from "@/components/association/modals/VideoEditorModal";
 import type { GeneratedContent, ContentGeneration, GeneratedContentItem } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { ContentVideo } from "@/remotion/ContentVideo";
+import { BrandedVideo } from "@/remotion/BrandedVideo";
+import { computeBrandedVideoDuration, parseBrandColors, moodToTransition, parseBrandMood } from "@/remotion/brandUtils";
+import type { TransitionStyle } from "@/remotion/brandUtils";
+import LogoTab from "@/components/association/pages/LogoTab";
+import type { LogoAnimation, LogoPosition } from "@/remotion/logoAnimations";
 // ── Types ────────────────────────────────────────────────────
-type Tab = "post" | "story" | "donation" | "video";
+type Tab = "post" | "story" | "donation" | "video" | "logo";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "post", label: "منشور", icon: "📱" },
-  { key: "story", label: "قصة", icon: "✨" },
+  { key: "post",     label: "منشور",    icon: "📱" },
+  { key: "story",    label: "قصة",      icon: "✨" },
   { key: "donation", label: "نداء تبرع", icon: "💚" },
-  { key: "video", label: "سيناريو", icon: "🎬" },
+  { key: "video",    label: "سيناريو",  icon: "🎬" },
+  { key: "logo",     label: "شعار",     icon: "🏷" },
 ];
 
 const IMAGE_TABS: Tab[] = ["post", "story", "donation"];
@@ -30,6 +36,7 @@ const PROMPTS: Record<Tab, string> = {
   story:
     "اكتب نص قصة (5-6 أسطر) لـ Instagram Stories عن أثر الجمعية. أضف وصف الخلفية بالإنجليزية فقط.",
   donation: "اكتب نداء تبرع مقنع (4-5 أسطر) مع CTA واضح. أضف وصف صورة مؤثرة بالإنجليزية فقط.",
+  logo: "", // logo tab has no AI generation
   video: `اكتب نصاً تسويقياً احترافياً للفيديو (5-6 أسطر فقط) مُهيأ للتحريك الاحترافي:
 • السطر 1: hook عاطفي قوي يجذب الانتباه فوراً
 • السطر 2-3: إنجازات الجمعية بأرقام حقيقية ملموسة
@@ -726,6 +733,15 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0); // 0-100
   const [audioDurationSec, setAudioDurationSec] = useState(0);
+  const [videoEditorOpen, setVideoEditorOpen] = useState(false);
+  // logo overlay state (persisted in localStorage via LogoTab)
+  const [logoOverlayUrl, setLogoOverlayUrl]     = useState<string>(() => localStorage.getItem("saaid_logo_overlay_url") ?? "");
+  const [logoAnimation,  setLogoAnimation]       = useState<LogoAnimation>(() => (localStorage.getItem("saaid_logo_animation") as LogoAnimation | null) ?? "bounce");
+  const [logoPosition,   setLogoPosition]        = useState<LogoPosition>(() => (localStorage.getItem("saaid_logo_position") as LogoPosition | null) ?? "topRight");
+  // association contact data for BrandedVideo
+  const [assocRegion, setAssocRegion] = useState<string>("");
+  const [assocPhone,  setAssocPhone]  = useState<string>("");
+  const [assocEmail,  setAssocEmail]  = useState<string>("");
 
   // Track last loaded user id
   const lastLoadedUserIdRef = useRef<string | null>(null);
@@ -827,6 +843,12 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
         if (profileData?.ai_brand) setBrandContext(profileData.ai_brand);
         if (profileData?.openai_file_id) setOpenaiFileId(profileData.openai_file_id);
 
+        // Load association contact fields (phone, email, region)
+        const assocData = await associationsDb.get(user.id);
+        if (assocData?.phone)  setAssocPhone(assocData.phone);
+        if (assocData?.email)  setAssocEmail(assocData.email);
+        if (assocData?.region) setAssocRegion(assocData.region);
+
         // Load content history
         console.log("[ContentPage] Loading content history for user.id:", user.id);
         const hist = await contentGenerationsDb.list(user.id);
@@ -893,6 +915,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
 
   // ── Generate ──────────────────────────────────────────────
   async function generate(which: Tab | "all", regen = false) {
+    if (which === "logo") return; // logo tab has no AI generation
     if (!context) {
       toast.error("أكمل ملف الجمعية أولاً");
       return;
@@ -1186,6 +1209,36 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
       console.error("[TTS] failed:", e instanceof Error ? e.message : e);
       toast.error("فشل توليد الصوت — تحقق من الـ console");
     }
+  }
+
+  // ── Save edited video text from VideoEditorModal ──────────
+  async function handleVideoEditorSave(
+    newText: string,
+    slideFrames: number[],
+    showLogo: boolean,
+  ) {
+    const textChanged = newText !== content.video.text;
+    const next: GeneratedContent = {
+      ...content,
+      video: {
+        ...content.video,
+        text: newText,
+        slideFrames,
+        showLogo,
+        // clear audio only if text changed (needs re-TTS)
+        audioUrl: textChanged ? undefined : content.video.audioUrl,
+      },
+    };
+    setContent(next);
+    persist(next, prompt, activeId);
+    if (activeId && activeId > 0) {
+      contentGenerationsDb.update(activeId, next).catch(console.error);
+      setHistory((prev) => prev.map((h) => (h.id === activeId ? { ...h, content: next } : h)));
+      if (textChanged) {
+        generateTTSAndSave(newText, activeId, next).catch(console.error);
+      }
+    }
+    toast.success("تم حفظ التعديلات!");
   }
 
   // ── Download image ────────────────────────────────────────
@@ -1521,8 +1574,10 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
 
   // ── Derived ──────────────────────────────────────────────
   const anyTabHasContent = Object.values(content).some((v) => !!v.text);
-  const showTabsPanel = anyTabHasContent || loading !== null;
-  const tabContent = content[tab];
+  const showTabsPanel = anyTabHasContent || loading !== null || tab === "logo";
+  const isLogoTab = tab === "logo";
+  const contentTab = isLogoTab ? "post" : tab; // safe fallback for content[tab]
+  const tabContent = content[contentTab as keyof typeof content];
   const tabLoading = loading === tab || loading === "all";
   const anyLoading = loading !== null;
   const isImgTab = IMAGE_TABS.includes(tab);
@@ -2120,9 +2175,22 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                     })}
                   </div>
 
-                  {tabLoading && !tabContent.text && <Skeleton />}
+                  {/* ── Logo tab: full-width standalone UI ── */}
+                  {isLogoTab && (
+                    <LogoTab
+                      assocId={String(activeId ?? "guest")}
+                      assocName={assocName ?? "الجمعية"}
+                      onLogoChange={(url, anim, pos) => {
+                        setLogoOverlayUrl(url);
+                        setLogoAnimation(anim);
+                        setLogoPosition(pos);
+                      }}
+                    />
+                  )}
 
-                  {tabLoading && !!tabContent.text && (
+                  {!isLogoTab && tabLoading && !tabContent.text && <Skeleton />}
+
+                  {!isLogoTab && tabLoading && !!tabContent.text && (
                     <div
                       style={{
                         padding: "9px 14px",
@@ -2142,7 +2210,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                     </div>
                   )}
 
-                  {!tabLoading && !tabContent.text && (
+                  {!isLogoTab && !tabLoading && !tabContent.text && (
                     <div
                       style={{
                         padding: "32px 0",
@@ -2200,7 +2268,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                     </div>
                   )}
 
-                  {!!tabContent.text && (
+                  {!isLogoTab && !!tabContent.text && (
                     <div>
                       <div style={{ marginBottom: 14 }}>
                         <div
@@ -2475,32 +2543,75 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                           {/* Remotion Player preview */}
                           <div
                             style={{
-                              fontSize: ".7rem",
-                              fontWeight: 700,
-                              color: "#475569",
-                              textTransform: "uppercase",
-                              letterSpacing: ".05em",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
                               marginBottom: 10,
                             }}
                           >
-                            معاينة الفيديو (Remotion)
+                            <div
+                              style={{
+                                fontSize: ".7rem",
+                                fontWeight: 700,
+                                color: "#475569",
+                                textTransform: "uppercase",
+                                letterSpacing: ".05em",
+                              }}
+                            >
+                              معاينة الفيديو (Remotion)
+                            </div>
+                            <button
+                              onClick={() => setVideoEditorOpen(true)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "6px 14px",
+                                borderRadius: 9,
+                                border: "1.5px solid #c9a84c",
+                                background: "linear-gradient(135deg,#78350f,#92400e)",
+                                color: "#fde68a",
+                                fontSize: ".78rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                fontFamily: "'Tajawal',Cairo,sans-serif",
+                                boxShadow: "0 2px 10px rgba(201,168,76,.2)",
+                                transition: "all .15s",
+                              }}
+                            >
+                              <span>✏️</span> تعديل الفيديو
+                            </button>
                           </div>
                           <div style={{ borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.1)" }}>
                             {(() => {
-                              const slides = textToSlides(tabContent.text);
-                              const slidesDur = Math.max(slides.length * 90 + 60, 120);
-                              const audioDur = audioDurationSec > 0 ? Math.ceil(audioDurationSec * 30) + 30 : 0;
-                              const dur = Math.max(slidesDur, audioDur);
+                              const sf = content.video.slideFrames
+                                ?? Array(textToSlides(tabContent.text).length).fill(90);
+                              const dur = computeBrandedVideoDuration(sf);
+                              const mood = parseBrandMood(brandContext);
+                              const resolvedTransition: TransitionStyle =
+                                (content.video.transitionStyle as TransitionStyle | undefined)
+                                ?? moodToTransition(mood);
+                              const brandCols = parseBrandColors(brandContext);
                               return (
                                 <div dir="ltr" style={{ borderRadius: 14, overflow: "hidden" }}>
                                   <Player
-                                    component={ContentVideo}
+                                    component={BrandedVideo}
                                     inputProps={{
                                       text: tabContent.text,
                                       assocName: assocName ?? "الجمعية",
                                       assocInitial: assocName ? assocName[0] : "ج",
+                                      assocRegion,
+                                      assocPhone,
+                                      assocEmail,
                                       imageUrl: images["video"] || images["post"] || images["story"] || images["donation"],
                                       audioUrl: content.video.audioUrl,
+                                      logoUrl: logoOverlayUrl || undefined,
+                                      aiBrand: brandContext || undefined,
+                                      brandColors: [brandCols.primary, brandCols.secondary, brandCols.accent],
+                                      transitionStyle: resolvedTransition,
+                                      slideFrames: sf,
+                                      showLogo: content.video.showLogo ?? true,
+                                      showOutro: content.video.showOutro ?? true,
                                     }}
                                     durationInFrames={dur}
                                     compositionWidth={1080}
@@ -2632,6 +2743,28 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Video Editor Modal ── */}
+      {videoEditorOpen && content.video.text && (
+        <VideoEditorModal
+          text={content.video.text}
+          assocName={assocName ?? "الجمعية"}
+          assocInitial={assocName ? assocName[0] : "ج"}
+          assocRegion={assocRegion}
+          assocPhone={assocPhone}
+          assocEmail={assocEmail}
+          imageUrl={images["video"] || images["post"] || images["story"] || images["donation"]}
+          audioUrl={content.video.audioUrl}
+          logoUrl={logoOverlayUrl || undefined}
+          aiBrand={brandContext || undefined}
+          initialSlideFrames={content.video.slideFrames}
+          initialShowLogo={content.video.showLogo ?? true}
+          initialTransitionStyle={(content.video.transitionStyle as TransitionStyle | undefined) ?? "slide"}
+          initialShowOutro={content.video.showOutro ?? true}
+          onSave={handleVideoEditorSave}
+          onClose={() => setVideoEditorOpen(false)}
+        />
+      )}
     </>
   );
 }
