@@ -17,6 +17,7 @@ You are creating a {{DURATION}}-second {{STYLE}} motion graphics video for {{PRO
 This must feel like {{INSPIRATION_1}} meets {{INSPIRATION_2}} meets {{INSPIRATION_3}} - {{EMOTIONAL_TONE}}.
 
 CRITICAL REQUIREMENTS:
+
 1. Duration: {{FRAME_COUNT}} frames at 30fps ({{DURATION}} seconds exactly)
 2. Use spring() animations with damping: {{DAMPING_RANGE}} ({{PHYSICS_FEEL}})
 3. {{SIMULTANEOUS_ELEMENTS_INSTRUCTION}}
@@ -25,6 +26,7 @@ CRITICAL REQUIREMENTS:
 6. All interpolate() must have extrapolateRight: 'clamp'
 
 BRAND IDENTITY:
+
 - {{PROJECT_TYPE}}: {{PROJECT_NAME}}
 - Tagline/Purpose: {{PROJECT_TAGLINE}}
 - Primary Audience: {{TARGET_AUDIENCE}}
@@ -61,12 +63,14 @@ Hold: frames {{SCENE_1_HOLD_START}}-{{SCENE_1_HOLD_END}}
 ==== TECHNICAL SPECIFICATIONS ====
 
 EASING FUNCTIONS TO USE:
+
 - Entry animations: {{ENTRY_EASING}}
 - Smooth transitions: {{TRANSITION_EASING}}
 - Bounces: {{BOUNCE_EASING}}
 - Exits: {{EXIT_EASING}}
 
 COLOR PALETTE (Use exactly):
+
 - {{COLOR_NAME_1}}: {{COLOR_HEX_1}}
 - {{COLOR_NAME_2}}: {{COLOR_HEX_2}}
 - {{COLOR_NAME_3}}: {{COLOR_HEX_3}}
@@ -74,6 +78,7 @@ COLOR PALETTE (Use exactly):
 - {{COLOR_NAME_5}}: {{COLOR_HEX_5}}
 
 TYPOGRAPHY:
+
 - Hero: {{FONT_HERO_SIZE}}px, {{FONT_HERO_WEIGHT}}, tracking: {{FONT_HERO_TRACKING}}
 - Large: {{FONT_LARGE_SIZE}}px, {{FONT_LARGE_WEIGHT}}, tracking: {{FONT_LARGE_TRACKING}}
 - Medium: {{FONT_MEDIUM_SIZE}}px, {{FONT_MEDIUM_WEIGHT}}, tracking: {{FONT_MEDIUM_TRACKING}}
@@ -90,6 +95,7 @@ VISUAL EFFECTS:
 {{EFFECT_3_NAME}}: {{EFFECT_3_DESCRIPTION}}
 
 DELIVERABLE CODE MUST INCLUDE:
+
 1. {{DELIVERABLE_1}}
 2. {{DELIVERABLE_2}}
 3. {{DELIVERABLE_3}}
@@ -104,23 +110,26 @@ DELIVERABLE CODE MUST INCLUDE:
 RENDER COMMAND:
 npx remotion render output.mp4 --codec h264 --crf 18
 
-
 🎬 VARIABLE DEFINITIONS & EXAMPLES
 TIMING VARIABLES
 text
 {{DURATION}}
+
 - Examples: 15, 20, 24, 30 seconds
 - Use: Total video length
 
 {{FRAME_COUNT}}
-- Formula: {{DURATION}} * 30
+
+- Formula: {{DURATION}} \* 30
 - Examples: 450 (15s), 600 (20s), 720 (24s)
 
 {{SCENE_CHANGE_TIME}}
+
 - Examples: 3 seconds, 4-5 seconds, 5-7 seconds
 - Use: How fast scenes transition (impacts energy)
 
 {{DAMPING_RANGE}}
+
 - Conservative: 150-200 (smooth, professional)
 - Moderate: 120-150 (balanced)
 - Aggressive: 80-120 (snappy, energetic)
@@ -129,10 +138,12 @@ text
 STYLE VARIABLES
 text
 {{STYLE}}
+
 - Examples: high-impact motion graphics, documentary, minimalist, kinetic, explosive
 
 {{INSPIRATION_1}}, {{INSPIRATION_2}}, {{INSPIRATION_3}}
-- Examples: 
+
+- Examples:
   - Apple product launches
   - Netflix title sequences
   - Spotify Wrapped
@@ -143,28 +154,34 @@ text
   - Nike commercials
 
 {{EMOTIONAL_TONE}}
+
 - Examples: professional yet accessible, energetic, sophisticated, aspirational, bold
 
 {{PACING_SPEED}}
+
 - Examples: fast-paced, moderate, slow and deliberate, syncopated
 
 {{COLOR_MOOD}}
+
 - Examples: warm and inviting, cold and professional, vibrant and modern, dark and luxe
 
 ANIMATION VARIABLES
 text
 {{SIMULTANEOUS_ELEMENTS_INSTRUCTION}}
+
 - Conservative: "One element at a time - NO simultaneous animations"
 - Moderate: "Multiple elements CAN animate sequentially (not simultaneously)"
 - Aggressive: "Multiple elements CAN animate simultaneously (this is intentional for impact)"
 
 {{ENTRY_EASING}}
+
 - spring({damping: 120}) - for bouncy entries
 - Easing.out(Easing.quad) - for smooth deceleration
 - Easing.back(1.5) - for anticipatory motion
 - Easing.out(Easing.elastic) - for spring-like bounce
 
 {{BOUNCE_EASING}}
+
 - spring({damping: 100, mass: 0.5}) - snappy
 - spring({damping: 150, mass: 0.8}) - moderate
 - spring({damping: 200, mass: 1.0}) - smooth
@@ -172,10 +189,11 @@ text
 VISUAL VARIABLES
 text
 {{COLOR_PRIMARY_HEX}}, {{COLOR_SECONDARY_HEX}}, etc.
+
 - Format: #RRGGBB (hex color codes)
 - Examples:
-  - #136152 
-  - #44803F 
+  - #136152
+  - #44803F
   - #B4CF66 (its name)
   - #FFEC5C
   - #FF5A33
@@ -184,24 +202,27 @@ text
   - Red (if needed)
 
 {{TEXTURE_STYLE}}
+
 - Examples: glossy gradient, matte, metallic, glass-morphism, subtle noise
 
 {{COLOR_MOOD}}
+
 - Examples: luxurious and premium, energetic and vibrant, professional and corporate
 
 {{FONT_HERO_WEIGHT}}
-- Examples: bold, extra-bold, 900, 700
 
+- Examples: bold, extra-bold, 900, 700
 
 📝 FILLED EXAMPLE 1: SAAS PRODUCT LAUNCH
 text
-You are creating a 20-second high-impact motion graphics video for a productivity SaaS 
+You are creating a 20-second high-impact motion graphics video for a productivity SaaS
 called "TaskFlow" using Remotion.
 
-This must feel like Apple product launches meets Spotify Wrapped meets Motion App - 
+This must feel like Apple product launches meets Spotify Wrapped meets Motion App -
 energetic, modern, and aspirational.
 
 CRITICAL REQUIREMENTS:
+
 1. Duration: 600 frames at 30fps (20 seconds exactly)
 2. Use spring() animations with damping: 80-120 (snappy, energetic bounces)
 3. Multiple elements CAN animate simultaneously (this is intentional for impact)
@@ -210,6 +231,7 @@ CRITICAL REQUIREMENTS:
 6. All interpolate() must have extrapolateRight: 'clamp'
 
 BRAND IDENTITY:
+
 - Project Type: SaaS Application
 - Name: TaskFlow
 - Tagline: "Get Things Done. Effortlessly."
@@ -233,6 +255,7 @@ Checkmark icon with 20-particle burst system
 Animation Type: Scale explosion with rotation and particle burst
 
 Technical Details:
+
 - Icon scale: 0 → 1.5 → 1.0 with spring({damping: 100, mass: 0.5})
 - Rotation: 360° during entry
 - Particles: 20 circles burst radially, fade out
@@ -240,16 +263,15 @@ Technical Details:
 
 Animation Code Pattern:
 const iconScale = spring(frame - 10, fps, {damping: 100, mass: 0.5});
-const particles = Array from({length: 20}).map((_, i) => {
-  const angle = (i * Math.PI * 2) / 20;
-  const distance = interpolate(frame, [20, 60], [0, 300]);
-  return {x: 960 + cos(angle) * distance, y: 540 + sin(angle) * distance};
+const particles = Array from({length: 20}).map((\_, i) => {
+const angle = (i _ Math.PI _ 2) / 20;
+const distance = interpolate(frame, [20, 60], [0, 300]);
+return {x: 960 + cos(angle) _ distance, y: 540 + sin(angle) _ distance};
 });
 
 Hold: frames 60-90
 
 [... continue with remaining scenes ...]
-
 
 🎯 QUICK FILL-IN GUIDE
 Step 1: Define Core Metrics
@@ -317,7 +339,6 @@ text
 {{SIMULTANEOUS_ELEMENTS}} = Multiple simultaneous animations
 {{COLOR_SCHEME}} = Neon, vibrant, high-contrast
 
-
 🔧 COMMON VARIABLE COMBINATIONS
 Conservative/Professional
 text
@@ -351,7 +372,6 @@ Easing: Easing.out(Easing.ease)
 Pacing: 5-8 seconds per scene
 Color: Gold, black, minimal
 
-
 📊 VARIABLE QUICK-REFERENCE TABLE
 Variable
 Type
@@ -363,7 +383,7 @@ Integer
 10-60s
 FRAME_COUNT
 Formula
-DURATION * 30
+DURATION \* 30
 N/A
 DAMPING
 Integer
@@ -390,9 +410,9 @@ String
 fast, moderate, slow
 Qualitative
 
-
 🎬 WORKFLOW: FROM FRAMEWORK TO VIDEO
 text
+
 1. Identify project type (SaaS, education, product, motion graphics, 3D, other, etc.)
 2. Define duration (15s, 20s, 30s)
 3. Choose inspiration (Nike, Apple, Netflix, etc.)
@@ -404,24 +424,25 @@ text
 9. Render: npx remotion render output.mp4
 10. Share/upload to platforms
 
-
 🚀 META-PROMPTING BONUS
 If you want Claude to WRITE the filled template for you:
 text
 You are an expert Remotion prompt engineer. I'm creating a {{PROJECT_TYPE}} animation.
 
 PROJECT BRIEF:
+
 - Product: {{PRODUCT_NAME}}
 - Duration: {{DURATION}} seconds
 - Style: {{DESIRED_STYLE}}
 - Colors: {{COLOR_REFS}}
 - Message: {{KEY_MESSAGE}}
 
-Using the Universal Remotion Framework, generate a complete, filled-in prompt 
-that I can immediately paste into Claude Code to generate production-ready 
+Using the Universal Remotion Framework, generate a complete, filled-in prompt
+that I can immediately paste into Claude Code to generate production-ready
 Remotion animation code.
 
 The prompt should:
+
 1. Include all {{VARIABLES}} properly filled
 2. Have 4-5 detailed scenes with specific frame numbers
 3. Include technical implementation details
@@ -434,25 +455,27 @@ This lets Claude WRITE your prompt ABOUT your prompt. Meta-inception for maximum
 
 ✅ QUALITY CHECKLIST
 Before pasting into Claude:
- All {{VARIABLES}} filled with no placeholders
- Frame numbers add up to total duration
- Colors are valid hex codes
- Damping values are in range (50-250)
- Scenes are 3-7 seconds each
- Inspiration references are specific
- Animation patterns are clear
- Deliverables list is complete
- No vague instructions ("make it look good")
- Ready to paste into Claude Code
+All {{VARIABLES}} filled with no placeholders
+Frame numbers add up to total duration
+Colors are valid hex codes
+Damping values are in range (50-250)
+Scenes are 3-7 seconds each
+Inspiration references are specific
+Animation patterns are clear
+Deliverables list is complete
+No vague instructions ("make it look good")
+Ready to paste into Claude Code
 
 # Allow_editing:
-To allow editing, follow this docs (guide):
----
+
+## To allow editing, follow this docs (guide):
+
 image: /generated/articles-docs-schemas.png
 id: schemas
 title: Defining a schema for your props
 sidebar_label: Defining a schema
 crumb: 'How To'
+
 ---
 
 As an alternative to [using TypeScript types](/docs/parameterized-rendering) to define the shape of the props your component accepts, you may use [Zod](https://zod.dev/) to define a schema for your props. You may do so if you want to edit the props visually in the Remotion Studio.
@@ -470,7 +493,7 @@ npx remotion add @remotion/zod-types zod
 To define a schema for your props, use [`z.object()`](https://zod.dev/?id=objects):
 
 ```tsx twoslash
-import {z} from 'zod';
+import { z } from "zod";
 
 export const myCompSchema = z.object({
   propOne: z.string(),
@@ -481,14 +504,14 @@ export const myCompSchema = z.object({
 Using `z.infer()`, you can turn the schema into a type:
 
 ```tsx twoslash
-import {z} from 'zod';
+import { z } from "zod";
 
 export const myCompSchema = z.object({
   propOne: z.string(),
   propTwo: z.string(),
 });
 // ---cut---
-export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({propOne, propTwo}) => {
+export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({ propOne, propTwo }) => {
   return (
     <div>
       props: {propOne}, {propTwo}
@@ -503,15 +526,15 @@ Use the [`schema`](/docs/composition#schema) prop to attach the schema to your [
 
 ```tsx twoslash title="src/Root.tsx" {3,14-18}
 // @filename: MyComponent.tsx
-import React from 'react';
-import {z} from 'zod';
+import React from "react";
+import { z } from "zod";
 
 export const myCompSchema = z.object({
   propOne: z.string(),
   propTwo: z.string(),
 });
 
-export const MyComponent: React.FC<z.infer<typeof myCompSchema>> = ({propOne, propTwo}) => {
+export const MyComponent: React.FC<z.infer<typeof myCompSchema>> = ({ propOne, propTwo }) => {
   return (
     <div>
       <h1>{propOne}</h1>
@@ -523,9 +546,9 @@ export const MyComponent: React.FC<z.infer<typeof myCompSchema>> = ({propOne, pr
 // @filename: Root.tsx
 // organize-imports-ignore
 // ---cut---
-import React from 'react';
-import {Composition} from 'remotion';
-import {MyComponent, myCompSchema} from './MyComponent';
+import React from "react";
+import { Composition } from "remotion";
+import { MyComponent, myCompSchema } from "./MyComponent";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -538,8 +561,8 @@ export const RemotionRoot: React.FC = () => {
       height={1080}
       schema={myCompSchema}
       defaultProps={{
-        propOne: 'Hello World',
-        propTwo: 'Welcome to Remotion',
+        propOne: "Hello World",
+        propTwo: "Welcome to Remotion",
       }}
     />
   );
@@ -557,7 +580,6 @@ All schemas that are supported by [Zod](https://zod.dev/) are supported by Remot
 Remotion requires that the top-level type is a `z.object()`, because the collection of props of a React component is always an object.
 
 In addition to the built in types, the [`@remotion/zod-types` package](/docs/zod-types) also provides types like [`zColor()`](/docs/zod-types/z-color), [`zTextarea()`](/docs/zod-types/z-textarea) and [`zMatrix()`](/docs/zod-types/z-matrix).
-
 
 🎯 FINAL TIPS
 Be specific, not vague
@@ -581,4 +603,3 @@ Build your own template library
 This framework turns you into a Remotion prompt factory.
 No more guessing. Just fill in variables. Get professional animations.
 You now have the meta-system for unlimited, high-quality motion graphics.
-

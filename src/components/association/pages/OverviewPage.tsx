@@ -105,9 +105,7 @@ export default function OverviewPage({
   });
   const lastMonthTotal = lastMonthDonations.reduce((s, d) => s + d.amount, 0);
   const donationTrend =
-    lastMonthTotal > 0
-      ? Math.round(((totalThisMonth - lastMonthTotal) / lastMonthTotal) * 100)
-      : 0;
+    lastMonthTotal > 0 ? Math.round(((totalThisMonth - lastMonthTotal) / lastMonthTotal) * 100) : 0;
 
   const recentTasks = [...tasks]
     .filter((t) => t.status !== "done")
@@ -118,7 +116,20 @@ export default function OverviewPage({
     .slice(0, 4);
 
   // Chart: last 6 months donations
-  const ARABIC_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+  const ARABIC_MONTHS = [
+    "يناير",
+    "فبراير",
+    "مارس",
+    "أبريل",
+    "مايو",
+    "يونيو",
+    "يوليو",
+    "أغسطس",
+    "سبتمبر",
+    "أكتوبر",
+    "نوفمبر",
+    "ديسمبر",
+  ];
   const donationChartData = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
     const key = `${d.getFullYear()}-${d.getMonth()}`;
@@ -131,14 +142,12 @@ export default function OverviewPage({
   // Chart: tasks by status
   const taskStatusData = [
     { name: "لم يبدأ", value: tasks.filter((t) => t.status === "todo").length, color: "#9ca3af" },
-    { name: "جارٍ",   value: tasks.filter((t) => t.status === "doing").length, color: "#3b82f6" },
+    { name: "جارٍ", value: tasks.filter((t) => t.status === "doing").length, color: "#3b82f6" },
     { name: "مراجعة", value: tasks.filter((t) => t.status === "review").length, color: "#f59e0b" },
-    { name: "منتهي",  value: tasks.filter((t) => t.status === "done").length,   color: "#059669" },
+    { name: "منتهي", value: tasks.filter((t) => t.status === "done").length, color: "#059669" },
   ].filter((d) => d.value > 0);
 
-  const recentDonations = [...donations]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 4);
+  const recentDonations = [...donations].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   return (
     <div>
@@ -188,9 +197,7 @@ export default function OverviewPage({
           <div style={{ fontSize: ".8rem", color: "rgba(255,255,255,.58)", marginBottom: 2 }}>
             مرحباً بكم في منصة ساعِد
           </div>
-          <div
-            style={{ fontSize: "1.3rem", fontWeight: 800, color: "white", marginBottom: 3 }}
-          >
+          <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "white", marginBottom: 3 }}>
             {assocName ? `أهلاً، ${assocName}` : "أهلاً بجمعيتكم الكريمة"}
           </div>
           <div style={{ fontSize: ".8rem", color: "rgba(255,255,255,.52)" }}>
@@ -263,10 +270,7 @@ export default function OverviewPage({
           {
             num: activeCampaigns || "—",
             label: "حملات نشطة",
-            sub:
-              activeCampaigns > 0
-                ? `${campaigns.length} إجمالي الحملات`
-                : "+ ابدأ حملتك الأولى",
+            sub: activeCampaigns > 0 ? `${campaigns.length} إجمالي الحملات` : "+ ابدأ حملتك الأولى",
             subColor: "#7c3aed",
             accent: "#7c3aed",
             icon: "📣",
@@ -287,12 +291,9 @@ export default function OverviewPage({
               fontFamily: "'Tajawal','Cairo',sans-serif",
             }}
             onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.boxShadow =
-                "0 4px 16px rgba(45,122,82,.12)")
+              ((e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(45,122,82,.12)")
             }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.boxShadow = "none")
-            }
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.boxShadow = "none")}
           >
             <div
               style={{
@@ -402,7 +403,9 @@ export default function OverviewPage({
           >
             <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#1a5c3a" }}>
               {totalCollected.toLocaleString()}
-              <span style={{ fontSize: ".9rem", color: "#6b7280", fontWeight: 500, marginRight: 4 }}>
+              <span
+                style={{ fontSize: ".9rem", color: "#6b7280", fontWeight: 500, marginRight: 4 }}
+              >
                 ر.س
               </span>
             </div>
@@ -441,42 +444,45 @@ export default function OverviewPage({
           </div>
 
           {/* Channel breakdown */}
-          {donations.length > 0 && (() => {
-            const channelTotals: Record<string, number> = {};
-            donations.filter(d => d.status === "completed").forEach((d) => {
-              channelTotals[d.channel] = (channelTotals[d.channel] ?? 0) + d.amount;
-            });
-            const channels = Object.entries(channelTotals)
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 4);
-            if (channels.length === 0) return null;
-            return (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {channels.map(([ch, total]) => (
-                  <div
-                    key={ch}
-                    style={{
-                      fontSize: ".72rem",
-                      background: "#f2faf6",
-                      color: "#1a5c3a",
-                      padding: "3px 10px",
-                      borderRadius: 20,
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <span>{CHANNEL_ICON[ch] ?? "💼"}</span>
-                    <span>{ch}</span>
-                    <span style={{ color: "#6b7280", fontWeight: 400 }}>
-                      {total.toLocaleString()} ر.س
-                    </span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+          {donations.length > 0 &&
+            (() => {
+              const channelTotals: Record<string, number> = {};
+              donations
+                .filter((d) => d.status === "completed")
+                .forEach((d) => {
+                  channelTotals[d.paymentMethod] = (channelTotals[d.paymentMethod] ?? 0) + d.amount;
+                });
+              const channels = Object.entries(channelTotals)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4);
+              if (channels.length === 0) return null;
+              return (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {channels.map(([ch, total]) => (
+                    <div
+                      key={ch}
+                      style={{
+                        fontSize: ".72rem",
+                        background: "#f2faf6",
+                        color: "#1a5c3a",
+                        padding: "3px 10px",
+                        borderRadius: 20,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span>{CHANNEL_ICON[ch] ?? "💼"}</span>
+                      <span>{ch}</span>
+                      <span style={{ color: "#6b7280", fontWeight: 400 }}>
+                        {total.toLocaleString()} ر.س
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
         </div>
       )}
 
@@ -531,18 +537,29 @@ export default function OverviewPage({
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={donationChartData} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+              <BarChart
+                data={donationChartData}
+                margin={{ top: 4, right: 0, left: -20, bottom: 0 }}
+              >
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 10, fontFamily: "'Tajawal','Cairo',sans-serif", fill: "#9ca3af" }}
+                  tick={{
+                    fontSize: 10,
+                    fontFamily: "'Tajawal','Cairo',sans-serif",
+                    fill: "#9ca3af",
+                  }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fontFamily: "'Tajawal','Cairo',sans-serif", fill: "#9ca3af" }}
+                  tick={{
+                    fontSize: 10,
+                    fontFamily: "'Tajawal','Cairo',sans-serif",
+                    fill: "#9ca3af",
+                  }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}ك` : String(v)}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}ك` : String(v))}
                 />
                 <Tooltip
                   formatter={(v: number) => [`${v.toLocaleString()} ر.س`, "التبرعات"]}
@@ -559,9 +576,7 @@ export default function OverviewPage({
                     <Cell
                       key={idx}
                       fill={
-                        idx === donationChartData.length - 1
-                          ? "#1a5c3a"
-                          : "rgba(45,122,82,.45)"
+                        idx === donationChartData.length - 1 ? "#1a5c3a" : "rgba(45,122,82,.45)"
                       }
                     />
                   ))}
@@ -888,7 +903,7 @@ export default function OverviewPage({
                         flexShrink: 0,
                       }}
                     >
-                      {CHANNEL_ICON[don.channel] ?? "💼"}
+                      {CHANNEL_ICON[don.paymentMethod] ?? "💼"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
@@ -904,13 +919,11 @@ export default function OverviewPage({
                         {don.name}
                       </div>
                       <div style={{ fontSize: ".7rem", color: "#9ca3af", marginTop: 1 }}>
-                        {don.date} · {don.channel}
+                        {don.date} · {don.paymentMethod}
                       </div>
                     </div>
                     <div style={{ textAlign: "left", flexShrink: 0 }}>
-                      <div
-                        style={{ fontSize: ".85rem", fontWeight: 800, color: "#1a5c3a" }}
-                      >
+                      <div style={{ fontSize: ".85rem", fontWeight: 800, color: "#1a5c3a" }}>
                         {don.amount.toLocaleString()} ر.س
                       </div>
                       <span

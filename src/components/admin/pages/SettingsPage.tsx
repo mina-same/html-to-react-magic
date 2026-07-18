@@ -20,7 +20,9 @@ export function SettingsPage() {
         </div>
         <div>
           <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#111827" }}>إعدادات المنصة</div>
-          <div style={{ fontSize: ".74rem", color: "#6b7280", marginTop: 1 }}>الإعدادات العامة للمنصة</div>
+          <div style={{ fontSize: ".74rem", color: "#6b7280", marginTop: 1 }}>
+            الإعدادات العامة للمنصة
+          </div>
         </div>
       </div>
       <div style={{ ...S.secBody, textAlign: "center", padding: 64, color: "#9ca3af" }}>

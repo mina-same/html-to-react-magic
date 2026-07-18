@@ -1,14 +1,8 @@
-import {
-  AbsoluteFill,
-  Img,
-  interpolate,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { getLogoTransform, type LogoAnimation } from "./logoAnimations";
 
 export interface LogoVideoProps {
+  [key: string]: unknown;
   logoUrl: string;
   animation?: LogoAnimation;
   assocName?: string;
@@ -31,16 +25,22 @@ export function LogoVideo({
   const idleRotate = interpolate(Math.sin(frame * 0.04), [-1, 1], [-2, 2]);
 
   // global exit fade last 20 frames
-  const exitOpacity = interpolate(
-    frame,
-    [durationInFrames - 20, durationInFrames],
-    [1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
+  const exitOpacity = interpolate(frame, [durationInFrames - 20, durationInFrames], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   // ring pulse
-  const ring1 = spring({ frame: Math.max(0, frame - 10), fps, config: { damping: 20, stiffness: 60 } });
-  const ring2 = spring({ frame: Math.max(0, frame - 20), fps, config: { damping: 20, stiffness: 50 } });
+  const ring1 = spring({
+    frame: Math.max(0, frame - 10),
+    fps,
+    config: { damping: 20, stiffness: 60 },
+  });
+  const ring2 = spring({
+    frame: Math.max(0, frame - 20),
+    fps,
+    config: { damping: 20, stiffness: 50 },
+  });
 
   return (
     <AbsoluteFill

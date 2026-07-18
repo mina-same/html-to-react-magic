@@ -39,7 +39,7 @@
   --animate-orbit1: orbit1 8s linear infinite;
   --animate-orbit2: orbit2 12s linear infinite;
   --animate-orbit3: orbit3 6s linear infinite;
-  --animate-slide-up: slide-up 0.5s cubic-bezier(0.22,1,0.36,1) both;
+  --animate-slide-up: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-blink: blink 1.8s ease-in-out infinite;
   --animate-pulse-gold: pulse-gold 2s infinite;
   --radius-sm: calc(var(--radius) - 4px);
@@ -96,7 +96,7 @@
   --text-mid: #3a3a5c;
   --text-light-brand: #6b7280;
   --off-white: #f8faf9;
-  --brand-border: rgba(45,122,82,0.15);
+  --brand-border: rgba(45, 122, 82, 0.15);
   --app-bg: #f0f4f2;
 
   --radius: 0.625rem;
@@ -182,59 +182,137 @@
 
 /* ── Brand keyframe animations ── */
 @keyframes logo-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-14px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
 }
 @keyframes ring-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes orbit1 {
-  from { transform: rotate(0deg) translateX(155px) translateY(-4px); }
-  to   { transform: rotate(360deg) translateX(155px) translateY(-4px); }
+  from {
+    transform: rotate(0deg) translateX(155px) translateY(-4px);
+  }
+  to {
+    transform: rotate(360deg) translateX(155px) translateY(-4px);
+  }
 }
 @keyframes orbit2 {
-  from { transform: rotate(120deg) translateX(130px) translateY(-2.5px); }
-  to   { transform: rotate(480deg) translateX(130px) translateY(-2.5px); }
+  from {
+    transform: rotate(120deg) translateX(130px) translateY(-2.5px);
+  }
+  to {
+    transform: rotate(480deg) translateX(130px) translateY(-2.5px);
+  }
 }
 @keyframes orbit3 {
-  from { transform: rotate(240deg) translateX(108px) translateY(-2px); }
-  to   { transform: rotate(600deg) translateX(108px) translateY(-2px); }
+  from {
+    transform: rotate(240deg) translateX(108px) translateY(-2px);
+  }
+  to {
+    transform: rotate(600deg) translateX(108px) translateY(-2px);
+  }
 }
 @keyframes spark-float {
-  0%   { transform: translateY(0) scale(1); opacity: 0.7; }
-  100% { transform: translateY(-80px) scale(0); opacity: 0; }
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-80px) scale(0);
+    opacity: 0;
+  }
 }
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 @keyframes pulse-gold {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 @keyframes fade-up-in {
-  from { opacity: 0; transform: translateY(30px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── Utility animation classes ── */
 @layer utilities {
-  .animate-logo-float  { animation: logo-float 4s ease-in-out infinite; }
-  .animate-ring-spin   { animation: ring-spin 18s linear infinite; }
-  .animate-ring-rev    { animation: ring-spin 10s linear infinite reverse; }
-  .animate-orbit1      { animation: orbit1 8s linear infinite; }
-  .animate-orbit2      { animation: orbit2 12s linear infinite; }
-  .animate-orbit3      { animation: orbit3 6s linear infinite; }
-  .animate-slide-up    { animation: slide-up 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-  .animate-blink       { animation: blink 1.8s ease-in-out infinite; }
-  .animate-pulse-gold  { animation: pulse-gold 2s infinite; }
-  .fade-up { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; }
-  .fade-up.visible { opacity: 1; transform: translateY(0); }
+  .animate-logo-float {
+    animation: logo-float 4s ease-in-out infinite;
+  }
+  .animate-ring-spin {
+    animation: ring-spin 18s linear infinite;
+  }
+  .animate-ring-rev {
+    animation: ring-spin 10s linear infinite reverse;
+  }
+  .animate-orbit1 {
+    animation: orbit1 8s linear infinite;
+  }
+  .animate-orbit2 {
+    animation: orbit2 12s linear infinite;
+  }
+  .animate-orbit3 {
+    animation: orbit3 6s linear infinite;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-blink {
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  .animate-pulse-gold {
+    animation: pulse-gold 2s infinite;
+  }
+  .fade-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition:
+      opacity 0.6s ease,
+      transform 0.6s ease;
+  }
+  .fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
   /* Tajawal/Cairo font stack for Arabic */
-  .font-arabic { font-family: 'Tajawal', 'Cairo', sans-serif; }
+  .font-arabic {
+    font-family: "Tajawal", "Cairo", sans-serif;
+  }
 }

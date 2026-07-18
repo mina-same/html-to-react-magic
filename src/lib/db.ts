@@ -39,11 +39,11 @@ function mapDonation(row: Record<string, unknown>): Donation {
     phone: (row.phone as string) ?? "",
     projectName: (row.project_name as string) ?? "",
     amount: row.amount as number,
-    paymentMethod: (row.payment_method as string) ?? "نقد",
+    paymentMethod: (row.channel as string) ?? (row.payment_method as string) ?? "نقد",
     bank: (row.bank as string) ?? "",
     accountNumber: (row.account_number as string) ?? "",
     status: row.status as Donation["status"],
-    source: (row.source as string) ?? "",
+    source: (row.org as string) ?? (row.source as string) ?? "",
     date: row.date as string,
   };
 }
@@ -164,7 +164,7 @@ export const donationsDb = {
     try {
       console.log("Donation create data:", donationData);
       // First, try inserting only the basic fields that definitely exist
-      const basicInsertData: Record<string, unknown> = {
+      const basicInsertData = {
         assoc_id: assocId,
         name: donationData.name,
         amount: donationData.amount,
@@ -202,7 +202,10 @@ export const donationsDb = {
 
           if (Object.keys(updateData).length > 0) {
             console.log("Trying to update with new fields:", updateData);
-            await supabase.from("donations").update(updateData).eq("id", row.id);
+            await supabase
+              .from("donations")
+              .update(updateData as never)
+              .eq("id", row.id);
           }
         } catch (updateErr) {
           // Ignore update errors (columns might not exist yet)
@@ -419,12 +422,12 @@ export type GeneratedContentItem = {
   videoUrl?: string;
   audioUrl?: string;
   slideFrames?: number[]; // per-slide duration in frames (video tab only)
-  showLogo?: boolean;     // whether to show header watermark (video tab only)
-  logoOverlayUrl?: string;  // user-uploaded logo URL (video tab only)
-  logoAnimation?: string;   // LogoAnimation type
-  logoPosition?: string;    // LogoPosition type
+  showLogo?: boolean; // whether to show header watermark (video tab only)
+  logoOverlayUrl?: string; // user-uploaded logo URL (video tab only)
+  logoAnimation?: string; // LogoAnimation type
+  logoPosition?: string; // LogoPosition type
   // BrandedVideo fields
-  brandColors?: string[];   // [primary, secondary, accent] hex
+  brandColors?: string[]; // [primary, secondary, accent] hex
   transitionStyle?: string; // "slide" | "wipe" | "fade"
   showOutro?: boolean;
 };
@@ -472,7 +475,13 @@ export const contentGenerationsDb = {
       .select("id, prompt, content, created_at, tokens_used")
       .single();
     if (error) {
-      console.error("[contentGenerationsDb.create] Supabase error:", error.code, error.message, error.details, error.hint);
+      console.error(
+        "[contentGenerationsDb.create] Supabase error:",
+        error.code,
+        error.message,
+        error.details,
+        error.hint,
+      );
       throw new Error(`DB create failed: ${error.message}`);
     }
     if (!row) return null;
@@ -490,8 +499,17 @@ export const contentGenerationsDb = {
     const { error } = await supabase.from("content_generations").update({ prompt }).eq("id", id);
     if (error) throw new Error(error.message);
   },
-  async update(id: number, content: GeneratedContent, tokensUsed?: number, prompt?: string): Promise<void> {
-    const payload: Record<string, unknown> = { content };
+  async update(
+    id: number,
+    content: GeneratedContent,
+    tokensUsed?: number,
+    prompt?: string,
+  ): Promise<void> {
+    const payload: {
+      content?: Record<string, unknown>;
+      tokens_used?: number;
+      prompt?: string;
+    } = { content };
     if (tokensUsed !== undefined) payload.tokens_used = tokensUsed;
     if (prompt !== undefined) payload.prompt = prompt;
     const { error } = await supabase.from("content_generations").update(payload).eq("id", id);
@@ -515,7 +533,9 @@ export const assocProfileDb = {
     console.log("[assocProfileDb.get] Called with id:", id);
     const { data, error } = await supabase
       .from("associations")
-      .select("description, ai_summary, ai_ideas, ai_pain_points, ai_content, pdf_url, ai_brand, openai_file_id")
+      .select(
+        "description, ai_summary, ai_ideas, ai_pain_points, ai_content, pdf_url, ai_brand, openai_file_id",
+      )
       .eq("id", id)
       .maybeSingle();
     console.log("[assocProfileDb.get] Result data:", data, "error:", error);

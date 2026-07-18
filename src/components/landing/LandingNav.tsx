@@ -3,11 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 import saaidLogo from "@/assets/saaid-logo.png";
 
 const NAV_LINKS = [
-  { href: "#about",    label: "من نحن" },
+  { href: "#about", label: "من نحن" },
   { href: "#services", label: "الخدمات" },
-  { href: "#how",      label: "كيف نعمل" },
-  { href: "#why",      label: "لماذا ساعِد" },
-  { href: "#impact",   label: "أثرنا" },
+  { href: "#how", label: "كيف نعمل" },
+  { href: "#why", label: "لماذا ساعِد" },
+  { href: "#impact", label: "أثرنا" },
 ];
 
 interface Props {
@@ -64,8 +64,18 @@ export function LandingNav({ navRef }: Props) {
           />
         </div>
         <div suppressHydrationWarning>
-          <div suppressHydrationWarning style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1a5c3a" }}>ساعِد</div>
-          <div suppressHydrationWarning style={{ fontSize: "0.65rem", color: "#4a9e70", letterSpacing: 2 }}>SAAID</div>
+          <div
+            suppressHydrationWarning
+            style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1a5c3a" }}
+          >
+            ساعِد
+          </div>
+          <div
+            suppressHydrationWarning
+            style={{ fontSize: "0.65rem", color: "#4a9e70", letterSpacing: 2 }}
+          >
+            SAAID
+          </div>
         </div>
       </a>
 

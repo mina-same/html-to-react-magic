@@ -67,7 +67,14 @@ export default function EmployeeModal({ employee, assocId, onSave, onClose }: Pr
       setSaving(true);
       try {
         const res = await supabase.functions.invoke("create-employee", {
-          body: { email: email.trim(), password, name: name.trim(), role: role.trim(), status, assocId },
+          body: {
+            email: email.trim(),
+            password,
+            name: name.trim(),
+            role: role.trim(),
+            status,
+            assocId,
+          },
         });
         // Business errors come back as 200 + {error: "..."} — check data first
         if (res.data?.error) throw new Error(String(res.data.error));
@@ -91,7 +98,13 @@ export default function EmployeeModal({ employee, assocId, onSave, onClose }: Pr
       }
     } else {
       // Edit — no auth changes
-      onSave({ id: employee.id, name: name.trim(), role: role.trim(), status, color: employee.color });
+      onSave({
+        id: employee.id,
+        name: name.trim(),
+        role: role.trim(),
+        status,
+        color: employee.color,
+      });
       onClose();
     }
   }
@@ -127,15 +140,29 @@ export default function EmployeeModal({ employee, assocId, onSave, onClose }: Pr
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={lbl}>الاسم الكامل</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: سارة العمري" style={sel} />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="مثال: سارة العمري"
+              style={sel}
+            />
           </div>
           <div>
             <label style={lbl}>المسمى الوظيفي</label>
-            <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="مثال: مدير تسويق" style={sel} />
+            <Input
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder="مثال: مدير تسويق"
+              style={sel}
+            />
           </div>
           <div>
             <label style={lbl}>الحالة</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as Employee["status"])} style={sel}>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as Employee["status"])}
+              style={sel}
+            >
               <option value="active">نشط</option>
               <option value="away">بعيد</option>
               <option value="off">خارج العمل</option>
@@ -145,7 +172,16 @@ export default function EmployeeModal({ employee, assocId, onSave, onClose }: Pr
           {!isEdit && (
             <>
               <div style={{ borderTop: "1px solid rgba(45,122,82,.1)", paddingTop: 12 }}>
-                <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{
+                    fontSize: ".78rem",
+                    color: "#6b7280",
+                    marginBottom: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
                   <span>🔐</span> بيانات تسجيل الدخول
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

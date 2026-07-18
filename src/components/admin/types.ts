@@ -32,13 +32,7 @@ export type ReqStatus = AdminRequest["status"];
 export type CampaignRequest = AdminRequest;
 
 // Page IDs & titles
-export type PageId =
-  | "overview"
-  | "orgs"
-  | "influencers"
-  | "requests"
-  | "reports"
-  | "settings";
+export type PageId = "overview" | "orgs" | "influencers" | "requests" | "reports" | "settings";
 
 export const PAGE_TITLES: Record<PageId, string> = {
   overview: "لوحة التحكم",
@@ -49,17 +43,30 @@ export const PAGE_TITLES: Record<PageId, string> = {
   settings: "الإعدادات",
 };
 
-export const PAGE_TAGS: Record<PageId, (data: { orgs: Org[], influencers: Influencer[], requests: CampaignRequest[]) => string> = {
+export interface PageTagData {
+  orgs: Org[];
+  influencers: Influencer[];
+  requests: CampaignRequest[];
+}
+
+export const PAGE_TAGS: Record<PageId, (data: PageTagData) => string> = {
   overview: () => "نظرة عامة",
-  orgs: ({ orgs }) => `${orgs.length} جمعية",
-  influencers: ({ influencers }) => `${influencers.length} مؤثر",
-  requests: ({ requests }) => `${requests.length} طلب",
+  orgs: ({ orgs }) => `${orgs.length} جمعية`,
+  influencers: ({ influencers }) => `${influencers.length} مؤثر`,
+  requests: ({ requests }) => `${requests.length} طلب`,
   reports: () => "الإيرادات",
   settings: () => "الإعدادات العامة",
 };
 
 // Constants
-export const INF_COLORS = ["#2d7a52", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#14b8a6"] as const;
+export const INF_COLORS = [
+  "#2d7a52",
+  "#3b82f6",
+  "#8b5cf6",
+  "#f59e0b",
+  "#ef4444",
+  "#14b8a6",
+] as const;
 export function infColor(id: number) {
   return INF_COLORS[(id - 1) % INF_COLORS.length];
 }

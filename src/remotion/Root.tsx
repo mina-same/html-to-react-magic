@@ -1,8 +1,14 @@
 import { Composition } from "remotion";
-import { ContentVideo } from "./ContentVideo";
-import { LogoVideo } from "./LogoVideo";
-import { BrandedVideo } from "./BrandedVideo";
+import { ContentVideo, type ContentVideoProps } from "./ContentVideo";
+import { LogoVideo, type LogoVideoProps } from "./LogoVideo";
+import { BrandedVideo, type BrandedVideoProps } from "./BrandedVideo";
 import { computeBrandedVideoDuration } from "./brandUtils";
+
+// `Composition` requires a zod Schema type param. We don't use schemas, so the
+// slot is left as `any` (the documented no-schema escape hatch). Anchoring the
+// Props param to each component's real props type keeps defaultProps checked.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type NoSchema = any;
 
 const SAMPLE_TEXT = `نحن نؤمن بأن العطاء يغيّر الحياة
 وصلنا إلى أكثر من ألف أسرة محتاجة
@@ -19,17 +25,17 @@ function slidesFromText(text: string) {
 }
 
 export const RemotionRoot = () => {
-  const slides    = slidesFromText(SAMPLE_TEXT);
+  const slides = slidesFromText(SAMPLE_TEXT);
   const SLIDE_DUR = 90;
   const legacyDur = Math.max(slides.length * SLIDE_DUR + 60, 120);
 
   const brandedSlideFrames = Array<number>(slides.length).fill(SLIDE_DUR);
-  const brandedDur         = computeBrandedVideoDuration(brandedSlideFrames);
+  const brandedDur = computeBrandedVideoDuration(brandedSlideFrames);
 
   return (
     <>
       {/* Legacy composition — kept for backward compat */}
-      <Composition
+      <Composition<NoSchema, ContentVideoProps>
         id="ContentVideo"
         component={ContentVideo}
         durationInFrames={legacyDur}
@@ -45,7 +51,7 @@ export const RemotionRoot = () => {
       />
 
       {/* Logo stinger */}
-      <Composition
+      <Composition<NoSchema, LogoVideoProps>
         id="LogoVideo"
         component={LogoVideo}
         durationInFrames={150}
@@ -60,7 +66,7 @@ export const RemotionRoot = () => {
       />
 
       {/* ★ New branded composition — full motion graphics */}
-      <Composition
+      <Composition<NoSchema, BrandedVideoProps>
         id="BrandedVideo"
         component={BrandedVideo}
         durationInFrames={brandedDur}

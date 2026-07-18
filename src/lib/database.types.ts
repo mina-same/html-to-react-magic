@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "association";
+export type UserRole = "admin" | "association" | "employee";
 export type EmployeeStatus = "active" | "away" | "off";
 export type TaskStatus = "todo" | "doing" | "review" | "done";
 export type TaskUrgency = "urgent" | "high" | "normal" | "low";
@@ -13,8 +13,20 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; role: UserRole; assoc_name: string | null; assoc_id: string | null; created_at: string };
-        Insert: { id: string; role?: UserRole; assoc_name?: string | null; assoc_id?: string | null; created_at?: string };
+        Row: {
+          id: string;
+          role: UserRole;
+          assoc_name: string | null;
+          assoc_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          role?: UserRole;
+          assoc_name?: string | null;
+          assoc_id?: string | null;
+          created_at?: string;
+        };
         Update: { role?: UserRole; assoc_name?: string | null; assoc_id?: string | null };
         Relationships: [];
       };
@@ -164,6 +176,15 @@ export interface Database {
           date: string;
           status: DonationStatus;
           org: string;
+          // Richer fields written by donationsDb.create (added via migration;
+          // the create path tolerates these not yet existing on the DB).
+          donation_number: string | null;
+          phone: string | null;
+          project_name: string | null;
+          payment_method: string | null;
+          bank: string | null;
+          account_number: string | null;
+          source: string | null;
           created_at: string;
         };
         Insert: {
@@ -174,6 +195,13 @@ export interface Database {
           date?: string;
           status?: DonationStatus;
           org?: string;
+          donation_number?: string | null;
+          phone?: string | null;
+          project_name?: string | null;
+          payment_method?: string | null;
+          bank?: string | null;
+          account_number?: string | null;
+          source?: string | null;
         };
         Update: {
           assoc_id?: string;
@@ -183,6 +211,13 @@ export interface Database {
           date?: string;
           status?: DonationStatus;
           org?: string;
+          donation_number?: string | null;
+          phone?: string | null;
+          project_name?: string | null;
+          payment_method?: string | null;
+          bank?: string | null;
+          account_number?: string | null;
+          source?: string | null;
         };
         Relationships: [];
       };
@@ -263,6 +298,12 @@ export interface Database {
           updated_at: string;
           pdf_url: string | null;
           ai_brand: string | null;
+          // AI profile fields (migration 009)
+          ai_summary: string | null;
+          ai_ideas: string[] | null;
+          ai_pain_points: string[] | null;
+          ai_content: Record<string, unknown> | null;
+          openai_file_id: string | null;
         };
         Insert: {
           id: string;
@@ -276,6 +317,11 @@ export interface Database {
           updated_at?: string;
           pdf_url?: string | null;
           ai_brand?: string | null;
+          ai_summary?: string | null;
+          ai_ideas?: string[] | null;
+          ai_pain_points?: string[] | null;
+          ai_content?: Record<string, unknown> | null;
+          openai_file_id?: string | null;
         };
         Update: {
           license?: string;
@@ -288,6 +334,11 @@ export interface Database {
           updated_at?: string;
           pdf_url?: string | null;
           ai_brand?: string | null;
+          ai_summary?: string | null;
+          ai_ideas?: string[] | null;
+          ai_pain_points?: string[] | null;
+          ai_content?: Record<string, unknown> | null;
+          openai_file_id?: string | null;
         };
         Relationships: [];
       };
@@ -317,6 +368,28 @@ export interface Database {
           start_date?: string;
           budget?: number;
           notes?: string;
+        };
+        Relationships: [];
+      };
+      content_generations: {
+        Row: {
+          id: number;
+          assoc_id: string;
+          prompt: string;
+          content: Record<string, unknown>;
+          created_at: string;
+          tokens_used: number;
+        };
+        Insert: {
+          assoc_id: string;
+          prompt?: string;
+          content?: Record<string, unknown>;
+          tokens_used?: number;
+        };
+        Update: {
+          prompt?: string;
+          content?: Record<string, unknown>;
+          tokens_used?: number;
         };
         Relationships: [];
       };

@@ -69,7 +69,8 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
   function toggleOne(id: number) {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -131,7 +132,15 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
           </div>
         </div>
 
-        <div style={{ marginRight: "auto", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{
+            marginRight: "auto",
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           {/* Active badge */}
           <span
             style={{
@@ -148,8 +157,8 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
           </span>
 
           {/* Bulk delete — shown when something is selected */}
-          {selected.size > 0 && (
-            confirmBulk ? (
+          {selected.size > 0 &&
+            (confirmBulk ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: "0.78rem", color: "#ef4444", fontWeight: 600 }}>
                   حذف {selected.size} موظف؟
@@ -190,8 +199,7 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                 <Trash2 size={14} />
                 حذف المحددين ({selected.size})
               </Button>
-            )
-          )}
+            ))}
 
           <Button
             size="sm"
@@ -240,7 +248,9 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                     <input
                       type="checkbox"
                       checked={allOnPage}
-                      ref={(el) => { if (el) el.indeterminate = someOnPage && !allOnPage; }}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someOnPage && !allOnPage;
+                      }}
                       onChange={toggleAll}
                       style={{ cursor: "pointer", accentColor: "#2d7a52", width: 15, height: 15 }}
                     />
@@ -272,17 +282,30 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                       }}
                     >
                       {/* Checkbox */}
-                      <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,.04)", textAlign: "center" }}>
+                      <td
+                        style={{
+                          padding: "12px 14px",
+                          borderBottom: "1px solid rgba(0,0,0,.04)",
+                          textAlign: "center",
+                        }}
+                      >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleOne(emp.id)}
-                          style={{ cursor: "pointer", accentColor: "#2d7a52", width: 15, height: 15 }}
+                          style={{
+                            cursor: "pointer",
+                            accentColor: "#2d7a52",
+                            width: 15,
+                            height: 15,
+                          }}
                         />
                       </td>
 
                       {/* Employee name + avatar */}
-                      <td style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)" }}>
+                      <td
+                        style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)" }}
+                      >
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div
                             style={{
@@ -319,12 +342,24 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                       </td>
 
                       {/* Role */}
-                      <td style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)", color: "#6b7280" }}>
+                      <td
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid rgba(0,0,0,.04)",
+                          color: "#6b7280",
+                        }}
+                      >
                         {emp.role || "—"}
                       </td>
 
                       {/* Status badge */}
-                      <td style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)", textAlign: "center" }}>
+                      <td
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid rgba(0,0,0,.04)",
+                          textAlign: "center",
+                        }}
+                      >
                         <span
                           style={{
                             display: "inline-block",
@@ -340,10 +375,18 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                       </td>
 
                       {/* Status selector */}
-                      <td style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)", textAlign: "center" }}>
+                      <td
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid rgba(0,0,0,.04)",
+                          textAlign: "center",
+                        }}
+                      >
                         <select
                           value={emp.status}
-                          onChange={(e) => onStatusChange(emp.id, e.target.value as Employee["status"])}
+                          onChange={(e) =>
+                            onStatusChange(emp.id, e.target.value as Employee["status"])
+                          }
                           style={{
                             fontSize: "0.78rem",
                             padding: "5px 10px",
@@ -363,14 +406,27 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)", textAlign: "center" }}>
+                      <td
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid rgba(0,0,0,.04)",
+                          textAlign: "center",
+                        }}
+                      >
                         {isConfirming ? (
                           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: "0.74rem", color: "#ef4444", fontWeight: 600 }}>تأكيد؟</span>
+                            <span
+                              style={{ fontSize: "0.74rem", color: "#ef4444", fontWeight: 600 }}
+                            >
+                              تأكيد؟
+                            </span>
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => { onDelete(emp.id); setConfirmId(null); }}
+                              onClick={() => {
+                                onDelete(emp.id);
+                                setConfirmId(null);
+                              }}
                               style={{ fontSize: "0.72rem", height: 28, borderRadius: 7 }}
                             >
                               نعم
@@ -452,7 +508,15 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
             }}
           >
             {/* Left: rows per page + count */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.82rem", color: "#6b7280" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                fontSize: "0.82rem",
+                color: "#6b7280",
+              }}
+            >
               <span>عدد الصفوف:</span>
               <div style={{ display: "flex", gap: 4 }}>
                 {PAGE_SIZE_OPTIONS.map((n) => (
@@ -480,7 +544,8 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
               </div>
               <span style={{ color: "#9ca3af" }}>|</span>
               <span>
-                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, employees.length)} من {employees.length}
+                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, employees.length)} من{" "}
+                {employees.length}
               </span>
             </div>
 
@@ -515,7 +580,12 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                   }, [])
                   .map((p, i) =>
                     p === "…" ? (
-                      <span key={`el-${i}`} style={{ padding: "0 3px", color: "#9ca3af", fontSize: "0.82rem" }}>…</span>
+                      <span
+                        key={`el-${i}`}
+                        style={{ padding: "0 3px", color: "#9ca3af", fontSize: "0.82rem" }}
+                      >
+                        …
+                      </span>
                     ) : (
                       <button
                         key={p}
@@ -537,7 +607,7 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                       >
                         {p}
                       </button>
-                    )
+                    ),
                   )}
 
                 <button

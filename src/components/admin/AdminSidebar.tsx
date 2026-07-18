@@ -10,12 +10,18 @@ interface AdminSidebarProps {
   requests: CampaignRequest[];
 }
 
-export function AdminSidebar({ activePage, setActivePage, orgs, influencers, requests }: AdminSidebarProps) {
+export function AdminSidebar({
+  activePage,
+  setActivePage,
+  orgs,
+  influencers,
+  requests,
+}: AdminSidebarProps) {
   const { signOut } = useAuth();
 
   type NavItem = { id: PageId; icon: string; label: string; badge?: { text: string; cls: string } };
   type NavSection = { label: string; items: NavItem[] };
-  
+
   const navSections: NavSection[] = [
     {
       label: "الرئيسية",
@@ -226,14 +232,14 @@ export function AdminSidebar({ activePage, setActivePage, orgs, influencers, req
                         item.badge.cls === "gold"
                           ? "rgba(201,168,76,.25)"
                           : item.badge.cls === "green"
-                          ? "rgba(45,122,82,.25)"
-                          : "rgba(239,68,68,.25)",
+                            ? "rgba(45,122,82,.25)"
+                            : "rgba(239,68,68,.25)",
                       color:
                         item.badge.cls === "gold"
                           ? "#c9a84c"
                           : item.badge.cls === "green"
-                          ? "#2d7a52"
-                          : "#ef4444",
+                            ? "#2d7a52"
+                            : "#ef4444",
                     }}
                   >
                     {item.badge.text}

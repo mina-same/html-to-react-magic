@@ -8,7 +8,7 @@ interface OrgsPageProps {
   orgStatusFilter: string;
   setOrgStatusFilter: (val: string) => void;
   setOrgModal: (data: { open: boolean; data: Partial<Org> | null }) => void;
-  suspendOrg: (id: number) => Promise<void>;
+  suspendOrg: (id: string) => Promise<void>;
   openOrgProfile: (org: Org) => void;
 }
 
@@ -74,13 +74,19 @@ export function OrgsPage({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              {["الجمعية", "الترخيص", "المنطقة", "التواصل", "الحالة", "تاريخ التسجيل", "إجراءات"].map(
-                (h, i) => (
-                  <th key={i} style={S.tblTh}>
-                    {h}
-                  </th>
-                )
-              )}
+              {[
+                "الجمعية",
+                "الترخيص",
+                "المنطقة",
+                "التواصل",
+                "الحالة",
+                "تاريخ التسجيل",
+                "إجراءات",
+              ].map((h, i) => (
+                <th key={i} style={S.tblTh}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -135,10 +141,7 @@ export function OrgsPage({
                     >
                       🗂️ فتح الملف
                     </button>
-                    <button
-                      style={S.btnGhost}
-                      onClick={() => setOrgModal({ open: true, data: o })}
-                    >
+                    <button style={S.btnGhost} onClick={() => setOrgModal({ open: true, data: o })}>
                       تعديل
                     </button>
                     <button style={S.btnDanger} onClick={() => suspendOrg(o.id)}>

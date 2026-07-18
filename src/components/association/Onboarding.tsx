@@ -102,9 +102,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           >
             أهلاً بك!
           </div>
-          <div style={{ fontSize: "0.9rem", color: "#6b7280" }}>
-            أكمل إعداد حساب جمعيتك
-          </div>
+          <div style={{ fontSize: "0.9rem", color: "#6b7280" }}>أكمل إعداد حساب جمعيتك</div>
         </div>
 
         {error && (

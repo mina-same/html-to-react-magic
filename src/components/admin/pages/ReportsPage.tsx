@@ -20,7 +20,9 @@ export function ReportsPage() {
         </div>
         <div>
           <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#111827" }}>التقارير</div>
-          <div style={{ fontSize: ".74rem", color: "#6b7280", marginTop: 1 }}>التقارير قيد التطوير</div>
+          <div style={{ fontSize: ".74rem", color: "#6b7280", marginTop: 1 }}>
+            التقارير قيد التطوير
+          </div>
         </div>
       </div>
       <div style={{ ...S.secBody, textAlign: "center", padding: 64, color: "#9ca3af" }}>

@@ -82,8 +82,7 @@ export function InfluencersPage({
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.borderColor = "#2d7a52";
-              (e.currentTarget as HTMLElement).style.boxShadow =
-                "0 3px 14px rgba(45,122,82,.1)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 3px 14px rgba(45,122,82,.1)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.borderColor = "rgba(45,122,82,.12)";
@@ -149,9 +148,7 @@ export function InfluencersPage({
                   <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#111827" }}>
                     {s.num}
                   </div>
-                  <div style={{ fontSize: ".62rem", color: "#9ca3af", marginTop: 1 }}>
-                    {s.lbl}
-                  </div>
+                  <div style={{ fontSize: ".62rem", color: "#9ca3af", marginTop: 1 }}>{s.lbl}</div>
                 </div>
               ))}
             </div>

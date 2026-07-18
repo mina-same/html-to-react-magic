@@ -1,4 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Influencer } from "../types";
 
@@ -29,15 +35,7 @@ function socialUrl(value: string, platform: string) {
   return map[platform] ?? value;
 }
 
-function SocialRow({
-  label,
-  value,
-  platform,
-}: {
-  label: string;
-  value: string;
-  platform: string;
-}) {
+function SocialRow({ label, value, platform }: { label: string; value: string; platform: string }) {
   if (!value) return null;
   const href = socialUrl(value, platform);
   return (
@@ -98,21 +96,47 @@ export default function InfluencerProfileModal({ influencer, onClose, onRequest 
               {influencer.name.slice(0, 1)}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <DialogTitle style={{ fontFamily: "'Tajawal','Cairo',sans-serif", fontSize: "1.05rem" }}>
+              <DialogTitle
+                style={{ fontFamily: "'Tajawal','Cairo',sans-serif", fontSize: "1.05rem" }}
+              >
                 {influencer.name}
               </DialogTitle>
               <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ ...cardStyle, padding: "4px 10px", background: "#e8f5ee", borderRadius: 20, border: "none" }}>
+                <span
+                  style={{
+                    ...cardStyle,
+                    padding: "4px 10px",
+                    background: "#e8f5ee",
+                    borderRadius: 20,
+                    border: "none",
+                  }}
+                >
                   {influencer.platform}
                 </span>
-                <span style={{ ...cardStyle, padding: "4px 10px", background: "#fef3c7", borderRadius: 20, border: "none" }}>
+                <span
+                  style={{
+                    ...cardStyle,
+                    padding: "4px 10px",
+                    background: "#fef3c7",
+                    borderRadius: 20,
+                    border: "none",
+                  }}
+                >
                   {influencer.status === "active"
                     ? "نشط"
                     : influencer.status === "pending"
                       ? "قيد التفاوض"
                       : "منتهي"}
                 </span>
-                <span style={{ ...cardStyle, padding: "4px 10px", background: "#f1f5f9", borderRadius: 20, border: "none" }}>
+                <span
+                  style={{
+                    ...cardStyle,
+                    padding: "4px 10px",
+                    background: "#f1f5f9",
+                    borderRadius: 20,
+                    border: "none",
+                  }}
+                >
                   {influencer.niche}
                 </span>
               </div>
@@ -130,7 +154,9 @@ export default function InfluencerProfileModal({ influencer, onClose, onRequest 
             </div>
 
             <div style={cardStyle}>
-              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 10 }}>إحصائيات سريعة</div>
+              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 10 }}>
+                إحصائيات سريعة
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
                 {[
                   { label: "المتابعون", value: influencer.followers.toLocaleString() },
@@ -187,7 +213,11 @@ export default function InfluencerProfileModal({ influencer, onClose, onRequest 
                 </div>
                 {influencer.website && (
                   <a
-                    href={influencer.website.startsWith("http") ? influencer.website : `https://${influencer.website}`}
+                    href={
+                      influencer.website.startsWith("http")
+                        ? influencer.website
+                        : `https://${influencer.website}`
+                    }
                     target="_blank"
                     rel="noreferrer"
                     style={{ ...cardStyle, textDecoration: "none", color: "#111827" }}

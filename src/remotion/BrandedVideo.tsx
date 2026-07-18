@@ -9,9 +9,14 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { TransitionSeries, springTiming, linearTiming } from "@remotion/transitions";
+import {
+  TransitionSeries,
+  springTiming,
+  linearTiming,
+  type TransitionPresentation,
+} from "@remotion/transitions";
 import { slide } from "@remotion/transitions/slide";
-import { fade } from "@remotion/transitions/fade";
+import { fade, type FadeProps } from "@remotion/transitions/fade";
 import { wipe } from "@remotion/transitions/wipe";
 import { noise2D } from "@remotion/noise";
 import { makeCircle, makeStar } from "@remotion/shapes";
@@ -27,6 +32,7 @@ import {
 // ─── Prop types ──────────────────────────────────────────────────────────────
 
 export interface BrandedVideoProps {
+  [key: string]: unknown;
   text: string;
   assocName: string;
   assocInitial?: string;
@@ -37,7 +43,7 @@ export interface BrandedVideoProps {
   audioUrl?: string;
   logoUrl?: string;
   aiBrand?: string;
-  brandColors?: string[];          // [primary, secondary, accent] override
+  brandColors?: string[]; // [primary, secondary, accent] override
   transitionStyle?: TransitionStyle;
   slideFrames?: number[];
   showLogo?: boolean;
@@ -46,7 +52,10 @@ export interface BrandedVideoProps {
 
 // ─── Slide parsing ────────────────────────────────────────────────────────────
 
-interface Slide { line: string; icon: string }
+interface Slide {
+  line: string;
+  icon: string;
+}
 
 function textToSlides(text: string): Slide[] {
   return text
@@ -56,12 +65,12 @@ function textToSlides(text: string): Slide[] {
     .filter((s) => s.length > 4)
     .map((line) => {
       let icon = "✨";
-      if (/\d/.test(line))                     icon = "📊";
-      else if (/تبرع|هب|أعط|دعم/.test(line))  icon = "💚";
-      else if (/صح|طب|علاج|دواء/.test(line))  icon = "🏥";
-      else if (/أسرة|عائل|أطفال/.test(line))  icon = "❤️";
-      else if (/ربيع|فصل|زهر/.test(line))     icon = "🌸";
-      else if (/ريال|مال/.test(line))          icon = "💰";
+      if (/\d/.test(line)) icon = "📊";
+      else if (/تبرع|هب|أعط|دعم/.test(line)) icon = "💚";
+      else if (/صح|طب|علاج|دواء/.test(line)) icon = "🏥";
+      else if (/أسرة|عائل|أطفال/.test(line)) icon = "❤️";
+      else if (/ربيع|فصل|زهر/.test(line)) icon = "🌸";
+      else if (/ريال|مال/.test(line)) icon = "💰";
       return { line, icon };
     });
 }
@@ -76,13 +85,7 @@ function emojiUrl(emoji: string): string {
 
 // ─── Branded gradient background ─────────────────────────────────────────────
 
-function BrandBg({
-  colors,
-  imageUrl,
-}: {
-  colors: BrandColors;
-  imageUrl?: string;
-}) {
+function BrandBg({ colors, imageUrl }: { colors: BrandColors; imageUrl?: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -100,8 +103,8 @@ function BrandBg({
   const starRot = noise2D("sr", frame / 300, 0) * 30;
 
   const { path: circlePath } = makeCircle({ radius: 200 });
-  const { path: bigCircle }  = makeCircle({ radius: 340 });
-  const { path: starPath }   = makeStar({ innerRadius: 60, outerRadius: 130, points: 6 });
+  const { path: bigCircle } = makeCircle({ radius: 340 });
+  const { path: starPath } = makeStar({ innerRadius: 60, outerRadius: 130, points: 6 });
 
   return (
     <AbsoluteFill style={{ background: bg, overflow: "hidden" }}>
@@ -154,7 +157,9 @@ function BrandBg({
       <div
         style={{
           position: "absolute",
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           height: 8,
           background: `linear-gradient(90deg, ${colors.secondary}, ${colors.accent}, ${colors.secondary})`,
         }}
@@ -227,7 +232,9 @@ function SlideHeader({
     <div
       style={{
         position: "absolute",
-        top: 36, right: 60, left: 60,
+        top: 36,
+        right: 60,
+        left: 60,
         display: "flex",
         alignItems: "center",
         gap: 16,
@@ -238,17 +245,25 @@ function SlideHeader({
       {/* Logo or monogram */}
       <div
         style={{
-          width: 60, height: 60, borderRadius: 14, flexShrink: 0,
+          width: 60,
+          height: 60,
+          borderRadius: 14,
+          flexShrink: 0,
           background: logoUrl
             ? "transparent"
             : `linear-gradient(135deg, ${colors.secondary}, ${colors.accent})`,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           overflow: "hidden",
           boxShadow: `0 0 0 2px ${colors.secondary}50`,
         }}
       >
         {logoUrl ? (
-          <Img src={logoUrl} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }} />
+          <Img
+            src={logoUrl}
+            style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }}
+          />
         ) : (
           <span style={{ fontSize: "1.5rem", fontWeight: 900, color: colors.primary }}>
             {assocInitial}
@@ -300,12 +315,10 @@ function SlideScene({
   const { durationInFrames, fps } = useVideoConfig();
   const FADE = 16;
 
-  const fadeOut = interpolate(
-    frame,
-    [durationInFrames - FADE, durationInFrames],
-    [1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
+  const fadeOut = interpolate(frame, [durationInFrames - FADE, durationInFrames], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   const iconSpr = spring({ frame, fps, config: { damping: 8, stiffness: 150, mass: 0.6 } });
   const iconScale = interpolate(iconSpr, [0, 1], [0, 1]);
@@ -331,8 +344,10 @@ function SlideScene({
       <div
         style={{
           position: "absolute",
-          top: 148, right: 60,
-          width: 70, height: 3,
+          top: 148,
+          right: 60,
+          width: 70,
+          height: 3,
           background: colors.secondary,
           borderRadius: 2,
         }}
@@ -351,10 +366,14 @@ function SlideScene({
         {/* Icon */}
         <div
           style={{
-            width: 110, height: 110, borderRadius: "50%",
+            width: 110,
+            height: 110,
+            borderRadius: "50%",
             background: `${colors.secondary}22`,
             border: `2px solid ${colors.secondary}50`,
-            display: "flex", alignItems: "center", justifyContent: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             marginBottom: 36,
             boxShadow: `0 0 50px ${colors.secondary}30`,
             transform: `scale(${iconScale})`,
@@ -382,8 +401,12 @@ function SlideScene({
       <div
         style={{
           position: "absolute",
-          bottom: 54, left: 0, right: 0,
-          display: "flex", justifyContent: "center", gap: 10,
+          bottom: 54,
+          left: 0,
+          right: 0,
+          display: "flex",
+          justifyContent: "center",
+          gap: 10,
         }}
       >
         {Array.from({ length: totalSlides }).map((_, i) => (
@@ -391,7 +414,8 @@ function SlideScene({
             key={i}
             style={{
               width: i === slideIndex ? 22 : 8,
-              height: 8, borderRadius: 4,
+              height: 8,
+              borderRadius: 4,
               background: i === slideIndex ? colors.secondary : "rgba(255,255,255,.3)",
               transition: "width .3s",
             }}
@@ -403,7 +427,8 @@ function SlideScene({
       <div
         style={{
           position: "absolute",
-          bottom: 20, right: 60,
+          bottom: 20,
+          right: 60,
           fontSize: ".75rem",
           color: "rgba(255,255,255,.3)",
           letterSpacing: "0.1em",
@@ -433,31 +458,40 @@ function IntroStinger({
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  const spr  = spring({ frame, fps, config: { damping: 6, stiffness: 160, mass: 0.5 } });
+  const spr = spring({ frame, fps, config: { damping: 6, stiffness: 160, mass: 0.5 } });
   const scale = interpolate(spr, [0, 1], [0, 1]);
-  const idle  = interpolate(Math.sin(frame * 0.06), [-1, 1], [-6, 6]);
+  const idle = interpolate(Math.sin(frame * 0.06), [-1, 1], [-6, 6]);
 
-  const textIn = spring({ frame: Math.max(0, frame - 18), fps, config: { damping: 14, stiffness: 100 } });
+  const textIn = spring({
+    frame: Math.max(0, frame - 18),
+    fps,
+    config: { damping: 14, stiffness: 100 },
+  });
   const textOp = interpolate(textIn, [0, 1], [0, 1]);
-  const textY  = interpolate(textIn, [0, 1], [20, 0]);
+  const textY = interpolate(textIn, [0, 1], [20, 0]);
 
-  const fadeOut = interpolate(
-    frame,
-    [durationInFrames - 14, durationInFrames],
-    [1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
+  const fadeOut = interpolate(frame, [durationInFrames - 14, durationInFrames], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   const ring1 = spring({ frame, fps, config: { damping: 20, stiffness: 50 } });
-  const ring2 = spring({ frame: Math.max(0, frame - 8), fps, config: { damping: 20, stiffness: 45 } });
+  const ring2 = spring({
+    frame: Math.max(0, frame - 8),
+    fps,
+    config: { damping: 20, stiffness: 45 },
+  });
 
   return (
     <AbsoluteFill
       style={{
         background: `linear-gradient(160deg, ${colors.primary} 0%, ${colors.secondary}40 50%, ${colors.primary} 100%)`,
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        opacity: fadeOut, overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: fadeOut,
+        overflow: "hidden",
         fontFamily: "'Tajawal','Cairo',sans-serif",
       }}
     >
@@ -467,7 +501,7 @@ function IntroStinger({
           key={i}
           style={{
             position: "absolute",
-            width:  interpolate(r, [0, 1], [0, 900 + i * 280]),
+            width: interpolate(r, [0, 1], [0, 900 + i * 280]),
             height: interpolate(r, [0, 1], [0, 900 + i * 280]),
             borderRadius: "50%",
             border: `1.5px solid ${colors.secondary}`,
@@ -480,7 +514,9 @@ function IntroStinger({
       <div
         style={{
           position: "absolute",
-          width: 420, height: 420, borderRadius: "50%",
+          width: 420,
+          height: 420,
+          borderRadius: "50%",
           background: `radial-gradient(circle, ${colors.secondary}20, transparent 70%)`,
         }}
       />
@@ -489,21 +525,32 @@ function IntroStinger({
       <div
         style={{
           transform: `scale(${scale}) translateY(${idle}px)`,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 28,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 28,
         }}
       >
         <div
           style={{
-            width: 200, height: 200, borderRadius: 40,
+            width: 200,
+            height: 200,
+            borderRadius: 40,
             overflow: "hidden",
-            background: logoUrl ? "rgba(255,255,255,.08)" : `linear-gradient(135deg, ${colors.secondary}, ${colors.accent})`,
-            display: "flex", alignItems: "center", justifyContent: "center",
+            background: logoUrl
+              ? "rgba(255,255,255,.08)"
+              : `linear-gradient(135deg, ${colors.secondary}, ${colors.accent})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             boxShadow: `0 24px 72px rgba(0,0,0,.5), 0 0 0 3px ${colors.secondary}50`,
           }}
         >
           {logoUrl ? (
-            <Img src={logoUrl} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 20 }} />
+            <Img
+              src={logoUrl}
+              style={{ width: "100%", height: "100%", objectFit: "contain", padding: 20 }}
+            />
           ) : (
             <span style={{ fontSize: "5rem", fontWeight: 900, color: colors.primary }}>
               {assocInitial}
@@ -514,15 +561,24 @@ function IntroStinger({
         {/* Name + region */}
         <div
           style={{
-            textAlign: "center", direction: "rtl",
-            opacity: textOp, transform: `translateY(${textY}px)`,
+            textAlign: "center",
+            direction: "rtl",
+            opacity: textOp,
+            transform: `translateY(${textY}px)`,
           }}
         >
           <div style={{ fontSize: "2.6rem", fontWeight: 900, color: "white", lineHeight: 1.1 }}>
             {assocName}
           </div>
           {assocRegion && (
-            <div style={{ fontSize: "1rem", color: colors.secondary, marginTop: 8, letterSpacing: ".06em" }}>
+            <div
+              style={{
+                fontSize: "1rem",
+                color: colors.secondary,
+                marginTop: 8,
+                letterSpacing: ".06em",
+              }}
+            >
               {assocRegion}
             </div>
           )}
@@ -566,10 +622,13 @@ function OutroCard({
     <AbsoluteFill
       style={{
         background: `linear-gradient(160deg, ${colors.primary}, ${colors.secondary}60)`,
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         fontFamily: "'Tajawal','Cairo',sans-serif",
-        direction: "rtl", overflow: "hidden",
+        direction: "rtl",
+        overflow: "hidden",
       }}
     >
       <BrandBg colors={colors} />
@@ -582,8 +641,10 @@ function OutroCard({
           border: `1px solid ${colors.secondary}40`,
           borderRadius: 32,
           padding: "56px 72px",
-          display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 28,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 28,
           transform: `scale(${interpolate(bgIn, [0, 1], [0.85, 1])})`,
           opacity: interpolate(bgIn, [0, 1], [0, 1]),
           maxWidth: 760,
@@ -592,15 +653,24 @@ function OutroCard({
         {/* Logo */}
         <div
           style={{
-            width: 110, height: 110, borderRadius: 24,
+            width: 110,
+            height: 110,
+            borderRadius: 24,
             overflow: "hidden",
-            background: logoUrl ? "rgba(255,255,255,.06)" : `linear-gradient(135deg, ${colors.secondary}, ${colors.accent})`,
-            display: "flex", alignItems: "center", justifyContent: "center",
+            background: logoUrl
+              ? "rgba(255,255,255,.06)"
+              : `linear-gradient(135deg, ${colors.secondary}, ${colors.accent})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             boxShadow: `0 0 0 3px ${colors.secondary}40`,
           }}
         >
           {logoUrl ? (
-            <Img src={logoUrl} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 12 }} />
+            <Img
+              src={logoUrl}
+              style={{ width: "100%", height: "100%", objectFit: "contain", padding: 12 }}
+            />
           ) : (
             <span style={{ fontSize: "3rem", fontWeight: 900, color: colors.primary }}>
               {assocInitial}
@@ -611,8 +681,11 @@ function OutroCard({
         {/* CTA */}
         <div
           style={{
-            fontSize: "2.4rem", fontWeight: 900, color: "white",
-            textAlign: "center", lineHeight: 1.2,
+            fontSize: "2.4rem",
+            fontWeight: 900,
+            color: "white",
+            textAlign: "center",
+            lineHeight: 1.2,
           }}
         >
           تبرّع الآن وكن شريكاً في التغيير
@@ -621,7 +694,8 @@ function OutroCard({
         {/* Divider */}
         <div
           style={{
-            width: 80, height: 3,
+            width: 80,
+            height: 3,
             background: colors.secondary,
             borderRadius: 2,
           }}
@@ -640,13 +714,17 @@ function OutroCard({
                 <div
                   key={i}
                   style={{
-                    display: "flex", alignItems: "center", gap: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
                     opacity: interpolate(itemIn, [0, 1], [0, 1]),
                     transform: `translateX(${interpolate(itemIn, [0, 1], [20, 0])}px)`,
                   }}
                 >
                   <span style={{ fontSize: "1.5rem" }}>{icon}</span>
-                  <span style={{ fontSize: "1.2rem", color: "rgba(255,255,255,.85)", fontWeight: 500 }}>
+                  <span
+                    style={{ fontSize: "1.2rem", color: "rgba(255,255,255,.85)", fontWeight: 500 }}
+                  >
                     {text}
                   </span>
                 </div>
@@ -656,7 +734,14 @@ function OutroCard({
         )}
 
         {/* Assoc name footer */}
-        <div style={{ fontSize: "1rem", color: colors.secondary, letterSpacing: ".08em", marginTop: 4 }}>
+        <div
+          style={{
+            fontSize: "1rem",
+            color: colors.secondary,
+            letterSpacing: ".08em",
+            marginTop: 4,
+          }}
+        >
           {assocName}
         </div>
       </div>
@@ -667,8 +752,8 @@ function OutroCard({
 // ─── Transition presentation selector ────────────────────────────────────────
 
 function getPresentation(style: TransitionStyle) {
-  if (style === "fade")  return fade({ shouldFadeOutExitingScene: true });
-  if (style === "wipe")  return wipe({ direction: "from-right" });
+  if (style === "fade") return fade({ shouldFadeOutExitingScene: true });
+  if (style === "wipe") return wipe({ direction: "from-right" });
   return slide({ direction: "from-right" }); // default RTL-friendly
 }
 
@@ -693,19 +778,20 @@ export function BrandedVideo({
 }: BrandedVideoProps) {
   const { durationInFrames } = useVideoConfig();
 
-  const initial = assocInitial ?? (assocName?.[0] ?? "ج");
+  const initial = assocInitial ?? assocName?.[0] ?? "ج";
 
   // Resolve brand colors — explicit override > ai_brand parse > defaults
-  const colors: BrandColors = brandColorsProp && brandColorsProp.length >= 2
-    ? {
-        primary:   brandColorsProp[0],
-        secondary: brandColorsProp[1],
-        accent:    brandColorsProp[2] ?? "#ffffff",
-        text:      "#ffffff",
-      }
-    : parseBrandColors(aiBrand);
+  const colors: BrandColors =
+    brandColorsProp && brandColorsProp.length >= 2
+      ? {
+          primary: brandColorsProp[0],
+          secondary: brandColorsProp[1],
+          accent: brandColorsProp[2] ?? "#ffffff",
+          text: "#ffffff",
+        }
+      : parseBrandColors(aiBrand);
 
-  const slides     = textToSlides(text);
+  const slides = textToSlides(text);
   const slideCount = Math.max(slides.length, 1);
   const slideFrames: number[] = Array.from(
     { length: slideCount },
@@ -716,8 +802,8 @@ export function BrandedVideo({
 
   // Build flat TransitionSeries children: [Seq, Trans, Seq, Trans, ..., Seq]
   const tsChildren = slides.flatMap((sl, i) => {
-    const dur  = slideFrames[i];
-    const seq  = (
+    const dur = slideFrames[i];
+    const seq = (
       <TransitionSeries.Sequence key={`s${i}`} durationInFrames={dur}>
         <SlideScene
           slide={sl}
@@ -736,7 +822,7 @@ export function BrandedVideo({
         <TransitionSeries.Transition
           key={`t${i}`}
           timing={springTiming({ config: { damping: 200 }, durationInFrames: TRANSITION_DUR })}
-          presentation={getPresentation(transitionStyle)}
+          presentation={getPresentation(transitionStyle) as TransitionPresentation<FadeProps>}
         />
       );
       return [seq, trans];
@@ -746,7 +832,6 @@ export function BrandedVideo({
 
   return (
     <AbsoluteFill style={{ fontFamily: "'Tajawal','Cairo',sans-serif", direction: "rtl" }}>
-
       {/* ── Intro stinger ── */}
       <Sequence from={0} durationInFrames={INTRO_DUR + TRANSITION_DUR} name="Intro">
         <IntroStinger
@@ -759,10 +844,12 @@ export function BrandedVideo({
       </Sequence>
 
       {/* ── Slides with transitions ── */}
-      <Sequence from={INTRO_DUR} durationInFrames={outroStart - INTRO_DUR + TRANSITION_DUR} name="Slides">
-        <TransitionSeries>
-          {tsChildren}
-        </TransitionSeries>
+      <Sequence
+        from={INTRO_DUR}
+        durationInFrames={outroStart - INTRO_DUR + TRANSITION_DUR}
+        name="Slides"
+      >
+        <TransitionSeries>{tsChildren}</TransitionSeries>
       </Sequence>
 
       {/* ── Outro contact card ── */}

@@ -25,14 +25,19 @@ Deno.serve(async (req) => {
     callerId = JSON.parse(atob(token.split(".")[1])).sub;
   } catch {
     return new Response(JSON.stringify({ error: "رمز المصادقة غير صالح" }), {
-      status: 401, headers: { ...CORS, "Content-Type": "application/json" },
+      status: 401,
+      headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
   const adminClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  const { data: profile } = await adminClient.from("profiles").select("role").eq("id", callerId).single();
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("role")
+    .eq("id", callerId)
+    .single();
 
   if (profile?.role !== "admin") {
     return new Response(JSON.stringify({ error: "ليس لديك صلاحية الإنشاء" }), {

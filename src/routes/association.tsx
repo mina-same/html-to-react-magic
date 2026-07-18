@@ -1,29 +1,27 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Toaster, toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useEmployees, useTasks, useCampaigns, useDonations, useInfluencers } from "@/api/queries";
 import {
-  employeesDb,
-  tasksDb,
-  influencersDb,
-  campaignsDb,
-  requestsDb,
-  donationsDb,
-} from "@/lib/db";
-import { INF_COLORS } from "@/components/association/data";
+  useSaveTask,
+  useDeleteTask,
+  useUpdateTaskStatus,
+  useSaveEmployee,
+  useDeleteEmployee,
+  useUpdateEmployeeStatus,
+  useSaveInfluencer,
+  useDeleteInfluencer,
+  useSubmitCampaignRequest,
+} from "@/api/mutations";
 
 import AssocSidebar from "@/components/association/AssocSidebar";
 import Onboarding from "@/components/association/Onboarding";
-import type {
-  PageId,
-  Task,
-  Employee,
-  Influencer,
-  Campaign,
-  Donation,
-} from "@/components/association/types";
+import type { PageId, Task, Employee, Influencer } from "@/components/association/types";
 import { PAGE_TITLES } from "@/components/association/types";
+import { keys } from "@/api/keys";
 
 import OverviewPage from "@/components/association/pages/OverviewPage";
 import ProfilePage from "@/components/association/pages/ProfilePage";
@@ -48,10 +46,9 @@ export const Route = createFileRoute("/association")({
   component: Association,
 });
 
-const EMP_COLORS = ["#7c3aed", "#be185d", "#0369a1", "#b91c1c", "#166534", "#92400e", "#0f766e"];
-
 function Association() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const {
     user,
     role,
@@ -63,7 +60,7 @@ function Association() {
   } = useAuth();
   const assocId = user?.id ?? "";
 
-  // Check if onboarding is needed (association has no profile or missing required fields)
+  // Onboarding gate: association with no profile / missing required fields.
   const needsOnboarding =
     role === "association" &&
     !authLoading &&
@@ -72,42 +69,12 @@ function Association() {
       !associationProfile.region ||
       !associationProfile.phone);
 
-  // Auth guard
-  useEffect(() => {
-    if (!authLoading && !user) navigate({ to: "/login" });
-    if (!authLoading && user && role === "admin") navigate({ to: "/admin" });
-    if (!authLoading && user && role === "employee") navigate({ to: "/employee" });
-  }, [user, role, authLoading, navigate]);
-
-  // Core state — restore last active page from localStorage
+  // ── UI state only ──────────────────────────────────────────────
   const [activePage, _setActivePage] = useState<PageId>("overview");
-
-  // Restore from localStorage on client only
-  useEffect(() => {
-    const saved = localStorage.getItem("saaid_assoc_page") as PageId | null;
-    if (saved) _setActivePage(saved);
-  }, []);
-
-  function setActivePage(page: PageId) {
-    localStorage.setItem("saaid_assoc_page", page);
-    _setActivePage(page);
-  }
   const [assocName, setAssocName] = useState(savedName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentCount, setContentCount] = useState(0);
-  const [dataLoading, setDataLoading] = useState(true);
 
-  // Track last loaded user id to prevent unnecessary reloading
-  const lastLoadedUserIdRef = useRef<string | null>(null);
-
-  // Data state
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [influencers, setInfluencers] = useState<Influencer[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [donations, setDonations] = useState<Donation[]>([]);
-
-  // Modal state
   const [taskModal, setTaskModal] = useState<{ open: boolean; task?: Task }>({ open: false });
   const [empModal, setEmpModal] = useState<{ open: boolean; employee?: Employee }>({ open: false });
   const [infModal, setInfModal] = useState<{ open: boolean; inf?: Influencer }>({ open: false });
@@ -118,146 +85,140 @@ function Association() {
     open: false,
   });
 
-  // Sync assocName from auth
+  // Restore last active tab.
+  useEffect(() => {
+    const saved = localStorage.getItem("saaid_assoc_page") as PageId | null;
+    if (saved) _setActivePage(saved);
+  }, []);
+
+  // Sync assocName from auth provider.
   useEffect(() => {
     if (savedName) setAssocName(savedName);
   }, [savedName]);
 
-  // Load all data — deps use user?.id (stable string) to avoid double-fire
-  // caused by useAuth calling finish() from both getSession + onAuthStateChange
-  const loadData = useCallback(async () => {
-    if (!user) return;
+  function setActivePage(page: PageId) {
+    localStorage.setItem("saaid_assoc_page", page);
+    _setActivePage(page);
+  }
 
-    // If we already loaded data for this user, skip
-    if (user.id === lastLoadedUserIdRef.current) {
-      console.log("[association.tsx] Already loaded data for this user, skipping");
-      return;
-    }
-
-    console.log("[association.tsx] Loading data for user:", user.id);
-    setDataLoading(true);
-    try {
-      const [emps, tks, infs, camps, doms] = await Promise.all([
-        employeesDb.list(user.id),
-        tasksDb.list(user.id),
-        influencersDb.list(),
-        campaignsDb.list(user.id),
-        donationsDb.list(user.id),
-      ]);
-      setEmployees(emps);
-      setTasks(tks);
-      setInfluencers(infs);
-      setCampaigns(camps);
-      setDonations(doms);
-
-      lastLoadedUserIdRef.current = user.id;
-    } finally {
-      setDataLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
+  // ── Auth guard ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!authLoading && user) loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, authLoading]);
+    if (authLoading) return;
+    if (!user) navigate({ to: "/login" });
+    else if (role === "admin") navigate({ to: "/admin" });
+    else if (role === "employee") navigate({ to: "/employee" });
+  }, [user, role, authLoading, navigate]);
 
+  // ── Server state (React Query) ─────────────────────────────────
+  const enabled = !!user && role === "association";
+  const employeesQ = useEmployees(assocId, enabled);
+  const tasksQ = useTasks(assocId, enabled);
+  const campaignsQ = useCampaigns(assocId, enabled);
+  const donationsQ = useDonations(assocId, enabled);
+  const influencersQ = useInfluencers(enabled);
+
+  const employees = employeesQ.data ?? [];
+  const tasks = tasksQ.data ?? [];
+  const campaigns = campaignsQ.data ?? [];
+  const donations = donationsQ.data ?? [];
+  const influencers = influencersQ.data ?? [];
+  const dataFetching = employeesQ.isFetching || tasksQ.isFetching || campaignsQ.isFetching;
+
+  // ── Mutations ──────────────────────────────────────────────────
+  const saveTaskMut = useSaveTask(assocId);
+  const deleteTaskMut = useDeleteTask(assocId);
+  const updateTaskStatusMut = useUpdateTaskStatus(assocId);
+  const saveEmployeeMut = useSaveEmployee(assocId);
+  const deleteEmployeeMut = useDeleteEmployee(assocId);
+  const updateEmployeeStatusMut = useUpdateEmployeeStatus(assocId);
+  const saveInfluencerMut = useSaveInfluencer();
+  const deleteInfluencerMut = useDeleteInfluencer();
+  const submitRequestMut = useSubmitCampaignRequest();
+
+  // ── Handlers ───────────────────────────────────────────────────
   async function logout() {
-    lastLoadedUserIdRef.current = null;
     await signOut();
     navigate({ to: "/login" });
   }
 
-  // ── Task CRUD ────────────────────────────────────────────────
-  async function saveTask(data: Omit<Task, "id">) {
-    if (!user) return;
-    if (taskModal.task) {
-      await tasksDb.update(taskModal.task.id, data);
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskModal.task!.id ? { ...data, id: t.id } : t)),
-      );
-    } else {
-      const created = await tasksDb.create(user.id, data);
-      if (created) setTasks((prev) => [...prev, created]);
+  async function handleNameChange(name: string) {
+    setAssocName(name);
+    await updateAssocName(name);
+  }
+
+  async function saveTask(data: Omit<Task, "id"> & { id?: number }) {
+    try {
+      await saveTaskMut.mutateAsync({ id: data.id, data });
+      setTaskModal({ open: false });
+    } catch (err) {
+      toast.error("فشل حفظ المهمة: " + (err instanceof Error ? err.message : String(err)));
     }
-    setTaskModal({ open: false });
   }
   async function deleteTask(id: number) {
-    await tasksDb.delete(id);
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    setTaskModal({ open: false });
+    try {
+      await deleteTaskMut.mutateAsync(id);
+      setTaskModal({ open: false });
+    } catch (err) {
+      toast.error("فشل حذف المهمة: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
-  // ── Employee CRUD ────────────────────────────────────────────
   async function saveEmployee(data: Employee) {
-    if (!user) return;
-    if (empModal.employee) {
-      await employeesDb.update(data.id, {
-        name: data.name,
-        role: data.role,
-        status: data.status,
-        color: data.color,
-      });
-      setEmployees((prev) => prev.map((e) => (e.id === data.id ? data : e)));
-    } else {
-      const color = EMP_COLORS[employees.length % EMP_COLORS.length];
-      const created = await employeesDb.create(user.id, {
-        name: data.name,
-        role: data.role,
-        status: data.status,
-        color,
-      });
-      if (created) setEmployees((prev) => [...prev, created]);
+    try {
+      await saveEmployeeMut.mutateAsync({ employee: data, count: employees.length });
+      setEmpModal({ open: false });
+    } catch (err) {
+      toast.error("فشل حفظ الموظف: " + (err instanceof Error ? err.message : String(err)));
     }
-    setEmpModal({ open: false });
   }
   async function deleteEmployee(id: number) {
-    await employeesDb.delete(id);
-    setEmployees((prev) => prev.filter((e) => e.id !== id));
-  }
-
-  async function changeEmployeeStatus(id: number, status: Employee["status"]) {
-    const employee = employees.find((e) => e.id === id);
-    if (!employee) return;
-    const updated = { ...employee, status };
-    await employeesDb.update(id, { status });
-    setEmployees((prev) => prev.map((e) => (e.id === id ? updated : e)));
-  }
-
-  // ── Influencer CRUD (admin or global list) ───────────────────
-  async function saveInfluencer(data: Omit<Influencer, "id">) {
-    if (infModal.inf) {
-      await influencersDb.update(infModal.inf.id, data);
-      setInfluencers((prev) =>
-        prev.map((i) => (i.id === infModal.inf!.id ? { ...data, id: i.id } : i)),
-      );
-    } else {
-      const created = await influencersDb.create(data);
-      if (created) setInfluencers((prev) => [...prev, created]);
+    try {
+      await deleteEmployeeMut.mutateAsync(id);
+    } catch (err) {
+      toast.error("فشل حذف الموظف: " + (err instanceof Error ? err.message : String(err)));
     }
-    setInfModal({ open: false });
+  }
+  async function changeEmployeeStatus(id: number, status: Employee["status"]) {
+    try {
+      await updateEmployeeStatusMut.mutateAsync({ id, status });
+    } catch (err) {
+      toast.error("فشل تحديث الحالة: " + (err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  async function saveInfluencer(data: Omit<Influencer, "id"> & { id?: number }) {
+    try {
+      await saveInfluencerMut.mutateAsync(data as Partial<Influencer>);
+      setInfModal({ open: false });
+    } catch (err) {
+      toast.error("فشل حفظ المؤثر: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
   async function deleteInfluencer(id: number) {
-    await influencersDb.delete(id);
-    setInfluencers((prev) => prev.filter((i) => i.id !== id));
-    setInfModal({ open: false });
+    try {
+      await deleteInfluencerMut.mutateAsync(id);
+      setInfModal({ open: false });
+    } catch (err) {
+      toast.error("فشل حذف المؤثر: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
-  // ── Campaign Request ─────────────────────────────────────────
   async function submitCampaignRequest(
     inf: Influencer,
     payload: { type: string; budget: number; startDate: string; duration: string; message: string },
   ) {
     if (!user) return;
-    await requestsDb.create(user.id, inf.id, payload);
-    toast.success("تم إرسال طلب الحملة بنجاح!");
-    setCampaignModal({ open: false });
+    try {
+      await submitRequestMut.mutateAsync({ assocId: user.id, influencerId: inf.id, payload });
+      toast.success("تم إرسال طلب الحملة بنجاح!");
+      setCampaignModal({ open: false });
+    } catch (err) {
+      toast.error("فشل إرسال الطلب: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
-  // ── Assoc name update ────────────────────────────────────────
-  async function handleNameChange(name: string) {
-    setAssocName(name);
-    await updateAssocName(name);
+  function refreshAssocData() {
+    qc.invalidateQueries({ queryKey: ["assoc", assocId] });
   }
 
   const incompleteTasksCount = tasks.filter((t) => t.status !== "done").length;
@@ -267,7 +228,7 @@ function Association() {
     return (
       <div
         dir="rtl"
-        suppressHydrationWarning={true}
+        suppressHydrationWarning
         style={{
           minHeight: "100dvh",
           background: "#f4f7f5",
@@ -285,10 +246,7 @@ function Association() {
     );
   }
 
-  // Show onboarding if needed
-  if (needsOnboarding) {
-    return <Onboarding onComplete={() => {}} />;
-  }
+  if (needsOnboarding) return <Onboarding onComplete={() => {}} />;
 
   function renderPage() {
     switch (activePage) {
@@ -311,7 +269,7 @@ function Association() {
               if (name) handleNameChange(name);
               setContentCount((c) => c + count);
             }}
-            onNavigate={setActivePage}
+            onNavigate={(p) => setActivePage(p as PageId)}
           />
         );
       case "team":
@@ -332,8 +290,13 @@ function Association() {
             onAddTask={() => setTaskModal({ open: true })}
             onEditTask={(task) => setTaskModal({ open: true, task })}
             onStatusChange={async (id, status) => {
-              await tasksDb.update(id, { status });
-              setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+              try {
+                await updateTaskStatusMut.mutateAsync({ id, status });
+              } catch (err) {
+                toast.error(
+                  "فشل تحديث الحالة: " + (err instanceof Error ? err.message : String(err)),
+                );
+              }
             }}
           />
         );
@@ -342,7 +305,9 @@ function Association() {
       case "content":
         return <ContentPage assocName={assocName ?? undefined} />;
       case "campaigns":
-        return <CampaignsPage campaigns={campaigns} userId={user?.id} onRefresh={loadData} />;
+        return (
+          <CampaignsPage campaigns={campaigns} userId={user?.id} onRefresh={refreshAssocData} />
+        );
       case "influencers":
         return (
           <InfluencersPage
@@ -462,7 +427,7 @@ function Association() {
               {assocName}
             </span>
           )}
-          {dataLoading && (
+          {dataFetching && (
             <span style={{ fontSize: ".72rem", color: "#9ca3af" }}>جاري التحديث…</span>
           )}
           <div

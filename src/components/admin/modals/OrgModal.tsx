@@ -4,7 +4,7 @@ import {
   getCountryCallingCode,
   isValidPhoneNumber,
   parsePhoneNumberFromString,
-  type Country,
+  type CountryCode,
 } from "libphonenumber-js";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,7 +31,7 @@ interface OrgModalProps {
 export function OrgModal({ org, onClose, onSave }: OrgModalProps) {
   const [form, setForm] = useState<Partial<Org>>(org ?? {});
   const [password, setPassword] = useState("");
-  const [country, setCountry] = useState<Country>("SA");
+  const [country, setCountry] = useState<CountryCode>("SA");
   const isNew = !org?.id;
 
   function set(k: keyof Org, v: string) {
@@ -195,7 +195,7 @@ export function OrgModal({ org, onClose, onSave }: OrgModalProps) {
                       direction: "ltr",
                     }}
                     value={country}
-                    onChange={(e) => setCountry(e.target.value as Country)}
+                    onChange={(e) => setCountry(e.target.value as CountryCode)}
                   >
                     {COUNTRY_OPTIONS.map((opt) => (
                       <option key={opt.code} value={opt.code}>

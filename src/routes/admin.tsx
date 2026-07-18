@@ -1,9 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
+import { Toaster, toast } from "sonner";
+
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { adminOrgsDb, adminRequestsDb, influencersDb } from "@/lib/db";
-import { toast } from "sonner";
+import { useAdminOrgs, useAdminInfluencers, useAdminRequests } from "@/api/queries";
+import {
+  useSaveOrg,
+  useSuspendOrg,
+  useSaveInfluencer,
+  useDeleteInfluencer,
+  useUpdateRequest,
+} from "@/api/mutations";
+import { LoadingState, ErrorState } from "@/components/common/StateViews";
 
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OverviewPage } from "@/components/admin/pages/OverviewPage";
@@ -14,7 +23,14 @@ import { RequestsPage } from "@/components/admin/pages/RequestsPage";
 import { ReportsPage } from "@/components/admin/pages/ReportsPage";
 import { SettingsPage } from "@/components/admin/pages/SettingsPage";
 import { S } from "@/components/admin/helpers";
-import type { Org, Influencer, CampaignRequest, PageId } from "@/components/admin/types";
+import {
+  PAGE_TITLES,
+  PAGE_TAGS,
+  type Org,
+  type Influencer,
+  type CampaignRequest,
+  type PageId,
+} from "@/components/admin/types";
 import { OrgModal } from "@/components/admin/modals/OrgModal";
 import { InfModal } from "@/components/admin/modals/InfModal";
 import { ReqModal } from "@/components/admin/modals/ReqModal";
@@ -24,18 +40,33 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
+type ModalState<T> = { open: boolean; data: Partial<T> | null };
+
 function Admin() {
   const navigate = useNavigate();
-  const { user, role, loading: authLoading, signOut } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
 
+  // ── UI state only ──────────────────────────────────────────────
   const [activePage, _setActivePage] = useState<PageId>("overview");
   const [selectedOrg, setSelectedOrg] = useState<Org | null>(null);
 
+  const [orgModal, setOrgModal] = useState<ModalState<Org>>({ open: false, data: null });
+  const [infModal, setInfModal] = useState<ModalState<Influencer>>({ open: false, data: null });
+  const [reqModal, setReqModal] = useState<ModalState<CampaignRequest>>({
+    open: false,
+    data: null,
+  });
+
+  const [orgSearch, setOrgSearch] = useState("");
+  const [orgStatusFilter, setOrgStatusFilter] = useState("all");
+  const [infSearch, setInfSearch] = useState("");
+  const [infPlatFilter, setInfPlatFilter] = useState("all");
+  const [reqStatusFilter, setReqStatusFilter] = useState("all");
+
+  // Restore last active tab.
   useEffect(() => {
-    const savedPage = localStorage.getItem("saaid_admin_page") as PageId | null;
-    if (savedPage) {
-      _setActivePage(savedPage);
-    }
+    const saved = localStorage.getItem("saaid_admin_page") as PageId | null;
+    if (saved) _setActivePage(saved);
   }, []);
 
   function setActivePage(page: PageId) {
@@ -44,242 +75,141 @@ function Admin() {
     setSelectedOrg(null);
   }
 
-  const [orgs, setOrgs] = useState<Org[]>([]);
-  const [influencers, setInfluencers] = useState<Influencer[]>([]);
-  const [requests, setRequests] = useState<CampaignRequest[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // ── Server state (React Query) ─────────────────────────────────
+  const orgsQuery = useAdminOrgs(!!user && role === "admin");
+  const infsQuery = useAdminInfluencers(!!user && role === "admin");
+  const reqsQuery = useAdminRequests(!!user && role === "admin");
 
-  const [orgModal, setOrgModal] = useState<{ open: boolean; data: Partial<Org> | null }>({
-    open: false,
-    data: null,
-  });
-  const [infModal, setInfModal] = useState<{ open: boolean; data: Partial<Influencer> | null }>({
-    open: false,
-    data: null,
-  });
-  const [reqModal, setReqModal] = useState<{
-    open: boolean;
-    data: Partial<CampaignRequest> | null;
-  }>({ open: false, data: null });
+  const orgs = orgsQuery.data ?? [];
+  const influencers = infsQuery.data ?? [];
+  const requests = reqsQuery.data ?? [];
 
-  const [orgSearch, setOrgSearch] = useState("");
-  const [orgStatusFilter, setOrgStatusFilter] = useState("all");
-  const [infSearch, setInfSearch] = useState("");
-  const [infPlatFilter, setInfPlatFilter] = useState("all");
-  const [reqStatusFilter, setReqStatusFilter] = useState("all");
+  // ── Mutations ──────────────────────────────────────────────────
+  const saveOrgMut = useSaveOrg();
+  const suspendOrgMut = useSuspendOrg();
+  const saveInfMut = useSaveInfluencer();
+  const deleteInfMut = useDeleteInfluencer();
+  const updateReqMut = useUpdateRequest();
 
+  // ── Auth guard ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) navigate({ to: "/login" });
+    else if (role !== "admin") navigate({ to: "/association" });
+  }, [user, role, authLoading, navigate]);
+
+  // ── Derived (filtered) collections ─────────────────────────────
   const filteredOrgs = useMemo(
     () =>
-      orgs.filter(
+      (orgsQuery.data ?? []).filter(
         (o) =>
           (orgStatusFilter === "all" || o.status === orgStatusFilter) &&
           (o.name.includes(orgSearch) ||
             o.region.includes(orgSearch) ||
             o.license.includes(orgSearch)),
       ),
-    [orgs, orgSearch, orgStatusFilter],
+    [orgsQuery.data, orgSearch, orgStatusFilter],
   );
 
   const filteredInfs = useMemo(
     () =>
-      influencers.filter(
+      (infsQuery.data ?? []).filter(
         (i) =>
           (infPlatFilter === "all" || i.platform === infPlatFilter) &&
           (i.name.includes(infSearch) ||
             i.niche.includes(infSearch) ||
             i.platform.includes(infSearch)),
       ),
-    [influencers, infSearch, infPlatFilter],
+    [infsQuery.data, infSearch, infPlatFilter],
   );
 
   const filteredReqs = useMemo(
-    () => requests.filter((r) => reqStatusFilter === "all" || r.status === reqStatusFilter),
-    [requests, reqStatusFilter],
+    () =>
+      (reqsQuery.data ?? []).filter(
+        (r) => reqStatusFilter === "all" || r.status === reqStatusFilter,
+      ),
+    [reqsQuery.data, reqStatusFilter],
   );
 
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) navigate({ to: "/login" });
-      else if (role !== "admin") navigate({ to: "/association" });
-    }
-  }, [user, role, authLoading, navigate]);
-
-  useEffect(() => {
-    if (authLoading || !user || role !== "admin") return;
-    async function load() {
-      setDataLoading(true);
-      try {
-        const [orgsData, infsData, reqsData] = await Promise.all([
-          adminOrgsDb.list(),
-          influencersDb.list(),
-          adminRequestsDb.list(),
-        ]);
-        setOrgs(orgsData.map((o) => ({ ...o, notes: o.description })));
-        setInfluencers(
-          infsData.map((i) => ({
-            ...i,
-            price: i.basePrice,
-            status: i.status as "active" | "pending" | "ended",
-          })),
-        );
-        setRequests(reqsData);
-      } finally {
-        setDataLoading(false);
-      }
-    }
-    load();
-  }, [user, role, authLoading]);
-
-  if (authLoading || !user || role !== "admin") return null;
-
-  const pageTitles: Record<PageId, string> = {
-    overview: "لوحة التحكم",
-    orgs: "الجمعيات",
-    influencers: "المؤثرون",
-    requests: "الطلبات",
-    reports: "التقارير المالية",
-    settings: "الإعدادات",
-  };
-
-  const pageTags: Record<PageId, string> = {
-    overview: "نظرة عامة",
-    orgs: `${orgs.length} جمعية`,
-    influencers: `${influencers.length} مؤثر`,
-    requests: `${requests.length} طلب`,
-    reports: "الإيرادات",
-    settings: "الإعدادات العامة",
-  };
-
+  // ── Mutation handlers ──────────────────────────────────────────
   async function saveOrg(data: Partial<Org> & { password?: string }) {
-    if (!data.id) {
-      const { error } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: data.email ?? "",
-          password: data.password ?? "",
-          assocName: data.name ?? "",
-          license: data.license ?? "",
-          region: data.region ?? "",
-          phone: data.phone ?? "",
-          status: data.status ?? "new",
-        },
-      });
-      if (error) {
-        toast.error("فشل إنشاء الحساب: " + error.message);
-        return;
-      }
-      const refreshed = await adminOrgsDb.list();
-      setOrgs(refreshed.map((o) => ({ ...o, notes: o.description })));
-      toast.success("✅ تم إنشاء حساب الجمعية بنجاح");
-      return;
+    try {
+      await saveOrgMut.mutateAsync(data);
+      toast.success(data.id ? "تم تحديث بيانات الجمعية" : "✅ تم إنشاء حساب الجمعية بنجاح");
+      setOrgModal({ open: false, data: null });
+    } catch (err) {
+      toast.error("فشل حفظ الجمعية: " + (err instanceof Error ? err.message : String(err)));
     }
-    await adminOrgsDb.upsert(data.id, data.name ?? "", {
-      license: data.license ?? "",
-      region: data.region ?? "",
-      phone: data.phone ?? "",
-      email: data.email ?? "",
-      description: data.notes ?? "",
-      status: data.status ?? "active",
-    });
-    setOrgs((prev) => prev.map((o) => (o.id === data.id ? ({ ...o, ...data } as Org) : o)));
-    toast.success("تم تحديث بيانات الجمعية");
   }
 
   async function suspendOrg(id: string) {
-    await adminOrgsDb.setStatus(id, "suspended");
-    setOrgs((prev) => prev.map((o) => (o.id === id ? { ...o, status: "suspended" } : o)));
-    toast.success("تم توقيف الجمعية");
+    try {
+      await suspendOrgMut.mutateAsync(id);
+      toast.success("تم توقيف الجمعية");
+    } catch (err) {
+      toast.error("فشل التوقيف: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
   async function saveInf(data: Partial<Influencer>) {
-    if (data.id) {
-      await influencersDb.update(data.id, {
-        name: data.name,
-        platform: data.platform as
-          | "Instagram"
-          | "X"
-          | "TikTok"
-          | "YouTube"
-          | "Snapchat"
-          | undefined,
-        followers: data.followers,
-        engagement: data.engagement,
-        status: data.status as "active" | "pending" | "ended",
-        niche: data.niche,
-        notes: data.notes,
-        basePrice: data.price,
-      });
-      setInfluencers((prev) =>
-        prev.map((i) => (i.id === data.id ? ({ ...i, ...data } as Influencer) : i)),
-      );
-      toast.success("تم تحديث بيانات المؤثر");
-    } else {
-      const created = await influencersDb.create({
-        name: data.name ?? "",
-        platform: (data.platform ?? "Instagram") as
-          | "Instagram"
-          | "X"
-          | "TikTok"
-          | "YouTube"
-          | "Snapchat",
-        followers: data.followers ?? 0,
-        engagement: data.engagement ?? 0,
-        status: (data.status ?? "active") as "active" | "pending" | "ended",
-        campaigns: 0,
-        niche: data.niche ?? "",
-        notes: data.notes ?? "",
-        basePrice: data.price ?? 0,
-        bio: data.bio ?? "",
-        location: data.location ?? "",
-        audience: data.audience ?? "",
-        instagramHandle: data.instagramHandle ?? "",
-        xHandle: data.xHandle ?? "",
-        tiktokHandle: data.tiktokHandle ?? "",
-        youtubeHandle: data.youtubeHandle ?? "",
-        snapchatHandle: data.snapchatHandle ?? "",
-        website: data.website ?? "",
-        email: data.email ?? "",
-        phone: data.phone ?? "",
-      });
-      if (created) {
-        setInfluencers((prev) => [
-          ...prev,
-          {
-            ...created,
-            price: created.basePrice,
-            status: created.status as "active" | "pending" | "ended",
-          },
-        ]);
-      }
-      toast.success("تمت إضافة المؤثر بنجاح");
+    try {
+      await saveInfMut.mutateAsync(data);
+      toast.success(data.id ? "تم تحديث بيانات المؤثر" : "تمت إضافة المؤثر بنجاح");
+      setInfModal({ open: false, data: null });
+    } catch (err) {
+      toast.error("فشل حفظ المؤثر: " + (err instanceof Error ? err.message : String(err)));
     }
   }
 
   async function deleteInf(id: number) {
-    await influencersDb.delete(id);
-    setInfluencers((prev) => prev.filter((i) => i.id !== id));
-    toast.success("تم حذف المؤثر");
+    try {
+      await deleteInfMut.mutateAsync(id);
+      toast.success("تم حذف المؤثر");
+      setInfModal({ open: false, data: null });
+    } catch (err) {
+      toast.error("فشل حذف المؤثر: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
   async function saveReq(data: Partial<CampaignRequest>) {
     if (!data.id) return;
-    await adminRequestsDb.update(data.id, {
-      type: data.type,
-      budget: data.budget,
-      duration: data.duration,
-      message: data.message,
-      status: data.status,
-    });
-    setRequests((prev) =>
-      prev.map((r) => (r.id === data.id ? ({ ...r, ...data } as CampaignRequest) : r)),
-    );
-    toast.success("تم تحديث الطلب");
+    try {
+      await updateReqMut.mutateAsync({
+        id: data.id,
+        fields: {
+          type: data.type,
+          budget: data.budget,
+          duration: data.duration,
+          message: data.message,
+          status: data.status,
+        },
+      });
+      toast.success("تم تحديث الطلب");
+      setReqModal({ open: false, data: null });
+    } catch (err) {
+      toast.error("فشل تحديث الطلب: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
   async function rejectReq(reqId: number) {
-    await adminRequestsDb.update(reqId, { status: "rejected" });
-    setRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: "rejected" } : r)));
-    toast.error("تم رفض الطلب");
+    try {
+      await updateReqMut.mutateAsync({ id: reqId, fields: { status: "rejected" } });
+      toast.error("تم رفض الطلب");
+    } catch (err) {
+      toast.error("فشل رفض الطلب: " + (err instanceof Error ? err.message : String(err)));
+    }
   }
+
+  // ── Render gates ───────────────────────────────────────────────
+  if (authLoading || !user || role !== "admin") return null;
+
+  const anyError = orgsQuery.isError || infsQuery.isError || reqsQuery.isError;
+  const firstLoad = orgsQuery.isLoading || infsQuery.isLoading || reqsQuery.isLoading;
+  const refetchAll = () => {
+    orgsQuery.refetch();
+    infsQuery.refetch();
+    reqsQuery.refetch();
+  };
 
   function renderPage() {
     switch (activePage) {
@@ -311,7 +241,7 @@ function Admin() {
             orgStatusFilter={orgStatusFilter}
             setOrgStatusFilter={setOrgStatusFilter}
             setOrgModal={setOrgModal}
-            suspendOrg={async (id: number) => await suspendOrg(id.toString())}
+            suspendOrg={(id: string) => suspendOrg(id)}
             openOrgProfile={setSelectedOrg}
           />
         );
@@ -354,11 +284,11 @@ function Admin() {
         html, body { direction: rtl; font-family: 'Tajawal', sans-serif; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .admin-page-anim { animation: fadeUp .3s ease; }
         .admin-content::-webkit-scrollbar { width: 4px; }
         .admin-content::-webkit-scrollbar-thumb { background: rgba(45,122,82,.12); border-radius: 4px; }
       `}</style>
+      <Toaster position="top-center" richColors />
       <div style={S.app}>
         <AdminSidebar
           activePage={activePage}
@@ -370,40 +300,22 @@ function Admin() {
 
         <div style={S.main}>
           <div style={S.topbar}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                marginLeft: "auto",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: ".82rem",
-                  fontWeight: 700,
-                  color: "#111827",
-                }}
-              >
-                {pageTitles[activePage]}
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginLeft: "auto" }}>
+              <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#111827" }}>
+                {PAGE_TITLES[activePage]}
               </div>
-              <div
-                style={{
-                  fontSize: ".72rem",
-                  color: "#6b7280",
-                }}
-              >
-                {pageTags[activePage]}
+              <div style={{ fontSize: ".72rem", color: "#6b7280" }}>
+                {PAGE_TAGS[activePage]({ orgs, influencers, requests })}
               </div>
             </div>
           </div>
 
           <div style={S.content} className="admin-content">
             <div className="admin-page-anim">
-              {dataLoading ? (
-                <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280" }}>
-                  <div>جاري تحميل البيانات...</div>
-                </div>
+              {anyError ? (
+                <ErrorState onRetry={refetchAll} />
+              ) : firstLoad ? (
+                <LoadingState />
               ) : (
                 renderPage()
               )}

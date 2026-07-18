@@ -22,7 +22,13 @@ interface OverviewPageProps {
   setOrgModal: (data: { open: boolean; data: Partial<Org> | null }) => void;
 }
 
-export function OverviewPage({ orgs, influencers, requests, setActivePage, setOrgModal }: OverviewPageProps) {
+export function OverviewPage({
+  orgs,
+  influencers,
+  requests,
+  setActivePage,
+  setOrgModal,
+}: OverviewPageProps) {
   const recentOrgs = [...orgs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   const recentReqs = [...requests].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
@@ -160,9 +166,7 @@ export function OverviewPage({ orgs, influencers, requests, setActivePage, setOr
               flexShrink: 0,
             }}
           >
-            <div
-              style={{ fontSize: ".72rem", color: "#fcd34d", fontWeight: 700, marginBottom: 2 }}
-            >
+            <div style={{ fontSize: ".72rem", color: "#fcd34d", fontWeight: 700, marginBottom: 2 }}>
               ⚡ تحتاج مراجعة
             </div>
             {newOrgs > 0 && (
@@ -228,7 +232,7 @@ export function OverviewPage({ orgs, influencers, requests, setActivePage, setOr
         ].map((k, i) => (
           <div
             key={i}
-            onClick={() => setActivePage(k.page)}
+            onClick={() => setActivePage(k.page as PageId)}
             style={{
               background: "white",
               borderRadius: 11,
@@ -240,8 +244,7 @@ export function OverviewPage({ orgs, influencers, requests, setActivePage, setOr
               transition: "box-shadow .15s",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow =
-                "0 4px 14px rgba(45,122,82,.13)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(45,122,82,.13)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.boxShadow = "none";

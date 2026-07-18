@@ -81,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log("[useAuth] useEffect started");
     let mounted = true;
-    let timeout: NodeJS.Timeout;
 
     // Helper to finish loading
     const finish = (newState: Partial<AuthState>) => {
@@ -106,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Safety timeout: force loading to false after 5s if still stuck
-    timeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (mounted) {
         setState((s) => {
           if (s.loading) {

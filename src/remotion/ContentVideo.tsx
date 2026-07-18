@@ -15,6 +15,7 @@ import {
 } from "./logoAnimations";
 
 export interface ContentVideoProps {
+  [key: string]: unknown;
   text: string;
   assocName: string;
   assocInitial?: string;
@@ -73,13 +74,7 @@ function BackgroundLayer({ imageUrl }: { imageUrl?: string }) {
 }
 
 // ── Logo / header layer ──────────────────────────────────────
-function LogoLayer({
-  assocName,
-  assocInitial,
-}: {
-  assocName: string;
-  assocInitial: string;
-}) {
+function LogoLayer({ assocName, assocInitial }: { assocName: string; assocInitial: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -167,13 +162,7 @@ function LogoLayer({
 }
 
 // ── Slide dots indicator ─────────────────────────────────────
-function SlideDotsLayer({
-  slideCount,
-  slideIdx,
-}: {
-  slideCount: number;
-  slideIdx: number;
-}) {
+function SlideDotsLayer({ slideCount, slideIdx }: { slideCount: number; slideIdx: number }) {
   return (
     <AbsoluteFill>
       <div
@@ -410,11 +399,7 @@ export function ContentVideo({
           durationInFrames={slideFrames[i]}
           name={`Slide ${i + 1}`}
         >
-          <SlideContent
-            line={slide.line}
-            icon={slide.icon}
-            slideDuration={slideFrames[i]}
-          />
+          <SlideContent line={slide.line} icon={slide.icon} slideDuration={slideFrames[i]} />
         </Sequence>
       ))}
 
