@@ -24,6 +24,7 @@ const NAV: {
     section: "المحتوى",
     items: [
       { id: "content", icon: "✦", label: "محتوى تسويقي" },
+      { id: "captions", icon: "🎞", label: "ترجمة الفيديو" },
       { id: "campaigns", icon: "📣", label: "الحملات" },
       { id: "influencers", icon: "⭐", label: "المؤثرون" },
     ],

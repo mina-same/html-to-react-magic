@@ -9,6 +9,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Influencer } from "../types";
 
 interface Props {
@@ -18,26 +27,7 @@ interface Props {
   onClose: () => void;
 }
 
-const sel: React.CSSProperties = {
-  borderRadius: 7,
-  border: "1.5px solid rgba(45,122,82,.12)",
-  fontFamily: "'Tajawal','Cairo',sans-serif",
-  fontSize: ".87rem",
-  color: "#111827",
-  outline: "none",
-  padding: "8px 12px",
-  width: "100%",
-  background: "white",
-};
-const lbl: React.CSSProperties = {
-  display: "block",
-  fontSize: ".75rem",
-  fontWeight: 700,
-  color: "#6b7280",
-  textTransform: "uppercase",
-  letterSpacing: ".06em",
-  marginBottom: 6,
-};
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 export default function InfluencerModal({ influencer, onSave, onDelete, onClose }: Props) {
   const isNew = !influencer?.id;
@@ -87,70 +77,52 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{ maxWidth: 480, fontFamily: "'Tajawal','Cairo',sans-serif", direction: "rtl" }}
-      >
+      <DialogContent className="max-w-[480px] max-h-[85vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: ".72rem",
-                padding: "3px 10px",
-                borderRadius: 20,
-                fontWeight: 700,
-                background: "#fef9c3",
-                color: "#92400e",
-              }}
-            >
+          <div className="flex items-center gap-2.5">
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
               {isNew ? "مؤثر جديد" : "تعديل"}
-            </span>
-            <DialogTitle style={{ fontFamily: "'Tajawal','Cairo',sans-serif" }}>
-              {isNew ? "إضافة مؤثر" : name}
-            </DialogTitle>
+            </Badge>
+            <DialogTitle>{isNew ? "إضافة مؤثر" : name}</DialogTitle>
           </div>
         </DialogHeader>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>الاسم / الحساب</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="اسم المؤثر"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>الاسم / الحساب</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المؤثر" />
             </div>
             <div>
-              <label style={lbl}>المنصة الرئيسية</label>
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value as Influencer["platform"])}
-                style={sel}
-              >
-                {(["Instagram", "X", "TikTok", "YouTube", "Snapchat"] as const).map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+              <Label className={FIELD_LABEL}>المنصة الرئيسية</Label>
+              <Select value={platform} onValueChange={(v) => setPlatform(v as Influencer["platform"])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["Instagram", "X", "TikTok", "YouTube", "Snapchat"] as const).map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>عدد المتابعين</label>
+              <Label className={FIELD_LABEL}>عدد المتابعين</Label>
               <Input
                 type="number"
                 dir="ltr"
                 value={followers || ""}
                 onChange={(e) => setFollowers(Number(e.target.value))}
                 placeholder="150000"
-                style={sel}
               />
             </div>
             <div>
-              <label style={lbl}>نسبة التفاعل %</label>
+              <Label className={FIELD_LABEL}>نسبة التفاعل %</Label>
               <Input
                 type="number"
                 dir="ltr"
@@ -158,171 +130,133 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
                 value={engagement || ""}
                 onChange={(e) => setEngagement(Number(e.target.value))}
                 placeholder="4.5"
-                style={sel}
               />
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>حالة العقد</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Influencer["status"])}
-                style={sel}
-              >
-                <option value="active">نشط</option>
-                <option value="pending">قيد التفاوض</option>
-                <option value="ended">انتهى العقد</option>
-              </select>
+              <Label className={FIELD_LABEL}>حالة العقد</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as Influencer["status"])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="pending">قيد التفاوض</SelectItem>
+                  <SelectItem value="ended">انتهى العقد</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label style={lbl}>عدد الحملات المُنفَّذة</label>
+              <Label className={FIELD_LABEL}>عدد الحملات المُنفَّذة</Label>
               <Input
                 type="number"
                 dir="ltr"
                 value={campaigns || ""}
                 onChange={(e) => setCampaigns(Number(e.target.value))}
                 placeholder="0"
-                style={sel}
               />
             </div>
           </div>
 
           <div>
-            <label style={lbl}>تخصص المحتوى</label>
+            <Label className={FIELD_LABEL}>تخصص المحتوى</Label>
             <Input
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
               placeholder="مثال: محتوى خيري، ديني، عائلي..."
-              style={sel}
             />
           </div>
 
           <div>
-            <label style={lbl}>ملاحظات</label>
+            <Label className={FIELD_LABEL}>ملاحظات</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="أي ملاحظات إضافية..."
-              style={{ ...sel, minHeight: 72, resize: "vertical" }}
+              className="min-h-[72px] resize-y"
             />
           </div>
 
-          <div style={{ borderTop: "1px solid rgba(45,122,82,.08)", paddingTop: 10 }}>
-            <div style={{ fontSize: ".76rem", fontWeight: 700, color: "#2d7a52", marginBottom: 8 }}>
-              الملف الاجتماعي
-            </div>
-            <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}
-            >
+          <div className="border-t pt-2.5">
+            <div className="mb-2 text-sm font-bold text-primary">الملف الاجتماعي</div>
+            <div className="mb-3 grid grid-cols-2 gap-3">
               <div>
-                <label style={lbl}>نبذة قصيرة</label>
+                <Label className={FIELD_LABEL}>نبذة قصيرة</Label>
                 <Textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="سطر أو سطرين عن المؤثر..."
-                  style={{ ...sel, minHeight: 72, resize: "vertical" }}
+                  className="min-h-[72px] resize-y"
                 />
               </div>
               <div>
-                <label style={lbl}>المنطقة / المدينة</label>
-                <Input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="الرياض"
-                  style={sel}
-                />
-                <div style={{ height: 10 }} />
-                <label style={lbl}>الجمهور المستهدف</label>
+                <Label className={FIELD_LABEL}>المنطقة / المدينة</Label>
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="الرياض" />
+                <div className="h-2.5" />
+                <Label className={FIELD_LABEL}>الجمهور المستهدف</Label>
                 <Input
                   value={audience}
                   onChange={(e) => setAudience(e.target.value)}
                   placeholder="شباب، عائلات..."
-                  style={sel}
                 />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label style={lbl}>Instagram</label>
+                <Label className={FIELD_LABEL}>Instagram</Label>
                 <Input
                   value={instagramHandle}
                   onChange={(e) => setInstagramHandle(e.target.value)}
                   placeholder="@username"
-                  style={sel}
                 />
               </div>
               <div>
-                <label style={lbl}>X</label>
-                <Input
-                  value={xHandle}
-                  onChange={(e) => setXHandle(e.target.value)}
-                  placeholder="@username"
-                  style={sel}
-                />
+                <Label className={FIELD_LABEL}>X</Label>
+                <Input value={xHandle} onChange={(e) => setXHandle(e.target.value)} placeholder="@username" />
               </div>
               <div>
-                <label style={lbl}>TikTok</label>
+                <Label className={FIELD_LABEL}>TikTok</Label>
                 <Input
                   value={tiktokHandle}
                   onChange={(e) => setTiktokHandle(e.target.value)}
                   placeholder="@username"
-                  style={sel}
                 />
               </div>
               <div>
-                <label style={lbl}>YouTube</label>
+                <Label className={FIELD_LABEL}>YouTube</Label>
                 <Input
                   value={youtubeHandle}
                   onChange={(e) => setYoutubeHandle(e.target.value)}
                   placeholder="youtube.com/@username"
-                  style={sel}
                 />
               </div>
               <div>
-                <label style={lbl}>Snapchat</label>
+                <Label className={FIELD_LABEL}>Snapchat</Label>
                 <Input
                   value={snapchatHandle}
                   onChange={(e) => setSnapchatHandle(e.target.value)}
                   placeholder="@username"
-                  style={sel}
                 />
               </div>
               <div>
-                <label style={lbl}>الموقع</label>
-                <Input
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://..."
-                  style={sel}
-                />
+                <Label className={FIELD_LABEL}>الموقع</Label>
+                <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." />
               </div>
               <div>
-                <label style={lbl}>البريد الإلكتروني</label>
-                <Input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="hello@example.com"
-                  style={sel}
-                />
+                <Label className={FIELD_LABEL}>البريد الإلكتروني</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@example.com" />
               </div>
               <div>
-                <label style={lbl}>الهاتف</label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+9665..."
-                  style={sel}
-                />
+                <Label className={FIELD_LABEL}>الهاتف</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+9665..." />
               </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter
-          style={{ justifyContent: "space-between", display: "flex", gap: 8, flexDirection: "row" }}
-        >
+        <DialogFooter className="flex flex-row justify-between gap-2">
           {!isNew && (
             <Button
               variant="destructive"
@@ -335,7 +269,7 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
               حذف
             </Button>
           )}
-          <div style={{ display: "flex", gap: 8, marginRight: "auto" }}>
+          <div className="mr-auto flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>
               إلغاء
             </Button>
@@ -368,7 +302,6 @@ export default function InfluencerModal({ influencer, onSave, onDelete, onClose 
                 });
                 onClose();
               }}
-              style={{ background: "#2d7a52", color: "white" }}
             >
               حفظ
             </Button>

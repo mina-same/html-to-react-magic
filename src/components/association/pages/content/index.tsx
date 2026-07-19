@@ -1007,10 +1007,11 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
           display: "flex",
           height: "calc(100vh - 110px)",
           minHeight: 560,
-          background: "#f1f5f9",
-          borderRadius: 16,
+          background: "#f8fafc",
+          borderRadius: 20,
           overflow: "hidden",
-          boxShadow: "0 4px 28px rgba(0,0,0,.08)",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,.04), 0 12px 40px rgba(15,23,42,.06)",
           fontFamily: "'Tajawal','Cairo',sans-serif",
         }}
       >
@@ -1039,41 +1040,60 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
           {/* Top bar */}
           <div
             style={{
-              padding: "12px 20px",
+              padding: "14px 24px",
               background: "#fff",
-              borderBottom: "1px solid #e8ecef",
+              borderBottom: "1px solid #eef2f6",
               display: "flex",
               alignItems: "center",
-              gap: 12,
+              gap: 14,
               flexShrink: 0,
             }}
           >
             <button
               onClick={() => setSidebar((s) => !s)}
+              title={sidebar ? "إخفاء السجل" : "إظهار السجل"}
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 9,
-                border: "1.5px solid #e2e8f0",
-                background: sidebar ? "#f0fdf4" : "white",
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                background: "white",
+                color: "#64748b",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                fontSize: ".95rem",
+                fontSize: ".9rem",
+                transition: "all .15s",
               }}
             >
               ☰
             </button>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 11,
+                background: "linear-gradient(135deg,#059669,#10b981)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.05rem",
+                flexShrink: 0,
+                boxShadow: "0 3px 10px rgba(5,150,105,.25)",
+              }}
+            >
+              ✨
+            </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: ".9rem", fontWeight: 800, color: "#0f172a" }}>
-                توليد المحتوى الذكي
+              <div style={{ fontSize: ".92rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em" }}>
+                استوديو المحتوى الذكي
               </div>
               <div
                 style={{
                   fontSize: ".7rem",
-                  color: "#64748b",
+                  color: "#94a3b8",
                   marginTop: 1,
                   display: "flex",
                   alignItems: "center",
@@ -1081,33 +1101,50 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                 }}
               >
                 <span>{assocName}</span>
-                <span style={{ color: context ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
-                  ● {context ? "السياق متصل" : "أكمل ملف الجمعية"}
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    color: context ? "#059669" : "#dc2626",
+                    fontWeight: 600,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: context ? "#10b981" : "#ef4444",
+                      display: "inline-block",
+                    }}
+                  />
+                  {context ? "السياق متصل" : "أكمل ملف الجمعية"}
                 </span>
               </div>
             </div>
             {activeId !== null && activeId > 0 && (
               <div
                 style={{
-                  padding: "4px 11px",
-                  borderRadius: 20,
+                  padding: "5px 13px",
+                  borderRadius: 999,
                   background: "#f0fdf4",
                   border: "1px solid #bbf7d0",
                   display: "flex",
                   alignItems: "center",
-                  gap: 5,
+                  gap: 6,
                 }}
               >
                 <span
                   style={{
-                    width: 5,
-                    height: 5,
+                    width: 6,
+                    height: 6,
                     borderRadius: "50%",
-                    background: "#16a34a",
+                    background: "#10b981",
                     display: "inline-block",
                   }}
                 />
-                <span style={{ fontSize: ".66rem", color: "#166534", fontWeight: 700 }}>
+                <span style={{ fontSize: ".68rem", color: "#166534", fontWeight: 700 }}>
                   جلسة #{activeId}
                 </span>
               </div>
@@ -1116,142 +1153,156 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
 
           {/* Body */}
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {/* ── Prompt + step tracker ── */}
+            {/* ── Prompt composer + step tracker ── */}
             <div
               style={{
-                padding: "16px 22px 14px",
+                padding: "18px 24px 16px",
                 background: "#fff",
-                borderBottom: "1px solid #f0f2f5",
+                borderBottom: "1px solid #eef2f6",
               }}
             >
               <div style={{ maxWidth: 720 }}>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="تعليمات مخصصة… مثال: ركّز على حملة الشتاء، أو اجعل الأسلوب عاطفياً"
-                  rows={2}
+                {/* Chat-style composer card */}
+                <div
+                  className="cg-composer"
                   style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    borderRadius: 10,
                     border: "1.5px solid #e2e8f0",
-                    fontFamily: "'Tajawal',Cairo,sans-serif",
-                    fontSize: ".87rem",
-                    resize: "none",
-                    outline: "none",
-                    color: "#1e293b",
-                    background: "#f8fafc",
-                    lineHeight: 1.7,
-                    boxSizing: "border-box",
-                    transition: "border-color .2s, background .2s",
+                    borderRadius: 16,
+                    background: "#fff",
+                    overflow: "hidden",
+                    transition: "border-color .2s, box-shadow .2s",
                   }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#16a34a";
-                    e.target.style.background = "#fff";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#e2e8f0";
-                    e.target.style.background = "#f8fafc";
-                  }}
-                />
-
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button
-                    onClick={() => generate(tab)}
-                    disabled={anyLoading || !context}
+                >
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="اكتب تعليماتك… مثال: ركّز على حملة الشتاء، أو اجعل الأسلوب عاطفياً"
+                    rows={2}
                     style={{
-                      flex: 1,
-                      padding: "10px 0",
-                      borderRadius: 10,
+                      width: "100%",
+                      padding: "14px 16px 8px",
                       border: "none",
-                      background:
-                        anyLoading || !context
-                          ? "#cbd5e1"
-                          : "linear-gradient(135deg,#166534,#16a34a)",
-                      color: "white",
-                      fontSize: ".87rem",
-                      fontWeight: 800,
                       fontFamily: "'Tajawal',Cairo,sans-serif",
-                      cursor: anyLoading || !context ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      boxShadow: anyLoading || !context ? "none" : "0 3px 14px rgba(22,163,74,.28)",
-                      transition: "all .2s",
+                      fontSize: ".88rem",
+                      resize: "none",
+                      outline: "none",
+                      color: "#1e293b",
+                      background: "transparent",
+                      lineHeight: 1.7,
+                      boxSizing: "border-box",
                     }}
-                  >
-                    {loading === tab ? (
-                      <>
-                        <Spin /> جاري توليد {currentLabel}...
-                      </>
-                    ) : (
-                      `✦ توليد ${currentLabel}`
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => generate("all")}
-                    disabled={anyLoading || !context}
-                    className="cg-outline"
+                  />
+                  {/* Action row inside the composer */}
+                  <div
                     style={{
-                      padding: "10px 14px",
-                      borderRadius: 10,
-                      border: "1.5px solid #e2e8f0",
-                      background: "white",
-                      color: "#475569",
-                      fontSize: ".81rem",
-                      fontWeight: 700,
-                      fontFamily: "'Tajawal',Cairo,sans-serif",
-                      cursor: anyLoading || !context ? "not-allowed" : "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 7,
-                      opacity: anyLoading ? 0.5 : 1,
-                      transition: "all .2s",
+                      gap: 8,
+                      padding: "8px 12px 10px",
                     }}
                   >
-                    {loading === "all" ? (
-                      <>
-                        <Spin size={13} light={false} /> جاري...
-                      </>
-                    ) : (
-                      "✨ توليد الكل"
-                    )}
-                  </button>
-
-                  {anyTabHasContent && (
                     <button
-                      onClick={startNew}
+                      onClick={() => generate(tab)}
+                      disabled={anyLoading || !context}
+                      className="cg-send"
                       style={{
-                        padding: "10px 13px",
-                        borderRadius: 10,
-                        border: "1.5px solid #e2e8f0",
-                        background: "white",
-                        color: "#94a3b8",
-                        fontSize: ".78rem",
-                        fontFamily: "'Tajawal',sans-serif",
-                        cursor: "pointer",
+                        padding: "9px 22px",
+                        borderRadius: 11,
+                        border: "none",
+                        background:
+                          anyLoading || !context
+                            ? "#cbd5e1"
+                            : "linear-gradient(135deg,#059669,#10b981)",
+                        color: "white",
+                        fontSize: ".84rem",
+                        fontWeight: 800,
+                        fontFamily: "'Tajawal',Cairo,sans-serif",
+                        cursor: anyLoading || !context ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        boxShadow:
+                          anyLoading || !context ? "none" : "0 3px 12px rgba(5,150,105,.3)",
+                        transition: "all .18s",
                       }}
                     >
-                      مسح
+                      {loading === tab ? (
+                        <>
+                          <Spin /> جاري التوليد...
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: ".95rem" }}>✦</span> توليد {currentLabel}
+                        </>
+                      )}
                     </button>
-                  )}
+
+                    <button
+                      onClick={() => generate("all")}
+                      disabled={anyLoading || !context}
+                      className="cg-outline"
+                      style={{
+                        padding: "9px 16px",
+                        borderRadius: 11,
+                        border: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                        color: "#475569",
+                        fontSize: ".8rem",
+                        fontWeight: 700,
+                        fontFamily: "'Tajawal',Cairo,sans-serif",
+                        cursor: anyLoading || !context ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        opacity: anyLoading ? 0.5 : 1,
+                        transition: "all .18s",
+                      }}
+                    >
+                      {loading === "all" ? (
+                        <>
+                          <Spin size={13} light={false} /> جاري...
+                        </>
+                      ) : (
+                        "✨ توليد الكل"
+                      )}
+                    </button>
+
+                    <div style={{ flex: 1 }} />
+
+                    {anyTabHasContent && (
+                      <button
+                        onClick={startNew}
+                        style={{
+                          padding: "8px 14px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "transparent",
+                          color: "#94a3b8",
+                          fontSize: ".76rem",
+                          fontWeight: 600,
+                          fontFamily: "'Tajawal',sans-serif",
+                          cursor: "pointer",
+                        }}
+                      >
+                        مسح ↺
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {!context && (
                   <div
                     style={{
-                      marginTop: 10,
-                      padding: "8px 13px",
-                      borderRadius: 9,
+                      marginTop: 12,
+                      padding: "9px 14px",
+                      borderRadius: 11,
                       background: "#fef2f2",
                       border: "1px solid #fecaca",
-                      fontSize: ".73rem",
+                      fontSize: ".74rem",
                       color: "#b91c1c",
                       display: "flex",
                       alignItems: "center",
-                      gap: 6,
+                      gap: 7,
                     }}
                   >
                     ⚠️ أكمل ملف الجمعية أولاً لتوفير سياق التوليد
@@ -1277,16 +1328,16 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                 >
                   <div
                     style={{
-                      width: 66,
-                      height: 66,
-                      borderRadius: 18,
-                      background: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
+                      width: 72,
+                      height: 72,
+                      borderRadius: 22,
+                      background: "linear-gradient(135deg,#059669,#34d399)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: "1.8rem",
-                      marginBottom: 16,
-                      boxShadow: "0 4px 20px rgba(22,163,74,.12)",
+                      fontSize: "2rem",
+                      marginBottom: 18,
+                      boxShadow: "0 10px 30px rgba(5,150,105,.3)",
                     }}
                   >
                     ✨
@@ -1397,12 +1448,14 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                   <div
                     style={{
                       display: "flex",
-                      gap: 4,
-                      marginBottom: 18,
-                      padding: 5,
-                      background: "#e8ecef",
-                      borderRadius: 13,
+                      gap: 3,
+                      marginBottom: 20,
+                      padding: 4,
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 14,
                       width: "fit-content",
+                      boxShadow: "0 1px 3px rgba(0,0,0,.03)",
                     }}
                   >
                     {TABS.map(({ key, label, icon }) => {
@@ -1416,23 +1469,29 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                           data-active={isActive}
                           onClick={() => setTab(key)}
                           style={{
-                            padding: "7px 14px",
-                            borderRadius: 9,
+                            padding: "8px 16px",
+                            borderRadius: 10,
                             border: "none",
-                            background: isActive ? "white" : "transparent",
-                            color: isActive ? "#166534" : "#64748b",
+                            background: isActive
+                              ? "linear-gradient(135deg,#059669,#10b981)"
+                              : "transparent",
+                            color: isActive ? "#fff" : "#64748b",
                             fontWeight: isActive ? 700 : 500,
                             fontSize: ".8rem",
                             cursor: "pointer",
                             fontFamily: "'Tajawal',Cairo,sans-serif",
-                            boxShadow: isActive ? "0 1px 4px rgba(0,0,0,.1)" : "none",
+                            boxShadow: isActive ? "0 2px 8px rgba(5,150,105,.3)" : "none",
                             transition: "all .16s",
                             display: "flex",
                             alignItems: "center",
-                            gap: 5,
+                            gap: 6,
                           }}
                         >
-                          {isThisLoading ? <Spin size={11} light={false} /> : <span>{icon}</span>}
+                          {isThisLoading ? (
+                            <Spin size={11} light={isActive} />
+                          ) : (
+                            <span>{icon}</span>
+                          )}
                           {label}
                           {hasTabContent && !isThisLoading && (
                             <span
@@ -1440,7 +1499,7 @@ export default function ContentPage({ assocName = "الجمعية" }: Props) {
                                 width: 5,
                                 height: 5,
                                 borderRadius: "50%",
-                                background: "#16a34a",
+                                background: isActive ? "rgba(255,255,255,.8)" : "#10b981",
                                 flexShrink: 0,
                               }}
                             />

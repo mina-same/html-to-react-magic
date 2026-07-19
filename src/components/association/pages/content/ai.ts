@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { trackAIUsage } from "@/lib/ai-usage";
 import { PROMPTS, type Tab, type StepStatus } from "./constants";
 
 // ── AI helpers ───────────────────────────────────────────────
@@ -35,7 +36,9 @@ export async function callAI(
     const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
     throw new Error(err.error?.message ?? `OpenAI error ${res.status}`);
   }
-  const full: string = (await res.json()).choices[0]?.message?.content ?? "";
+  const json = await res.json();
+  trackAIUsage("content-generation", "gpt-4o-mini", json.usage?.total_tokens ?? 0);
+  const full: string = json.choices[0]?.message?.content ?? "";
   const idx = full.lastIndexOf("Visual:");
   if (idx === -1) return { text: full.trim() };
   return {
@@ -63,6 +66,7 @@ export async function generateTTS(text: string, apiKey: string): Promise<ArrayBu
     const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
     throw new Error(err.error?.message ?? `TTS error ${res.status}`);
   }
+  trackAIUsage("tts", "tts-1");
   return res.arrayBuffer();
 }
 
@@ -110,14 +114,18 @@ export async function extractBrandFromFileId(fileId: string, apiKey: string): Pr
     const runId = (await runRes.json()).id;
 
     let status = "queued";
+    let runTokens = 0;
     while (status === "queued" || status === "in_progress") {
       await new Promise((r) => setTimeout(r, 2000));
       const chk = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
         headers,
       });
-      status = (await chk.json()).status;
+      const run = await chk.json();
+      status = run.status;
+      runTokens = run.usage?.total_tokens ?? runTokens;
       if (status === "failed") throw new Error("failed");
     }
+    trackAIUsage("brand-extraction", "gpt-4o", runTokens);
 
     const msgsRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       headers,
@@ -188,7 +196,9 @@ export async function extractBrandFromPdf(pdfUrl: string, apiKey: string): Promi
       }),
     });
     if (!res.ok) throw new Error("vision failed");
-    return (await res.json()).choices[0]?.message?.content ?? "";
+    const json = await res.json();
+    trackAIUsage("brand-extraction", "gpt-4o", json.usage?.total_tokens ?? 0);
+    return json.choices[0]?.message?.content ?? "";
   } catch (err) {
     console.warn("Brand extraction failed:", err);
     return "";
@@ -228,7 +238,11 @@ export async function callDalle(
     console.log(`[callDalle] ${model} → status ${res.status}`);
 
     if (res.ok) {
-      const json = (await res.json()) as { data: { url?: string; b64_json?: string }[] };
+      const json = (await res.json()) as {
+        data: { url?: string; b64_json?: string }[];
+        usage?: { total_tokens?: number };
+      };
+      trackAIUsage("image-generation", model, json.usage?.total_tokens ?? 0);
       const item = json.data[0];
       console.log(
         `[callDalle] ${model} success — has b64_json: ${!!item.b64_json}, has url: ${!!item.url}`,
@@ -321,9 +335,14 @@ export async function callDalle(
 export const CONTENT_PAGE_STYLES = `
   @keyframes cgSpin    { to { transform: rotate(360deg); } }
   @keyframes cgShimmer { to { background-position: -200% 0; } }
+  @keyframes cgFadeUp  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   .cg-si:hover:not([data-sel=true]):not([data-tmp=true]) { background:#f8fafc !important; }
-  .cg-tab:hover:not([data-active=true]) { color:#166534 !important; background:#e7f5ec !important; }
+  .cg-tab:hover:not([data-active=true]) { color:#0f172a !important; }
   .cg-ghost:hover:not(:disabled) { background:#f0fdf4 !important; border-color:#bbf7d0 !important; color:#166534 !important; }
-  .cg-outline:hover:not(:disabled) { background:#f8fafc !important; }
+  .cg-outline:hover:not(:disabled) { background:#f8fafc !important; border-color:#cbd5e1 !important; }
   .cg-imgbtn:hover:not(:disabled) { background:#e7f5ec !important; border-color:#86efac !important; }
+  .cg-send:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 20px rgba(5,150,105,.35) !important; }
+  .cg-send:active:not(:disabled) { transform:translateY(0); }
+  .cg-newbtn:hover { background:#059669 !important; color:#fff !important; }
+  .cg-composer:focus-within { border-color:#10b981 !important; box-shadow:0 0 0 4px rgba(16,185,129,.1) !important; }
 `;

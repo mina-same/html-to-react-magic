@@ -88,6 +88,7 @@ export type PageId =
   | "tasks"
   | "donations"
   | "content"
+  | "captions"
   | "campaigns"
   | "influencers"
   | "services"
@@ -101,6 +102,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   tasks: "لوحة المهام",
   donations: "التبرعات",
   content: "المحتوى التسويقي",
+  captions: "ترجمة الفيديو",
   campaigns: "الحملات",
   influencers: "المؤثرون",
   services: "خدماتنا",

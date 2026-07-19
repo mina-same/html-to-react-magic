@@ -3,6 +3,8 @@ import { ContentVideo, type ContentVideoProps } from "./ContentVideo";
 import { LogoVideo, type LogoVideoProps } from "./LogoVideo";
 import { BrandedVideo, type BrandedVideoProps } from "./BrandedVideo";
 import { computeBrandedVideoDuration } from "./brandUtils";
+import { CaptionedVideo, type CaptionedVideoProps } from "./compositions/CaptionedVideo";
+import { DEFAULT_CAPTION_STYLE, DEFAULT_CAPTION_GROUPING } from "../types/captions";
 
 // `Composition` requires a zod Schema type param. We don't use schemas, so the
 // slot is left as `any` (the documented no-schema escape hatch). Anchoring the
@@ -85,6 +87,32 @@ export const RemotionRoot = () => {
           showLogo: true,
           showOutro: true,
         }}
+      />
+
+      {/* Caption editor composition — used by the render CLI */}
+      <Composition<NoSchema, CaptionedVideoProps>
+        id="CaptionedVideo"
+        component={CaptionedVideo}
+        durationInFrames={300}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          videoSrc: "",
+          captions: [],
+          captionStyle: DEFAULT_CAPTION_STYLE,
+          captionGrouping: DEFAULT_CAPTION_GROUPING,
+          width: 1080,
+          height: 1920,
+          durationInFrames: 300,
+          fps: 30,
+        }}
+        calculateMetadata={async ({ props }) => ({
+          durationInFrames: props.durationInFrames,
+          fps: props.fps,
+          width: props.width,
+          height: props.height,
+        })}
       />
     </>
   );

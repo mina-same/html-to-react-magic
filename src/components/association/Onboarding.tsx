@@ -1,27 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-
-const inpStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "12px 16px",
-  borderRadius: 10,
-  background: "rgba(255,255,255,0.95)",
-  border: "1.5px solid rgba(45,122,82,0.2)",
-  color: "#111827",
-  fontFamily: "'Tajawal', sans-serif",
-  fontSize: "0.93rem",
-  outline: "none",
-  boxSizing: "border-box",
-  transition: "border-color 0.2s",
-};
-
-const lblStyle: React.CSSProperties = {
-  fontSize: "0.78rem",
-  fontWeight: 600,
-  color: "#374151",
-  display: "block",
-  marginBottom: 6,
-};
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -76,128 +59,68 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-5"
-      style={{
-        background: "linear-gradient(135deg,#071a0f 0%,#0d3322 40%,#163d28 70%,#0a2518 100%)",
-      }}
-    >
-      <div
-        className="animate-slide-up w-full max-w-md"
-        style={{
-          background: "rgba(255,255,255,0.98)",
-          borderRadius: 24,
-          padding: "40px 36px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-        }}
-      >
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: 800,
-              color: "#2d7a52",
-              marginBottom: 8,
-            }}
-          >
-            أهلاً بك!
-          </div>
-          <div style={{ fontSize: "0.9rem", color: "#6b7280" }}>أكمل إعداد حساب جمعيتك</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#071a0f] via-[--green-dark] to-[#0a2518] p-5">
+      <Card className="animate-slide-up w-full max-w-md rounded-3xl border-none p-9 shadow-2xl">
+        <div className="mb-7 text-center">
+          <div className="mb-2 text-2xl font-extrabold text-primary">أهلاً بك!</div>
+          <div className="text-sm text-muted-foreground">أكمل إعداد حساب جمعيتك</div>
         </div>
 
         {error && (
-          <div
-            style={{
-              background: "rgba(220,38,38,0.1)",
-              color: "#b91c1c",
-              borderRadius: 10,
-              padding: "10px 14px",
-              marginBottom: 16,
-              border: "1px solid rgba(220,38,38,0.2)",
-            }}
-          >
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <div>
-            <label style={lblStyle}>اسم الجمعية</label>
-            <input
-              type="text"
+            <Label className="mb-1.5 block text-xs font-semibold text-foreground/80">اسم الجمعية</Label>
+            <Input
               value={assocName}
               onChange={(e) => setAssocName(e.target.value)}
               placeholder="جمعية تكاتف الخيرية"
-              style={inpStyle}
             />
           </div>
 
           <div>
-            <label style={lblStyle}>رقم ترخيص الجمعية</label>
-            <input
-              type="text"
+            <Label className="mb-1.5 block text-xs font-semibold text-foreground/80">رقم ترخيص الجمعية</Label>
+            <Input
               value={license}
               onChange={(e) => setLicense(e.target.value)}
               placeholder="رقم الترخيص"
-              style={inpStyle}
             />
           </div>
 
           <div>
-            <label style={lblStyle}>المكان</label>
-            <input
-              type="text"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="الرياض"
-              style={inpStyle}
-            />
+            <Label className="mb-1.5 block text-xs font-semibold text-foreground/80">المكان</Label>
+            <Input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="الرياض" />
           </div>
 
           <div>
-            <label style={lblStyle}>رقم التلفون</label>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="0501234567"
-              style={inpStyle}
-            />
+            <Label className="mb-1.5 block text-xs font-semibold text-foreground/80">رقم التلفون</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0501234567" />
           </div>
 
           <div>
-            <label style={lblStyle}>البريد الإلكتروني</label>
-            <input
+            <Label className="mb-1.5 block text-xs font-semibold text-foreground/80">البريد الإلكتروني</Label>
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@assoc.org"
-              style={inpStyle}
             />
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={submitting}
-            style={{
-              width: "100%",
-              padding: 14,
-              borderRadius: 10,
-              background: "linear-gradient(135deg,#1a5c3a,#2d7a52)",
-              color: "white",
-              border: "none",
-              fontFamily: "'Tajawal', sans-serif",
-              fontSize: "1rem",
-              fontWeight: 700,
-              cursor: submitting ? "wait" : "pointer",
-              opacity: submitting ? 0.7 : 1,
-              marginTop: 8,
-            }}
+            className="mt-2 h-12 w-full bg-gradient-to-br from-[--green-dark] to-[--green-mid] text-base font-bold"
           >
             {submitting ? "جاري الحفظ..." : "إكمال الإعداد"}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

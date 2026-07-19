@@ -10,10 +10,19 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2, ArrowLeft } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { donationsDb } from "@/lib/db";
 import { keys } from "@/api/keys";
 import type { Donation } from "../../types";
-import { POSSIBLE_FIELDS, selStyle } from "./constants";
+import { POSSIBLE_FIELDS } from "./constants";
 
 /** A single imported row, indexed by column position. */
 type ImportRow = unknown[];
@@ -223,168 +232,87 @@ export default function ImportModal({ assocId }: Props) {
           if (!open) resetImportState();
         }}
       >
-        <DialogContent
-          style={{
-            maxWidth: 800,
-            width: "95vw",
-            fontFamily: "'Tajawal','Cairo',sans-serif",
-            direction: "rtl",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            overflowX: "auto",
-            borderRadius: 16,
-          }}
-        >
+        <DialogContent className="max-w-[800px] w-[95vw] max-h-[90vh] overflow-y-auto rounded-2xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle
-              style={{
-                fontFamily: "'Tajawal','Cairo',sans-serif",
-                fontSize: "1.2rem",
-                fontWeight: 800,
-                color: "#111827",
-              }}
-            >
-              استيراد التبرعات
-            </DialogTitle>
+            <DialogTitle className="text-xl font-extrabold">استيراد التبرعات</DialogTitle>
           </DialogHeader>
           <div>
-            <p
-              style={{
-                marginBottom: 20,
-                color: "#6b7280",
-                fontSize: "0.9rem",
-                lineHeight: 1.6,
-              }}
-            >
+            <p className="mb-5 text-sm leading-6 text-muted-foreground">
               قم بتعيين الأعمدة من الملف إلى الحقول المناسبة
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {importHeaders.map((header, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    background: "#f9fafb",
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      minWidth: 160,
-                      padding: "8px 12px",
-                      background: "white",
-                      borderRadius: 8,
-                      fontSize: "0.87rem",
-                      border: "1px solid #e5e7eb",
-                      fontWeight: 600,
-                    }}
-                  >
+                <div key={idx} className="flex items-center gap-3 rounded-xl bg-muted/40 px-3.5 py-2.5">
+                  <div className="min-w-[160px] rounded-lg border bg-card px-3 py-2 text-sm font-semibold">
                     {header}
                   </div>
-                  <span style={{ color: "#9ca3af", fontSize: "1.1rem" }}>→</span>
-                  <select
-                    value={importMapping[idx] || ""}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setImportMapping({ ...importMapping, [idx]: e.target.value });
+                  <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Select
+                    value={importMapping[idx] || "_ignore_"}
+                    onValueChange={(v) => {
+                      if (v !== "_ignore_") {
+                        setImportMapping({ ...importMapping, [idx]: v });
                       } else {
                         const newMapping = { ...importMapping };
                         delete newMapping[idx];
                         setImportMapping(newMapping);
                       }
                     }}
-                    style={{ ...selStyle, flex: 1 }}
                   >
-                    <option value="">تجاهل هذا العمود</option>
-                    {POSSIBLE_FIELDS.map((f) => (
-                      <option key={f.value} value={f.value}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_ignore_">تجاهل هذا العمود</SelectItem>
+                      {POSSIBLE_FIELDS.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ))}
             </div>
 
             {importData.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <p
-                  style={{
-                    marginBottom: 12,
-                    color: "#4b5563",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                  }}
-                >
+              <div className="mt-6">
+                <p className="mb-3 text-sm font-semibold text-foreground/70">
                   معاينة البيانات ({importData.length} صف):
                 </p>
-                <div style={{ overflowX: "auto", background: "#f9fafb", borderRadius: 12 }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ background: "#f3f4f6" }}>
+                <div className="overflow-x-auto rounded-xl bg-muted/40">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/60 hover:bg-muted/60">
                         {importHeaders.map((h, i) => (
-                          <th
-                            key={i}
-                            style={{
-                              padding: "10px 14px",
-                              borderBottom: "1px solid #e5e7eb",
-                              color: "#4b5563",
-                              whiteSpace: "nowrap",
-                              textAlign: "right",
-                              fontWeight: 700,
-                            }}
-                          >
+                          <TableHead key={i} className="whitespace-nowrap font-bold text-foreground/70">
                             {h}
-                          </th>
+                          </TableHead>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {importData.slice(0, 3).map((row, i) => (
-                        <tr key={i}>
+                        <TableRow key={i}>
                           {importHeaders.map((_, j) => {
                             const cell = row[j];
                             return (
-                              <td
-                                key={j}
-                                style={{
-                                  padding: "10px 14px",
-                                  borderBottom: "1px solid #f3f4f6",
-                                  color: "#374151",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
+                              <TableCell key={j} className="whitespace-nowrap text-foreground/80">
                                 {cell instanceof Date
                                   ? cell.toISOString().slice(0, 10)
                                   : ((cell as string | number | undefined) ?? "")}
-                              </td>
+                              </TableCell>
                             );
                           })}
-                        </tr>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             )}
           </div>
-          <DialogFooter
-            style={{
-              display: "flex",
-              gap: 10,
-              justifyContent: "flex-end",
-              marginTop: 24,
-            }}
-          >
+          <DialogFooter className="mt-6 flex justify-end gap-2.5">
             <Button
               variant="outline"
               size="sm"
@@ -393,45 +321,11 @@ export default function ImportModal({ assocId }: Props) {
                 resetImportState();
               }}
               disabled={importing}
-              style={{
-                borderRadius: 10,
-                borderColor: "#e5e7eb",
-                color: "#4b5563",
-                fontWeight: 600,
-              }}
             >
               إلغاء
             </Button>
-            <Button
-              size="sm"
-              onClick={handleImport}
-              disabled={importing}
-              style={{
-                background: importing
-                  ? "linear-gradient(135deg, #6b9e85, #8bbfa0)"
-                  : "linear-gradient(135deg, #2d7a52, #4a9e70)",
-                color: "white",
-                borderRadius: 10,
-                fontWeight: 600,
-                cursor: importing ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              {importing && (
-                <span
-                  className="animate-spin"
-                  style={{
-                    width: 14,
-                    height: 14,
-                    border: "2px solid rgba(255,255,255,0.4)",
-                    borderTopColor: "white",
-                    borderRadius: "50%",
-                    display: "inline-block",
-                  }}
-                />
-              )}
+            <Button size="sm" onClick={handleImport} disabled={importing} className="gap-2">
+              {importing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {importing ? "جاري الاستيراد..." : `استيراد ${importData.length} تبرعات`}
             </Button>
           </DialogFooter>

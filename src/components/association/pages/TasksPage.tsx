@@ -2,6 +2,18 @@ import { useMemo, useRef, useState } from "react";
 import type { Task, Employee } from "../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CheckSquare, Calendar, RotateCcw, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   tasks: Task[];
@@ -11,11 +23,11 @@ interface Props {
   onStatusChange: (id: number, status: Task["status"]) => void;
 }
 
-const URGENCY_STYLE: Record<Task["urgency"], React.CSSProperties> = {
-  urgent: { background: "#fee2e2", color: "#b91c1c" },
-  high: { background: "#fef3c7", color: "#92400e" },
-  normal: { background: "#e0f2fe", color: "#0369a1" },
-  low: { background: "#f0fdf4", color: "#166534" },
+const URGENCY_CLASS: Record<Task["urgency"], string> = {
+  urgent: "bg-red-100 text-red-700",
+  high: "bg-amber-100 text-amber-800",
+  normal: "bg-sky-100 text-sky-700",
+  low: "bg-emerald-100 text-emerald-800",
 };
 
 const URGENCY_LABEL: Record<Task["urgency"], string> = {
@@ -27,32 +39,12 @@ const URGENCY_LABEL: Record<Task["urgency"], string> = {
 
 const STATUS_META: Record<
   Task["status"],
-  { label: string; dot: string; top: string; chip: React.CSSProperties }
+  { label: string; dot: string; top: string; chip: string }
 > = {
-  todo: {
-    label: "لم تبدأ",
-    dot: "#94a3b8",
-    top: "#94a3b8",
-    chip: { background: "#f1f5f9", color: "#64748b" },
-  },
-  doing: {
-    label: "قيد التنفيذ",
-    dot: "#f59e0b",
-    top: "#f59e0b",
-    chip: { background: "#fef3c7", color: "#92400e" },
-  },
-  review: {
-    label: "مراجعة",
-    dot: "#8b5cf6",
-    top: "#8b5cf6",
-    chip: { background: "#ede9fe", color: "#6d28d9" },
-  },
-  done: {
-    label: "مكتملة",
-    dot: "#2d7a52",
-    top: "#2d7a52",
-    chip: { background: "#dcfce7", color: "#166534" },
-  },
+  todo: { label: "لم تبدأ", dot: "bg-slate-400", top: "border-t-slate-400", chip: "bg-slate-100 text-slate-600" },
+  doing: { label: "قيد التنفيذ", dot: "bg-amber-500", top: "border-t-amber-500", chip: "bg-amber-100 text-amber-800" },
+  review: { label: "مراجعة", dot: "bg-violet-500", top: "border-t-violet-500", chip: "bg-violet-100 text-violet-700" },
+  done: { label: "مكتملة", dot: "bg-primary", top: "border-t-primary", chip: "bg-emerald-100 text-emerald-800" },
 };
 
 const COLS: { id: Task["status"]; label: string }[] = [
@@ -61,19 +53,6 @@ const COLS: { id: Task["status"]; label: string }[] = [
   { id: "review", label: "مراجعة" },
   { id: "done", label: "مكتملة" },
 ];
-
-const FILTER_INPUT: React.CSSProperties = {
-  width: "100%",
-  padding: "9px 12px",
-  borderRadius: 8,
-  border: "1.5px solid rgba(45,122,82,.12)",
-  fontFamily: "'Tajawal','Cairo',sans-serif",
-  fontSize: ".86rem",
-  color: "#111827",
-  outline: "none",
-  background: "white",
-  boxSizing: "border-box",
-};
 
 function isOverdue(deadline: string) {
   return deadline && new Date(deadline) < new Date();
@@ -132,202 +111,100 @@ export default function TasksPage({
   }
 
   return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 13,
-        border: "1px solid rgba(45,122,82,.12)",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          padding: "14px 18px",
-          borderBottom: "1px solid rgba(45,122,82,.12)",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 7,
-            background: "#e8f5ee",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          ✅
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2.5 border-b px-4 py-3.5">
+        <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-secondary text-primary">
+          <CheckSquare className="h-4 w-4" />
         </div>
         <div>
-          <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>لوحة المهام</div>
-          <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-            اسحب البطاقات لتغيير الحالة
-          </div>
+          <div className="text-sm font-bold text-foreground">لوحة المهام</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">اسحب البطاقات لتغيير الحالة</div>
         </div>
-        <div style={{ marginRight: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="mr-auto flex items-center gap-2">
           {urgentCount > 0 && (
-            <span
-              style={{
-                fontSize: ".72rem",
-                background: "#fef3c7",
-                color: "#92400e",
-                padding: "2px 9px",
-                borderRadius: 20,
-                fontWeight: 600,
-              }}
-            >
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
               ⚡ {urgentCount} عاجلة
             </span>
           )}
-          <Button
-            size="sm"
-            onClick={onAddTask}
-            style={{
-              background: "#2d7a52",
-              color: "white",
-              fontSize: ".78rem",
-              padding: "6px 13px",
-              borderRadius: 7,
-            }}
-          >
-            + مهمة جديدة
+          <Button size="sm" onClick={onAddTask}>
+            <Plus className="h-3.5 w-3.5" />
+            مهمة جديدة
           </Button>
         </div>
       </div>
 
-      <div style={{ padding: 14, borderBottom: "1px solid rgba(45,122,82,.10)" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1fr auto",
-            gap: 10,
-            alignItems: "end",
-          }}
-        >
+      {/* Filters */}
+      <div className="border-b p-3.5">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto] md:items-end">
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".72rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                marginBottom: 5,
-              }}
-            >
-              البحث
-            </label>
+            <Label className="mb-1.5 block text-xs font-bold text-muted-foreground">البحث</Label>
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="ابحث بعنوان المهمة أو التصنيف..."
-              style={FILTER_INPUT}
             />
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".72rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                marginBottom: 5,
-              }}
-            >
-              المسؤول
-            </label>
-            <select
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-              style={FILTER_INPUT}
-            >
-              <option value="all">الكل</option>
-              <option value="unassigned">غير مسند</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name}
-                </option>
-              ))}
-            </select>
+            <Label className="mb-1.5 block text-xs font-bold text-muted-foreground">المسؤول</Label>
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="unassigned">غير مسند</SelectItem>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={String(emp.id)}>
+                    {emp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".72rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                marginBottom: 5,
-              }}
-            >
-              الحالة
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as Task["status"] | "all")}
-              style={FILTER_INPUT}
-            >
-              <option value="all">الكل</option>
-              {COLS.map((col) => (
-                <option key={col.id} value={col.id}>
-                  {col.label}
-                </option>
-              ))}
-            </select>
+            <Label className="mb-1.5 block text-xs font-bold text-muted-foreground">الحالة</Label>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as Task["status"] | "all")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {COLS.map((col) => (
+                  <SelectItem key={col.id} value={col.id}>
+                    {col.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".72rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                marginBottom: 5,
-              }}
-            >
-              الأولوية
-            </label>
-            <select
-              value={urgencyFilter}
-              onChange={(e) => setUrgencyFilter(e.target.value as Task["urgency"] | "all")}
-              style={FILTER_INPUT}
-            >
-              <option value="all">الكل</option>
-              <option value="urgent">عاجلة</option>
-              <option value="high">مرتفعة</option>
-              <option value="normal">عادية</option>
-              <option value="low">منخفضة</option>
-            </select>
+            <Label className="mb-1.5 block text-xs font-bold text-muted-foreground">الأولوية</Label>
+            <Select value={urgencyFilter} onValueChange={(v) => setUrgencyFilter(v as Task["urgency"] | "all")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="urgent">عاجلة</SelectItem>
+                <SelectItem value="high">مرتفعة</SelectItem>
+                <SelectItem value="normal">عادية</SelectItem>
+                <SelectItem value="low">منخفضة</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <span
-              style={{
-                display: "block",
-                fontSize: ".72rem",
-                fontWeight: 700,
-                color: "#6b7280",
-              }}
-            >
-              إضافي
-            </span>
+          <div className="flex flex-col gap-1.5">
+            <span className="block text-xs font-bold text-muted-foreground">إضافي</span>
             <button
               type="button"
               onClick={() => setOnlyOverdue((v) => !v)}
-              style={{
-                ...FILTER_INPUT,
-                cursor: "pointer",
-                fontWeight: 600,
-                color: onlyOverdue ? "#92400e" : "#374151",
-                background: onlyOverdue ? "#fef3c7" : "white",
-              }}
+              className={cn(
+                "h-9 rounded-md border px-3 text-sm font-semibold transition-colors",
+                onlyOverdue ? "border-amber-300 bg-amber-100 text-amber-800" : "border-input bg-card text-foreground/80",
+              )}
             >
               {onlyOverdue ? "عرض المتأخرة فقط" : "كل المواعيد"}
             </button>
@@ -336,6 +213,7 @@ export default function TasksPage({
           <Button
             variant="outline"
             size="sm"
+            className="h-9 gap-1.5 whitespace-nowrap"
             onClick={() => {
               setQuery("");
               setAssigneeFilter("all");
@@ -343,24 +221,19 @@ export default function TasksPage({
               setUrgencyFilter("all");
               setOnlyOverdue(false);
             }}
-            style={{
-              height: 38,
-              borderColor: "rgba(45,122,82,.2)",
-              color: "#2d7a52",
-              background: "white",
-              whiteSpace: "nowrap",
-            }}
           >
+            <RotateCcw className="h-3.5 w-3.5" />
             تصفير
           </Button>
         </div>
 
-        <div style={{ marginTop: 10, fontSize: ".75rem", color: "#6b7280" }}>
+        <div className="mt-2.5 text-xs text-muted-foreground">
           عرض {filteredTasks.length} من {tasks.length} مهمة
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3" style={{ padding: 14 }}>
+      {/* Kanban */}
+      <div className="grid grid-cols-1 gap-3 p-3.5 md:grid-cols-4">
         {COLS.map((col) => {
           const colTasks = filteredTasks.filter((t) => t.status === col.id);
           const meta = STATUS_META[col.id];
@@ -368,10 +241,10 @@ export default function TasksPage({
           return (
             <div
               key={col.id}
-              style={{ background: "#f2faf6", borderRadius: 10, minHeight: 300 }}
+              className="min-h-[300px] rounded-lg bg-secondary/40"
               onDragOver={(e) => {
                 e.preventDefault();
-                (e.currentTarget as HTMLDivElement).style.outline = "2px dashed #2d7a52";
+                (e.currentTarget as HTMLDivElement).style.outline = "2px dashed var(--green-mid)";
               }}
               onDragLeave={(e) => {
                 (e.currentTarget as HTMLDivElement).style.outline = "";
@@ -387,65 +260,17 @@ export default function TasksPage({
                 draggingId.current = null;
               }}
             >
-              <div
-                style={{
-                  padding: "10px 12px",
-                  borderBottom: "1px solid rgba(45,122,82,.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  borderRadius: "10px 10px 0 0",
-                  background: "white",
-                  borderTop: `3px solid ${meta.top}`,
-                }}
-              >
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: meta.dot,
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{ fontSize: ".8rem", fontWeight: 700, color: "#111827" }}>
-                  {meta.label}
-                </span>
-                <span
-                  style={{
-                    fontSize: ".68rem",
-                    background: "rgba(0,0,0,.07)",
-                    color: "#6b7280",
-                    padding: "1px 7px",
-                    borderRadius: 20,
-                    fontWeight: 600,
-                  }}
-                >
+              <div className={cn("flex items-center gap-1.5 rounded-t-lg border-b bg-card px-3 py-2.5 border-t-[3px]", meta.top)}>
+                <span className={cn("h-2 w-2 shrink-0 rounded-full", meta.dot)} />
+                <span className="text-sm font-bold text-foreground">{meta.label}</span>
+                <span className="rounded-full bg-black/[0.07] px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
                   {colTasks.length}
                 </span>
               </div>
 
-              <div
-                style={{
-                  padding: 10,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  minHeight: 200,
-                }}
-              >
+              <div className="flex min-h-[200px] flex-col gap-2 p-2.5">
                 {colTasks.length === 0 ? (
-                  <div
-                    style={{
-                      border: "1px dashed rgba(45,122,82,.18)",
-                      borderRadius: 10,
-                      padding: "18px 12px",
-                      fontSize: ".76rem",
-                      color: "#94a3b8",
-                      textAlign: "center",
-                      background: "rgba(255,255,255,.6)",
-                    }}
-                  >
+                  <div className="rounded-lg border border-dashed border-primary/20 bg-card/60 px-3 py-4 text-center text-xs text-muted-foreground">
                     لا توجد مهام هنا
                   </div>
                 ) : (
@@ -463,118 +288,48 @@ export default function TasksPage({
                         (e.currentTarget as HTMLDivElement).style.opacity = "";
                       }}
                       onClick={() => onEditTask(task)}
-                      style={{
-                        background: "white",
-                        borderRadius: 9,
-                        border: "1px solid rgba(45,122,82,.12)",
-                        padding: "11px 13px",
-                        cursor: "grab",
-                        transition: "all .18s",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.boxShadow =
-                          "0 2px 12px rgba(45,122,82,.1)";
-                        (e.currentTarget as HTMLDivElement).style.borderColor =
-                          "rgba(45,122,82,.25)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "";
-                        (e.currentTarget as HTMLDivElement).style.borderColor =
-                          "rgba(45,122,82,.12)";
-                      }}
+                      className="cursor-grab rounded-lg border bg-card p-3 transition-shadow hover:shadow-md hover:border-primary/25"
                     >
-                      <div
-                        style={{
-                          fontSize: ".83rem",
-                          fontWeight: 600,
-                          color: "#111827",
-                          lineHeight: 1.45,
-                          marginBottom: 8,
-                        }}
-                      >
+                      <div className="mb-2 text-sm font-semibold leading-6 text-foreground">
                         {task.title}
                       </div>
-                      <div
-                        style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
-                      >
-                        <span
-                          style={{
-                            fontSize: ".66rem",
-                            padding: "2px 8px",
-                            borderRadius: 20,
-                            fontWeight: 700,
-                            ...URGENCY_STYLE[task.urgency],
-                          }}
-                        >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[0.66rem] font-bold", URGENCY_CLASS[task.urgency])}>
                           {URGENCY_LABEL[task.urgency]}
                         </span>
-                        <span
-                          style={{
-                            fontSize: ".66rem",
-                            padding: "2px 8px",
-                            borderRadius: 20,
-                            fontWeight: 700,
-                            ...meta.chip,
-                          }}
-                        >
+                        <span className={cn("rounded-full px-2 py-0.5 text-[0.66rem] font-bold", meta.chip)}>
                           {meta.label}
                         </span>
                         {task.category && (
-                          <span
-                            style={{
-                              fontSize: ".64rem",
-                              color: "#2d7a52",
-                              fontWeight: 600,
-                              background: "#e8f5ee",
-                              padding: "1px 7px",
-                              borderRadius: 20,
-                            }}
-                          >
+                          <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[0.64rem] font-semibold text-primary">
                             {task.category}
                           </span>
                         )}
                         {task.deadline && (
                           <span
-                            style={{
-                              fontSize: ".67rem",
-                              color:
-                                isOverdue(task.deadline) && task.status !== "done"
-                                  ? "#dc2626"
-                                  : "#6b7280",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 3,
-                              fontWeight:
-                                isOverdue(task.deadline) && task.status !== "done"
-                                  ? 600
-                                  : undefined,
-                            }}
+                            className={cn(
+                              "flex items-center gap-1 text-[0.67rem]",
+                              isOverdue(task.deadline) && task.status !== "done"
+                                ? "font-semibold text-destructive"
+                                : "text-muted-foreground",
+                            )}
                           >
-                            📅 {task.deadline}
+                            <Calendar className="h-2.5 w-2.5" />
+                            {task.deadline}
                           </span>
                         )}
                         {task.assignee > 0 && (
-                          <span
+                          <Avatar
+                            className="mr-auto h-[22px] w-[22px] shrink-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,.1)]"
                             title={empName(task.assignee)}
-                            style={{
-                              width: 22,
-                              height: 22,
-                              borderRadius: "50%",
-                              background: empColor(task.assignee),
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: ".6rem",
-                              fontWeight: 700,
-                              color: "white",
-                              marginRight: "auto",
-                              flexShrink: 0,
-                              border: "2px solid white",
-                              boxShadow: "0 0 0 1px rgba(0,0,0,.1)",
-                            }}
                           >
-                            {empInitial(task.assignee)}
-                          </span>
+                            <AvatarFallback
+                              style={{ background: empColor(task.assignee) }}
+                              className="text-[0.6rem] font-bold text-white"
+                            >
+                              {empInitial(task.assignee)}
+                            </AvatarFallback>
+                          </Avatar>
                         )}
                       </div>
                     </div>
@@ -585,6 +340,6 @@ export default function TasksPage({
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }

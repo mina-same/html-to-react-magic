@@ -8,6 +8,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import type { Task, Employee } from "../types";
 
 interface Props {
@@ -18,19 +27,7 @@ interface Props {
   onClose: () => void;
 }
 
-const statusBadgeStyle: Record<string, React.CSSProperties> = {
-  todo: { background: "#f1f5f9", color: "#64748b" },
-  doing: { background: "#fef9c3", color: "#92400e" },
-  review: { background: "#ede9fe", color: "#6d28d9" },
-  done: { background: "#dcfce7", color: "#166534" },
-};
-
-function statusLabel(status: Task["status"]) {
-  if (status === "todo") return "لم تبدأ";
-  if (status === "doing") return "قيد التنفيذ";
-  if (status === "review") return "مراجعة";
-  return "مكتملة";
-}
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 export default function TaskModal({ task, employees, onSave, onDelete, onClose }: Props) {
   const isNew = !task?.id;
@@ -59,19 +56,6 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
     editorRef.current.innerHTML = initialNotesHtml;
   }, [initialNotesHtml]);
 
-  const s = () => ({
-    borderRadius: 7,
-    border: "1.5px solid rgba(45,122,82,.12)",
-    fontFamily: "'Tajawal','Cairo',sans-serif",
-    fontSize: ".87rem",
-    color: "#111827",
-    outline: "none",
-    padding: "8px 12px",
-    width: "100%",
-    background: "white",
-    ...({} as Record<string, string>),
-  });
-
   const applyFormat = (command: string, value?: string) => {
     if (!editorRef.current) return;
     editorRef.current.focus();
@@ -86,201 +70,101 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{ maxWidth: 520, fontFamily: "'Tajawal','Cairo',sans-serif", direction: "rtl" }}
-      >
+      <DialogContent className="max-w-[520px]" dir="rtl">
         <DialogHeader>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: ".72rem",
-                padding: "3px 10px",
-                borderRadius: 20,
-                fontWeight: 700,
-                flexShrink: 0,
-                ...statusBadgeStyle[status],
-              }}
-            >
-              {statusLabel(status)}
-            </span>
-            <DialogTitle style={{ fontFamily: "'Tajawal','Cairo',sans-serif" }}>
-              {isNew ? "مهمة جديدة" : "تعديل المهمة"}
-            </DialogTitle>
+          <div className="flex items-center gap-2.5">
+            <StatusBadge status={status} />
+            <DialogTitle>{isNew ? "مهمة جديدة" : "تعديل المهمة"}</DialogTitle>
           </div>
         </DialogHeader>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="flex flex-col gap-3.5">
           {/* Title */}
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="عنوان المهمة..."
-            style={{ ...s(), fontSize: "1rem", fontWeight: 600 }}
+            className="text-base font-semibold"
           />
 
           {/* Status + Urgency */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: ".75rem",
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  textTransform: "uppercase",
-                  letterSpacing: ".06em",
-                  marginBottom: 6,
-                }}
-              >
-                الحالة
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Task["status"])}
-                style={s()}
-              >
-                <option value="todo">لم تبدأ</option>
-                <option value="doing">قيد التنفيذ</option>
-                <option value="review">مراجعة</option>
-                <option value="done">مكتملة</option>
-              </select>
+              <Label className={FIELD_LABEL}>الحالة</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as Task["status"])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todo">لم تبدأ</SelectItem>
+                  <SelectItem value="doing">قيد التنفيذ</SelectItem>
+                  <SelectItem value="review">مراجعة</SelectItem>
+                  <SelectItem value="done">مكتملة</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: ".75rem",
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  textTransform: "uppercase",
-                  letterSpacing: ".06em",
-                  marginBottom: 6,
-                }}
-              >
-                الأولوية
-              </label>
-              <select
-                value={urgency}
-                onChange={(e) => setUrgency(e.target.value as Task["urgency"])}
-                style={s()}
-              >
-                <option value="urgent">🔴 عاجلة</option>
-                <option value="high">🟡 مرتفعة</option>
-                <option value="normal">🔵 عادية</option>
-                <option value="low">🟢 منخفضة</option>
-              </select>
+              <Label className={FIELD_LABEL}>الأولوية</Label>
+              <Select value={urgency} onValueChange={(v) => setUrgency(v as Task["urgency"])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="urgent">🔴 عاجلة</SelectItem>
+                  <SelectItem value="high">🟡 مرتفعة</SelectItem>
+                  <SelectItem value="normal">🔵 عادية</SelectItem>
+                  <SelectItem value="low">🟢 منخفضة</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Assignee + Deadline */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: ".75rem",
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  textTransform: "uppercase",
-                  letterSpacing: ".06em",
-                  marginBottom: 6,
-                }}
-              >
-                المسؤول
-              </label>
-              <select
-                value={assignee}
-                onChange={(e) => setAssignee(Number(e.target.value))}
-                style={s()}
-              >
-                <option value={0}>غير محدد</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </option>
-                ))}
-              </select>
+              <Label className={FIELD_LABEL}>المسؤول</Label>
+              <Select value={String(assignee)} onValueChange={(v) => setAssignee(Number(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">غير محدد</SelectItem>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={String(emp.id)}>
+                      {emp.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: ".75rem",
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  textTransform: "uppercase",
-                  letterSpacing: ".06em",
-                  marginBottom: 6,
-                }}
-              >
-                الموعد النهائي
-              </label>
-              <Input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                style={s()}
-              />
+              <Label className={FIELD_LABEL}>الموعد النهائي</Label>
+              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </div>
           </div>
 
           {/* Category */}
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".75rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                textTransform: "uppercase",
-                letterSpacing: ".06em",
-                marginBottom: 6,
-              }}
-            >
-              التصنيف
-            </label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} style={s()}>
-              {["محتوى", "حملات", "تبرعات", "إدارة", "تصميم", "شراكات"].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <Label className={FIELD_LABEL}>التصنيف</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {["محتوى", "حملات", "تبرعات", "إدارة", "تصميم", "شراكات"].map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Notes */}
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".75rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                textTransform: "uppercase",
-                letterSpacing: ".06em",
-                marginBottom: 6,
-              }}
-            >
-              ملاحظات
-            </label>
-            <div
-              style={{
-                border: "1.5px solid rgba(45,122,82,.12)",
-                borderRadius: 10,
-                background: "white",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  padding: 8,
-                  borderBottom: "1px solid rgba(45,122,82,.08)",
-                  background: "#f8fafc",
-                }}
-              >
+            <Label className={FIELD_LABEL}>ملاحظات</Label>
+            <div className="overflow-hidden rounded-lg border">
+              <div className="flex flex-wrap gap-1.5 border-b bg-muted/40 p-2">
                 {[
                   { label: "B", title: "عريض", command: "bold" },
                   { label: "I", title: "مائل", command: "italic" },
@@ -294,16 +178,7 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
                     title={tool.title}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => applyFormat(tool.command)}
-                    style={{
-                      border: "1px solid rgba(45,122,82,.14)",
-                      background: "white",
-                      borderRadius: 8,
-                      padding: "6px 10px",
-                      fontSize: ".75rem",
-                      fontWeight: 700,
-                      color: "#374151",
-                      cursor: "pointer",
-                    }}
+                    className="rounded-md border bg-card px-2.5 py-1.5 text-xs font-bold text-foreground/80 hover:bg-muted"
                   >
                     {tool.label}
                   </button>
@@ -313,16 +188,7 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
                   title="مسح التنسيق"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => applyFormat("removeFormat")}
-                  style={{
-                    border: "1px solid rgba(45,122,82,.14)",
-                    background: "white",
-                    borderRadius: 8,
-                    padding: "6px 10px",
-                    fontSize: ".75rem",
-                    fontWeight: 700,
-                    color: "#374151",
-                    cursor: "pointer",
-                  }}
+                  className="rounded-md border bg-card px-2.5 py-1.5 text-xs font-bold text-foreground/80 hover:bg-muted"
                 >
                   مسح التنسيق
                 </button>
@@ -334,27 +200,16 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
                 onInput={syncNotes}
                 onBlur={syncNotes}
                 dir="rtl"
-                style={{
-                  minHeight: 130,
-                  padding: 12,
-                  outline: "none",
-                  fontFamily: "'Tajawal','Cairo',sans-serif",
-                  fontSize: ".9rem",
-                  lineHeight: 1.7,
-                  color: "#111827",
-                  background: "white",
-                }}
+                className="min-h-[130px] bg-card p-3 text-sm leading-7 text-foreground outline-none"
               />
             </div>
-            <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 6 }}>
+            <div className="mt-1.5 text-xs text-muted-foreground">
               يمكنك تنسيق الملاحظات وسيتم حفظها كنص HTML منسق.
             </div>
           </div>
         </div>
 
-        <DialogFooter
-          style={{ justifyContent: "space-between", display: "flex", gap: 8, flexDirection: "row" }}
-        >
+        <DialogFooter className="flex flex-row justify-between gap-2">
           {!isNew && (
             <Button
               variant="destructive"
@@ -367,7 +222,7 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
               حذف
             </Button>
           )}
-          <div style={{ display: "flex", gap: 8, marginRight: "auto" }}>
+          <div className="mr-auto flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>
               إلغاء
             </Button>
@@ -385,7 +240,6 @@ export default function TaskModal({ task, employees, onSave, onDelete, onClose }
                   notes,
                 })
               }
-              style={{ background: "#2d7a52", color: "white" }}
             >
               حفظ المهمة
             </Button>

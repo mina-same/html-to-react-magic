@@ -9,6 +9,16 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { KeyRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Employee } from "../types";
@@ -20,26 +30,7 @@ interface Props {
   onClose: () => void;
 }
 
-const sel: React.CSSProperties = {
-  borderRadius: 7,
-  border: "1.5px solid rgba(45,122,82,.12)",
-  fontFamily: "'Tajawal','Cairo',sans-serif",
-  fontSize: ".87rem",
-  color: "#111827",
-  outline: "none",
-  padding: "8px 12px",
-  width: "100%",
-  background: "white",
-};
-const lbl: React.CSSProperties = {
-  display: "block",
-  fontSize: ".75rem",
-  fontWeight: 700,
-  color: "#6b7280",
-  textTransform: "uppercase",
-  letterSpacing: ".06em",
-  marginBottom: 6,
-};
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 export default function EmployeeModal({ employee, assocId, onSave, onClose }: Props) {
   const isEdit = !!employee;
@@ -111,116 +102,78 @@ export default function EmployeeModal({ employee, assocId, onSave, onClose }: Pr
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{ maxWidth: 420, fontFamily: "'Tajawal','Cairo',sans-serif", direction: "rtl" }}
-      >
+      <DialogContent className="max-w-[420px]" dir="rtl">
         <DialogHeader>
           <DialogDescription className="sr-only">
             {isEdit ? "تعديل بيانات الموظف" : "إضافة موظف جديد للفريق"}
           </DialogDescription>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: ".72rem",
-                padding: "3px 10px",
-                borderRadius: 20,
-                fontWeight: 700,
-                background: "#fef9c3",
-                color: "#92400e",
-              }}
-            >
+          <div className="flex items-center gap-2.5">
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
               {isEdit ? "تعديل موظف" : "موظف جديد"}
-            </span>
-            <DialogTitle style={{ fontFamily: "'Tajawal','Cairo',sans-serif" }}>
-              {isEdit ? "تعديل بيانات الفرد" : "إضافة فرد للفريق"}
-            </DialogTitle>
+            </Badge>
+            <DialogTitle>{isEdit ? "تعديل بيانات الفرد" : "إضافة فرد للفريق"}</DialogTitle>
           </div>
         </DialogHeader>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="flex flex-col gap-3.5">
           <div>
-            <label style={lbl}>الاسم الكامل</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="مثال: سارة العمري"
-              style={sel}
-            />
+            <Label className={FIELD_LABEL}>الاسم الكامل</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: سارة العمري" />
           </div>
           <div>
-            <label style={lbl}>المسمى الوظيفي</label>
-            <Input
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="مثال: مدير تسويق"
-              style={sel}
-            />
+            <Label className={FIELD_LABEL}>المسمى الوظيفي</Label>
+            <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="مثال: مدير تسويق" />
           </div>
           <div>
-            <label style={lbl}>الحالة</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as Employee["status"])}
-              style={sel}
-            >
-              <option value="active">نشط</option>
-              <option value="away">بعيد</option>
-              <option value="off">خارج العمل</option>
-            </select>
+            <Label className={FIELD_LABEL}>الحالة</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as Employee["status"])}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">نشط</SelectItem>
+                <SelectItem value="away">بعيد</SelectItem>
+                <SelectItem value="off">خارج العمل</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {!isEdit && (
-            <>
-              <div style={{ borderTop: "1px solid rgba(45,122,82,.1)", paddingTop: 12 }}>
-                <div
-                  style={{
-                    fontSize: ".78rem",
-                    color: "#6b7280",
-                    marginBottom: 12,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span>🔐</span> بيانات تسجيل الدخول
+            <div className="border-t pt-3">
+              <div className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <KeyRound className="h-3.5 w-3.5" />
+                بيانات تسجيل الدخول
+              </div>
+              <div className="flex flex-col gap-2.5">
+                <div>
+                  <Label className={FIELD_LABEL}>البريد الإلكتروني</Label>
+                  <Input
+                    type="email"
+                    dir="ltr"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="employee@example.com"
+                  />
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div>
-                    <label style={lbl}>البريد الإلكتروني</label>
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="employee@example.com"
-                      style={{ ...sel, direction: "ltr" }}
-                    />
-                  </div>
-                  <div>
-                    <label style={lbl}>كلمة المرور</label>
-                    <Input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="6 أحرف على الأقل"
-                      style={sel}
-                    />
-                  </div>
+                <div>
+                  <Label className={FIELD_LABEL}>كلمة المرور</Label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="6 أحرف على الأقل"
+                  />
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 
-        <DialogFooter style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
             إلغاء
           </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-            style={{ background: "#2d7a52", color: "white" }}
-          >
+          <Button size="sm" onClick={handleSave} disabled={saving}>
             {saving ? "جاري الإنشاء..." : isEdit ? "حفظ التعديلات" : "إضافة للفريق"}
           </Button>
         </DialogFooter>

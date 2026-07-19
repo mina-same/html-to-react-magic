@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as EmployeeRouteImport } from './routes/employee'
+import { Route as CaptionsRouteImport } from './routes/captions'
 import { Route as AssociationRouteImport } from './routes/association'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +24,11 @@ const LoginRoute = LoginRouteImport.update({
 const EmployeeRoute = EmployeeRouteImport.update({
   id: '/employee',
   path: '/employee',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaptionsRoute = CaptionsRouteImport.update({
+  id: '/captions',
+  path: '/captions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssociationRoute = AssociationRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
+  '/captions': typeof CaptionsRoute
   '/employee': typeof EmployeeRoute
   '/login': typeof LoginRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
+  '/captions': typeof CaptionsRoute
   '/employee': typeof EmployeeRoute
   '/login': typeof LoginRoute
 }
@@ -60,21 +68,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/association': typeof AssociationRoute
+  '/captions': typeof CaptionsRoute
   '/employee': typeof EmployeeRoute
   '/login': typeof LoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/association' | '/employee' | '/login'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/association'
+    | '/captions'
+    | '/employee'
+    | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/association' | '/employee' | '/login'
-  id: '__root__' | '/' | '/admin' | '/association' | '/employee' | '/login'
+  to: '/' | '/admin' | '/association' | '/captions' | '/employee' | '/login'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/association'
+    | '/captions'
+    | '/employee'
+    | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AssociationRoute: typeof AssociationRoute
+  CaptionsRoute: typeof CaptionsRoute
   EmployeeRoute: typeof EmployeeRoute
   LoginRoute: typeof LoginRoute
 }
@@ -93,6 +116,13 @@ declare module '@tanstack/react-router' {
       path: '/employee'
       fullPath: '/employee'
       preLoaderRoute: typeof EmployeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/captions': {
+      id: '/captions'
+      path: '/captions'
+      fullPath: '/captions'
+      preLoaderRoute: typeof CaptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/association': {
@@ -123,6 +153,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AssociationRoute: AssociationRoute,
+  CaptionsRoute: CaptionsRoute,
   EmployeeRoute: EmployeeRoute,
   LoginRoute: LoginRoute,
 }

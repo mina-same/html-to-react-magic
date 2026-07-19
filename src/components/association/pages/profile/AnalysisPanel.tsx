@@ -1,15 +1,9 @@
+import { FileText, Paperclip, Sparkles, Lightbulb, Pencil, Eye, TriangleAlert } from "lucide-react";
 import { AI_ANALYSIS } from "../../data";
-import {
-  sc,
-  scH,
-  iconBadge,
-  cardTitle,
-  cardSubtitle,
-  editBtn,
-  viewFileLink,
-  analysisOrFallback,
-  type AnalysisResult,
-} from "./constants";
+import { analysisOrFallback, type AnalysisResult } from "./constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface AnalysisPanelProps {
   savedName: string;
@@ -17,6 +11,33 @@ interface AnalysisPanelProps {
   pdfUrl: string | null;
   aiResult: AnalysisResult | null;
   onEdit: () => void;
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+  action,
+}: {
+  icon: typeof FileText;
+  title: string;
+  subtitle: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <CardHeader className="flex-row items-center justify-between space-y-0 border-b py-3.5">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div>
+          <CardTitle className="text-sm">{title}</CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      {action}
+    </CardHeader>
+  );
 }
 
 /**
@@ -36,227 +57,109 @@ export default function AnalysisPanel({
   return (
     <>
       {/* Description card */}
-      <div style={sc}>
-        <div style={{ ...scH, justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={iconBadge}>📄</div>
-            <div>
-              <div style={cardTitle}>ملف الجمعية</div>
-              <div style={cardSubtitle}>المحتوى المحفوظ</div>
-            </div>
-          </div>
-          <button onClick={onEdit} style={editBtn}>
-            ✏️ تعديل
-          </button>
-        </div>
-        <div style={{ padding: 18 }}>
+      <Card className="mb-4">
+        <SectionHeader
+          icon={FileText}
+          title="ملف الجمعية"
+          subtitle="المحتوى المحفوظ"
+          action={
+            <Button variant="outline" size="sm" onClick={onEdit} className="gap-1.5 text-xs">
+              <Pencil className="h-3 w-3" />
+              تعديل
+            </Button>
+          }
+        />
+        <CardContent className="pt-4">
           {savedName && (
-            <div
-              style={{
-                fontSize: ".82rem",
-                fontWeight: 700,
-                color: "#374151",
-                marginBottom: 8,
-              }}
-            >
-              🏛 {savedName}
-            </div>
+            <div className="mb-2 text-sm font-bold text-foreground/80">🏛 {savedName}</div>
           )}
           {savedDesc && (
-            <div
-              style={{
-                fontSize: ".85rem",
-                color: "#374151",
-                lineHeight: 1.75,
-                background: "#f9fafb",
-                borderRadius: 9,
-                padding: "12px 14px",
-                border: "1px solid rgba(45,122,82,.1)",
-              }}
-            >
+            <div className="rounded-lg border bg-muted/40 px-3.5 py-3 text-sm leading-7 text-foreground/80">
               {savedDesc}
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* PDF file card */}
       {pdfUrl && (
-        <div style={sc}>
-          <div style={{ ...scH, justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={iconBadge}>📎</div>
-              <div>
-                <div style={cardTitle}>الملف التعريفي المحفوظ</div>
-                <div style={cardSubtitle}>الملف المضغوط المرفوع</div>
-              </div>
-            </div>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={viewFileLink}>
-              👁 عرض الملف
-            </a>
-          </div>
-        </div>
+        <Card className="mb-4">
+          <SectionHeader
+            icon={Paperclip}
+            title="الملف التعريفي المحفوظ"
+            subtitle="الملف المضغوط المرفوع"
+            action={
+              <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+                <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                  <Eye className="h-3 w-3" />
+                  عرض الملف
+                </a>
+              </Button>
+            }
+          />
+        </Card>
       )}
 
       {/* AI Summary */}
-      <div style={sc}>
-        <div style={scH}>
-          <div style={iconBadge}>✦</div>
-          <div>
-            <div style={cardTitle}>ملخص الجمعية</div>
-            <div style={cardSubtitle}>تحليل AI للملف التعريفي</div>
-          </div>
-        </div>
-        <div style={{ padding: 18 }}>
-          <div
-            style={{
-              background: "linear-gradient(135deg,#f0faf5,#e8f5ee)",
-              border: "1px solid rgba(45,122,82,.15)",
-              borderRadius: 11,
-              padding: "16px 18px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: ".7rem",
-                fontWeight: 700,
-                letterSpacing: ".08em",
-                color: "#2d7a52",
-                textTransform: "uppercase",
-                marginBottom: 7,
-              }}
-            >
+      <Card className="mb-4">
+        <SectionHeader icon={Sparkles} title="ملخص الجمعية" subtitle="تحليل AI للملف التعريفي" />
+        <CardContent className="pt-4">
+          <div className="rounded-xl border bg-gradient-to-br from-secondary to-secondary/60 px-4 py-4">
+            <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-primary">
               ✦ ملخص تلقائي
             </div>
-            <div style={{ fontSize: ".88rem", lineHeight: 1.75, color: "#374151" }}>
-              {result.summary}
-            </div>
+            <div className="text-sm leading-7 text-foreground/80">{result.summary}</div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Ideas & Pain Points */}
-      <div style={sc}>
-        <div style={scH}>
-          <div style={iconBadge}>💡</div>
-          <div>
-            <div style={cardTitle}>أفكار وتحديات تسويقية</div>
-            <div style={cardSubtitle}>توصيات AI لتحسين الحضور الإعلامي</div>
-          </div>
-        </div>
-        <div style={{ padding: 18 }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Ideas */}
-            <div
-              style={{
-                background: "white",
-                borderRadius: 11,
-                border: "1px solid rgba(45,122,82,.12)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  padding: "11px 13px",
-                  borderBottom: "1px solid rgba(45,122,82,.12)",
-                  background: "linear-gradient(135deg,#f0faf5,#e8f5ee)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span>💡</span>
-                <span style={{ fontSize: ".83rem", fontWeight: 700, color: "#111827" }}>
-                  أفكار للمحتوى التسويقي
-                </span>
-              </div>
-              <div style={{ padding: "11px 13px" }}>
-                {(aiResult?.ideas ?? AI_ANALYSIS.ideas).map((idea, i, arr) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 7,
-                      padding: "6px 0",
-                      borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,.04)" : "none",
-                      fontSize: ".8rem",
-                      color: "#374151",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "#2d7a52",
-                        flexShrink: 0,
-                        marginTop: 5,
-                      }}
-                    />
-                    {idea}
-                  </div>
-                ))}
-              </div>
+      <Card>
+        <SectionHeader icon={Lightbulb} title="أفكار وتحديات تسويقية" subtitle="توصيات AI لتحسين الحضور الإعلامي" />
+        <CardContent className="grid grid-cols-1 gap-3 pt-4 md:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border">
+            <div className="flex items-center gap-2 border-b bg-gradient-to-br from-secondary to-secondary/60 px-3.5 py-2.5">
+              <Lightbulb className="h-3.5 w-3.5 text-primary" />
+              <span className="text-sm font-bold text-foreground">أفكار للمحتوى التسويقي</span>
             </div>
-            {/* Pain points */}
-            <div
-              style={{
-                background: "white",
-                borderRadius: 11,
-                border: "1px solid rgba(45,122,82,.12)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  padding: "11px 13px",
-                  borderBottom: "1px solid rgba(45,122,82,.12)",
-                  background: "linear-gradient(135deg,#fff8f0,#fdeee0)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span>⚠️</span>
-                <span style={{ fontSize: ".83rem", fontWeight: 700, color: "#111827" }}>
-                  تحديات ونقاط ضعف إعلامية
-                </span>
-              </div>
-              <div style={{ padding: "11px 13px" }}>
-                {(aiResult?.painPoints ?? AI_ANALYSIS.painPoints).map((pt, i, arr) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 7,
-                      padding: "6px 0",
-                      borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,.04)" : "none",
-                      fontSize: ".8rem",
-                      color: "#374151",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "#d97706",
-                        flexShrink: 0,
-                        marginTop: 5,
-                      }}
-                    />
-                    {pt}
-                  </div>
-                ))}
-              </div>
+            <div className="px-3.5 py-2.5">
+              {(aiResult?.ideas ?? AI_ANALYSIS.ideas).map((idea, i, arr) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-start gap-2 py-1.5 text-sm leading-6 text-foreground/80",
+                    i < arr.length - 1 && "border-b",
+                  )}
+                >
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  {idea}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
+
+          <div className="overflow-hidden rounded-xl border">
+            <div className="flex items-center gap-2 border-b bg-gradient-to-br from-amber-50 to-orange-50 px-3.5 py-2.5">
+              <TriangleAlert className="h-3.5 w-3.5 text-amber-600" />
+              <span className="text-sm font-bold text-foreground">تحديات ونقاط ضعف إعلامية</span>
+            </div>
+            <div className="px-3.5 py-2.5">
+              {(aiResult?.painPoints ?? AI_ANALYSIS.painPoints).map((pt, i, arr) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-start gap-2 py-1.5 text-sm leading-6 text-foreground/80",
+                    i < arr.length - 1 && "border-b",
+                  )}
+                >
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
+                  {pt}
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }

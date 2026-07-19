@@ -1,149 +1,66 @@
+import { Wrench, ArrowLeft } from "lucide-react";
 import type { Service, PageId } from "../types";
 import { SERVICES } from "../data";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface Props {
   onNavigate: (page: PageId) => void;
 }
 
-const SERVICE_BG: Record<string, string> = {
-  profile: "#e8f5ee",
-  content: "#f0f4ff",
-  campaigns: "#fff8f0",
-  analytics: "#fef3f2",
-  team: "#f8f0ff",
-};
-
-const SERVICE_BORDER: Record<string, string> = {
-  profile: "rgba(45,122,82,.15)",
-  content: "rgba(99,102,241,.12)",
-  campaigns: "rgba(201,168,76,.15)",
-  analytics: "rgba(239,68,68,.1)",
-  team: "rgba(139,92,246,.12)",
-};
-
-const SERVICE_TITLE_COLOR: Record<string, string> = {
-  profile: "#1a5c3a",
-  content: "#3730a3",
-  campaigns: "#92400e",
-  analytics: "#991b1b",
-  team: "#5b21b6",
+const SERVICE_STYLES: Record<string, { bg: string; border: string; title: string }> = {
+  profile: { bg: "bg-emerald-50", border: "border-emerald-900/10", title: "text-primary" },
+  content: { bg: "bg-indigo-50", border: "border-indigo-500/10", title: "text-indigo-800" },
+  campaigns: { bg: "bg-amber-50", border: "border-amber-500/15", title: "text-amber-800" },
+  analytics: { bg: "bg-red-50", border: "border-red-500/10", title: "text-red-800" },
+  team: { bg: "bg-violet-50", border: "border-violet-500/10", title: "text-violet-800" },
 };
 
 export default function ServicesPage({ onNavigate }: Props) {
   return (
     <div>
-      {/* Header card */}
-      <div
-        style={{
-          background: "white",
-          borderRadius: 13,
-          border: "1px solid rgba(45,122,82,.12)",
-          marginBottom: 16,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "14px 18px",
-            borderBottom: "1px solid rgba(45,122,82,.12)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 7,
-              background: "#e8f5ee",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: ".95rem",
-            }}
-          >
-            🛎
+      <Card className="mb-4">
+        <CardHeader className="flex-row items-center gap-2.5 space-y-0 border-b">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+            <Wrench className="h-4 w-4" />
           </div>
           <div>
-            <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>خدماتنا</div>
-            <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-              اختر الخدمات المناسبة لجمعيتك
-            </div>
+            <CardTitle className="text-sm">خدماتنا</CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">اختر الخدمات المناسبة لجمعيتك</p>
           </div>
-        </div>
-        <div style={{ padding: "12px 18px" }}>
-          <div style={{ fontSize: ".82rem", color: "#374151", lineHeight: 1.7 }}>
-            منصة <strong>ساعِد</strong> توفر مجموعة متكاملة من الخدمات المصممة خصيصاً للجمعيات
-            الخيرية، من توليد المحتوى بالذكاء الاصطناعي إلى إدارة الحملات والمؤثرين.
-          </div>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="pt-4 text-sm leading-7 text-foreground/80">
+          منصة <strong>ساعِد</strong> توفر مجموعة متكاملة من الخدمات المصممة خصيصاً للجمعيات
+          الخيرية، من توليد المحتوى بالذكاء الاصطناعي إلى إدارة الحملات والمؤثرين.
+        </CardContent>
+      </Card>
 
-      {/* Services grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {SERVICES.map((svc: Service) => (
-          <button
-            key={svc.id}
-            onClick={() => onNavigate(svc.id as PageId)}
-            style={{
-              background: SERVICE_BG[svc.id] ?? "#f9fafb",
-              borderRadius: 12,
-              border: `1px solid ${SERVICE_BORDER[svc.id] ?? "rgba(0,0,0,.08)"}`,
-              padding: 20,
-              textAlign: "right",
-              cursor: "pointer",
-              fontFamily: "'Tajawal','Cairo',sans-serif",
-              transition: "all .2s",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 18px rgba(0,0,0,.08)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "";
-            }}
-          >
-            <div style={{ fontSize: "1.8rem", lineHeight: 1 }}>{svc.icon}</div>
-            <div
-              style={{
-                fontSize: ".9rem",
-                fontWeight: 700,
-                color: SERVICE_TITLE_COLOR[svc.id] ?? "#111827",
-              }}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {SERVICES.map((svc: Service) => {
+          const style = SERVICE_STYLES[svc.id] ?? { bg: "bg-muted", border: "border-border", title: "text-foreground" };
+          return (
+            <button
+              key={svc.id}
+              onClick={() => onNavigate(svc.id as PageId)}
+              className={cn(
+                "flex flex-col gap-2 rounded-xl border p-5 text-right transition-all hover:-translate-y-0.5 hover:shadow-md",
+                style.bg,
+                style.border,
+              )}
             >
-              {svc.title}
-            </div>
-            <div style={{ fontSize: ".78rem", color: "#6b7280", lineHeight: 1.55, flex: 1 }}>
-              {svc.desc}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginTop: 4,
-                paddingTop: 10,
-                borderTop: "1px solid rgba(0,0,0,.06)",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: ".78rem",
-                  fontWeight: 700,
-                  color: SERVICE_TITLE_COLOR[svc.id] ?? "#1a5c3a",
-                }}
-              >
-                {svc.price}
-              </span>
-              <span style={{ fontSize: ".7rem", color: "#9ca3af" }}>اضغط للتفعيل ←</span>
-            </div>
-          </button>
-        ))}
+              <div className="text-3xl leading-none">{svc.icon}</div>
+              <div className={cn("text-sm font-bold", style.title)}>{svc.title}</div>
+              <div className="flex-1 text-xs leading-6 text-muted-foreground">{svc.desc}</div>
+              <div className="mt-1 flex items-center justify-between border-t pt-2.5">
+                <span className={cn("text-xs font-bold", style.title)}>{svc.price}</span>
+                <span className="flex items-center gap-1 text-[0.7rem] text-muted-foreground">
+                  اضغط للتفعيل
+                  <ArrowLeft className="h-3 w-3" />
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

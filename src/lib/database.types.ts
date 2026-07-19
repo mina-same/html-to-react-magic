@@ -399,6 +399,28 @@ export interface Database {
         Update: { value?: string; updated_at?: string };
         Relationships: [];
       };
+      ai_usage: {
+        Row: {
+          id: number;
+          assoc_id: string;
+          feature: string;
+          model: string;
+          tokens_used: number;
+          created_at: string;
+        };
+        Insert: {
+          assoc_id: string;
+          feature: string;
+          model: string;
+          tokens_used?: number;
+        };
+        Update: {
+          feature?: string;
+          model?: string;
+          tokens_used?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

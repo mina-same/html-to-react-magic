@@ -19,6 +19,7 @@
  */
 
 @theme inline {
+  --font-sans: var(--font-family-base);
   /* Brand colors */
   --color-green-dark: var(--green-dark);
   --color-green-mid: var(--green-mid);
@@ -100,38 +101,41 @@
   --app-bg: #f0f4f2;
 
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --font-family-base: "Tajawal", "Cairo", sans-serif;
+  --background: var(--app-bg);
+  --foreground: var(--text-dark);
+  --card: #ffffff;
+  --card-foreground: var(--text-dark);
+  --popover: #ffffff;
+  --popover-foreground: var(--text-dark);
+  /* Brand green drives every primary-colored shadcn control. */
+  --primary: var(--green-dark);
+  --primary-foreground: #ffffff;
+  --secondary: var(--green-pale);
+  --secondary-foreground: var(--green-dark);
+  --muted: #f0f4f2;
+  --muted-foreground: #5f6f66;
+  --accent: var(--green-pale);
+  --accent-foreground: var(--green-dark);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --border: var(--brand-border);
+  --input: rgba(45, 122, 82, 0.2);
+  --ring: var(--green-mid);
+  --chart-1: var(--green-dark);
+  --chart-2: var(--green-mid);
+  --chart-3: var(--green-light);
+  --chart-4: var(--gold);
+  --chart-5: #8fbfa5;
+  /* Sidebar stays brand green regardless of light/dark mode. */
+  --sidebar: var(--green-dark);
+  --sidebar-foreground: rgba(255, 255, 255, 0.85);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--green-dark);
+  --sidebar-accent: rgba(255, 255, 255, 0.13);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: var(--gold);
 }
 
 .dark {
@@ -177,6 +181,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
   }
 }
 

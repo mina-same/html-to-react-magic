@@ -6,6 +6,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { PlatformBadge } from "@/components/dashboard/StatusBadge";
 import type { Influencer } from "../types";
 
 interface Props {
@@ -13,13 +16,6 @@ interface Props {
   onClose: () => void;
   onRequest?: (inf: Influencer) => void;
 }
-
-const cardStyle: React.CSSProperties = {
-  background: "#f8fafc",
-  border: "1px solid rgba(45,122,82,.10)",
-  borderRadius: 12,
-  padding: 12,
-};
 
 function socialUrl(value: string, platform: string) {
   if (!value) return "";
@@ -35,6 +31,10 @@ function socialUrl(value: string, platform: string) {
   return map[platform] ?? value;
 }
 
+function InfoCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl border bg-muted/40 p-3 ${className}`}>{children}</div>;
+}
+
 function SocialRow({ label, value, platform }: { label: string; value: string; platform: string }) {
   if (!value) return null;
   const href = socialUrl(value, platform);
@@ -43,15 +43,10 @@ function SocialRow({ label, value, platform }: { label: string; value: string; p
       href={href}
       target="_blank"
       rel="noreferrer"
-      style={{
-        ...cardStyle,
-        display: "block",
-        textDecoration: "none",
-        color: "#111827",
-      }}
+      className="block rounded-xl border bg-muted/40 p-3 text-foreground no-underline transition-colors hover:bg-muted"
     >
-      <div style={{ fontSize: ".7rem", color: "#6b7280", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: ".84rem", fontWeight: 700 }}>{value}</div>
+      <div className="mb-1 text-xs text-muted-foreground">{label}</div>
+      <div className="text-sm font-bold">{value}</div>
     </a>
   );
 }
@@ -67,221 +62,122 @@ export default function InfluencerProfileModal({ influencer, onClose, onRequest 
     { label: "Snapchat", value: influencer.snapchatHandle, platform: "Snapchat" },
   ].filter((item) => item.value);
 
+  const statusLabel =
+    influencer.status === "active" ? "نشط" : influencer.status === "pending" ? "قيد التفاوض" : "منتهي";
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{
-          maxWidth: 760,
-          fontFamily: "'Tajawal','Cairo',sans-serif",
-          direction: "rtl",
-        }}
-      >
+      <DialogContent className="max-w-[760px] max-h-[85vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div
-              style={{
-                width: 58,
-                height: 58,
-                borderRadius: "50%",
-                background: "#2d7a52",
-                color: "white",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.1rem",
-                fontWeight: 800,
-                flexShrink: 0,
-              }}
-            >
-              {influencer.name.slice(0, 1)}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <DialogTitle
-                style={{ fontFamily: "'Tajawal','Cairo',sans-serif", fontSize: "1.05rem" }}
-              >
-                {influencer.name}
-              </DialogTitle>
-              <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span
-                  style={{
-                    ...cardStyle,
-                    padding: "4px 10px",
-                    background: "#e8f5ee",
-                    borderRadius: 20,
-                    border: "none",
-                  }}
-                >
-                  {influencer.platform}
-                </span>
-                <span
-                  style={{
-                    ...cardStyle,
-                    padding: "4px 10px",
-                    background: "#fef3c7",
-                    borderRadius: 20,
-                    border: "none",
-                  }}
-                >
-                  {influencer.status === "active"
-                    ? "نشط"
-                    : influencer.status === "pending"
-                      ? "قيد التفاوض"
-                      : "منتهي"}
-                </span>
-                <span
-                  style={{
-                    ...cardStyle,
-                    padding: "4px 10px",
-                    background: "#f1f5f9",
-                    borderRadius: 20,
-                    border: "none",
-                  }}
-                >
-                  {influencer.niche}
-                </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <Avatar className="h-[58px] w-[58px] shrink-0">
+              <AvatarFallback className="bg-primary text-lg font-extrabold text-primary-foreground">
+                {influencer.name.slice(0, 1)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base">{influencer.name}</DialogTitle>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                <PlatformBadge platform={influencer.platform} />
+                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">{statusLabel}</Badge>
+                {influencer.niche && <Badge variant="secondary">{influencer.niche}</Badge>}
               </div>
             </div>
           </div>
         </DialogHeader>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 14 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={cardStyle}>
-              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 6 }}>نبذة</div>
-              <div style={{ fontSize: ".9rem", lineHeight: 1.8, color: "#111827" }}>
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="flex flex-col gap-3.5">
+            <InfoCard>
+              <div className="mb-1.5 text-xs text-muted-foreground">نبذة</div>
+              <div className="text-sm leading-7 text-foreground">
                 {influencer.bio || "لا توجد نبذة مضافة بعد."}
               </div>
-            </div>
+            </InfoCard>
 
-            <div style={cardStyle}>
-              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 10 }}>
-                إحصائيات سريعة
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+            <InfoCard>
+              <div className="mb-2.5 text-xs text-muted-foreground">إحصائيات سريعة</div>
+              <div className="grid grid-cols-4 gap-2.5">
                 {[
                   { label: "المتابعون", value: influencer.followers.toLocaleString() },
                   { label: "التفاعل", value: `${influencer.engagement}%` },
                   { label: "الحملات", value: String(influencer.campaigns) },
                   { label: "السعر", value: `${influencer.basePrice.toLocaleString()} ر.س` },
                 ].map((item) => (
-                  <div
-                    key={item.label}
-                    style={{
-                      background: "white",
-                      border: "1px solid rgba(45,122,82,.08)",
-                      borderRadius: 10,
-                      padding: 10,
-                      textAlign: "center",
-                    }}
-                  >
-                    <div style={{ fontSize: "1rem", fontWeight: 800, color: "#1a5c3a" }}>
-                      {item.value}
-                    </div>
-                    <div style={{ fontSize: ".68rem", color: "#6b7280", marginTop: 4 }}>
-                      {item.label}
-                    </div>
+                  <div key={item.label} className="rounded-lg border bg-card p-2.5 text-center">
+                    <div className="text-sm font-extrabold text-primary">{item.value}</div>
+                    <div className="mt-1 text-[0.68rem] text-muted-foreground">{item.label}</div>
                   </div>
                 ))}
               </div>
-            </div>
+            </InfoCard>
 
-            <div style={cardStyle}>
-              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 8 }}>ملاحظات</div>
-              <div style={{ fontSize: ".88rem", lineHeight: 1.8, color: "#374151" }}>
+            <InfoCard>
+              <div className="mb-2 text-xs text-muted-foreground">ملاحظات</div>
+              <div className="text-sm leading-7 text-foreground/80">
                 {influencer.notes || "لا توجد ملاحظات."}
               </div>
-            </div>
+            </InfoCard>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={cardStyle}>
-              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 10 }}>
-                الملف الاجتماعي
-              </div>
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={cardStyle}>
-                  <div style={{ fontSize: ".7rem", color: "#6b7280" }}>المدينة</div>
-                  <div style={{ fontSize: ".86rem", fontWeight: 700, marginTop: 4 }}>
-                    {influencer.location || "غير محدد"}
-                  </div>
-                </div>
-                <div style={cardStyle}>
-                  <div style={{ fontSize: ".7rem", color: "#6b7280" }}>الجمهور المستهدف</div>
-                  <div style={{ fontSize: ".86rem", fontWeight: 700, marginTop: 4 }}>
-                    {influencer.audience || "غير محدد"}
-                  </div>
-                </div>
+          <div className="flex flex-col gap-3.5">
+            <InfoCard>
+              <div className="mb-2.5 text-xs text-muted-foreground">الملف الاجتماعي</div>
+              <div className="grid gap-2.5">
+                <InfoCard className="bg-card">
+                  <div className="text-xs text-muted-foreground">المدينة</div>
+                  <div className="mt-1 text-sm font-bold">{influencer.location || "غير محدد"}</div>
+                </InfoCard>
+                <InfoCard className="bg-card">
+                  <div className="text-xs text-muted-foreground">الجمهور المستهدف</div>
+                  <div className="mt-1 text-sm font-bold">{influencer.audience || "غير محدد"}</div>
+                </InfoCard>
                 {influencer.website && (
                   <a
-                    href={
-                      influencer.website.startsWith("http")
-                        ? influencer.website
-                        : `https://${influencer.website}`
-                    }
+                    href={influencer.website.startsWith("http") ? influencer.website : `https://${influencer.website}`}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ ...cardStyle, textDecoration: "none", color: "#111827" }}
+                    className="rounded-xl border bg-card p-3 text-foreground no-underline hover:bg-muted"
                   >
-                    <div style={{ fontSize: ".7rem", color: "#6b7280" }}>الموقع</div>
-                    <div style={{ fontSize: ".86rem", fontWeight: 700, marginTop: 4 }}>
-                      {influencer.website}
-                    </div>
+                    <div className="text-xs text-muted-foreground">الموقع</div>
+                    <div className="mt-1 text-sm font-bold">{influencer.website}</div>
                   </a>
                 )}
                 {influencer.email && (
-                  <div style={cardStyle}>
-                    <div style={{ fontSize: ".7rem", color: "#6b7280" }}>البريد الإلكتروني</div>
-                    <div style={{ fontSize: ".86rem", fontWeight: 700, marginTop: 4 }}>
-                      {influencer.email}
-                    </div>
-                  </div>
+                  <InfoCard className="bg-card">
+                    <div className="text-xs text-muted-foreground">البريد الإلكتروني</div>
+                    <div className="mt-1 text-sm font-bold">{influencer.email}</div>
+                  </InfoCard>
                 )}
                 {influencer.phone && (
-                  <div style={cardStyle}>
-                    <div style={{ fontSize: ".7rem", color: "#6b7280" }}>الهاتف</div>
-                    <div style={{ fontSize: ".86rem", fontWeight: 700, marginTop: 4 }}>
-                      {influencer.phone}
-                    </div>
-                  </div>
+                  <InfoCard className="bg-card">
+                    <div className="text-xs text-muted-foreground">الهاتف</div>
+                    <div className="mt-1 text-sm font-bold">{influencer.phone}</div>
+                  </InfoCard>
                 )}
               </div>
-            </div>
+            </InfoCard>
 
-            <div style={cardStyle}>
-              <div style={{ fontSize: ".78rem", color: "#6b7280", marginBottom: 10 }}>
-                الحسابات الاجتماعية
-              </div>
-              <div style={{ display: "grid", gap: 10 }}>
+            <InfoCard>
+              <div className="mb-2.5 text-xs text-muted-foreground">الحسابات الاجتماعية</div>
+              <div className="grid gap-2.5">
                 {socials.length ? (
                   socials.map((social) => (
-                    <SocialRow
-                      key={social.label}
-                      label={social.label}
-                      value={social.value}
-                      platform={social.platform}
-                    />
+                    <SocialRow key={social.label} label={social.label} value={social.value} platform={social.platform} />
                   ))
                 ) : (
-                  <div style={{ fontSize: ".84rem", color: "#9ca3af" }}>
-                    لا توجد حسابات اجتماعية مضافة.
-                  </div>
+                  <div className="text-sm text-muted-foreground">لا توجد حسابات اجتماعية مضافة.</div>
                 )}
               </div>
-            </div>
+            </InfoCard>
           </div>
         </div>
 
-        <DialogFooter style={{ justifyContent: "space-between", display: "flex", gap: 8 }}>
-          <div style={{ fontSize: ".72rem", color: "#6b7280" }}>
-            هذا الملف مخصص لعرض بيانات المؤثر فقط.
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
+        <DialogFooter className="flex flex-row items-center justify-between gap-2">
+          <div className="text-xs text-muted-foreground">هذا الملف مخصص لعرض بيانات المؤثر فقط.</div>
+          <div className="flex gap-2">
             {onRequest && influencer.status !== "ended" && (
-              <Button
-                size="sm"
-                onClick={() => onRequest(influencer)}
-                style={{ background: "#2d7a52", color: "white" }}
-              >
+              <Button size="sm" onClick={() => onRequest(influencer)}>
                 طلب حملة
               </Button>
             )}

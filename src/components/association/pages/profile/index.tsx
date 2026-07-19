@@ -6,13 +6,6 @@ import { useAssocProfile, useContentGenerations } from "@/api/queries";
 import { LoadingState, ErrorState } from "@/components/common/StateViews";
 
 import {
-  sc,
-  scH,
-  iconBadge,
-  cardTitle,
-  cardSubtitle,
-  viewFileLink,
-  SPIN_KEYFRAMES,
   parseDescription,
   deriveAiResult,
   humanFileSize,
@@ -25,6 +18,9 @@ import {
   type LogEntry,
   type GeneratedContent,
 } from "./constants";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Paperclip, Eye, Sparkles } from "lucide-react";
 import {
   useUpdateAssocProfile,
   useSavePdfUrl,
@@ -295,20 +291,10 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
 
   // ── Loading / error states (no more "stuck loading forever") ─────
   if (profileQuery.isLoading || (assocId && profileQuery.isLoading)) {
-    return (
-      <div>
-        <LoadingState label="جاري تحميل بيانات الجمعية..." />
-        <style>{SPIN_KEYFRAMES}</style>
-      </div>
-    );
+    return <LoadingState label="جاري تحميل بيانات الجمعية..." />;
   }
   if (profileQuery.isError) {
-    return (
-      <div>
-        <ErrorState message="تعذّر تحميل بيانات الجمعية" onRetry={() => profileQuery.refetch()} />
-        <style>{SPIN_KEYFRAMES}</style>
-      </div>
-    );
+    return <ErrorState message="تعذّر تحميل بيانات الجمعية" onRetry={() => profileQuery.refetch()} />;
   }
 
   return (
@@ -334,20 +320,25 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
 
       {/* PDF card when no AI yet but file already saved */}
       {(!hasAnalysis || editing) && pdfUrl && (
-        <div style={{ ...sc, marginBottom: 14 }}>
-          <div style={{ ...scH, justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={iconBadge}>📎</div>
+        <Card className="mb-3.5">
+          <CardHeader className="flex-row items-center justify-between space-y-0 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+                <Paperclip className="h-4 w-4" />
+              </div>
               <div>
-                <div style={cardTitle}>الملف التعريفي المحفوظ</div>
-                <div style={cardSubtitle}>الملف المضغوط المرفوع</div>
+                <CardTitle className="text-sm">الملف التعريفي المحفوظ</CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">الملف المضغوط المرفوع</p>
               </div>
             </div>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={viewFileLink}>
-              👁 عرض الملف
-            </a>
-          </div>
-        </div>
+            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                <Eye className="h-3 w-3" />
+                عرض الملف
+              </a>
+            </Button>
+          </CardHeader>
+        </Card>
       )}
 
       {/* Upload / Edit section — shown when no analysis yet or re-editing */}
@@ -378,15 +369,11 @@ export default function ProfilePage({ onAnalysisComplete, onNavigate }: Props) {
 
       {/* Empty hint */}
       {!analyzing && !hasAnalysis && (
-        <div style={{ textAlign: "center", padding: "28px 18px", color: "#9ca3af" }}>
-          <div style={{ fontSize: "2rem", marginBottom: 9, opacity: 0.3 }}>✦</div>
-          <div style={{ fontSize: ".85rem" }}>
-            ارفع الملف التعريفي أو اكتب وصف الجمعية لبدء التحليل
-          </div>
+        <div className="py-7 text-center text-muted-foreground">
+          <Sparkles className="mx-auto mb-2 h-8 w-8 opacity-30" />
+          <div className="text-sm">ارفع الملف التعريفي أو اكتب وصف الجمعية لبدء التحليل</div>
         </div>
       )}
-
-      <style>{SPIN_KEYFRAMES}</style>
     </div>
   );
 }

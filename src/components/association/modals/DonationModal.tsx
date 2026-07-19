@@ -8,6 +8,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Donation } from "../types";
 
 interface Props {
@@ -18,27 +27,7 @@ interface Props {
 
 const PAYMENT_METHODS = ["نقد", "شيك", "تحويل بنكي", "STC Pay", "بطاقة رقمية", "Apple Pay"];
 
-const sel: React.CSSProperties = {
-  borderRadius: 7,
-  border: "1.5px solid rgba(45,122,82,.12)",
-  fontFamily: "'Tajawal','Cairo',sans-serif",
-  fontSize: ".87rem",
-  color: "#111827",
-  outline: "none",
-  padding: "8px 12px",
-  width: "100%",
-  background: "white",
-};
-
-const lbl: React.CSSProperties = {
-  display: "block",
-  fontSize: ".75rem",
-  fontWeight: 700,
-  color: "#6b7280",
-  textTransform: "uppercase",
-  letterSpacing: ".06em",
-  marginBottom: 6,
-};
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 function todayIsoDate() {
   const date = new Date();
@@ -81,166 +70,102 @@ export default function DonationModal({ open, onSave, onClose }: Props) {
         if (!isOpen) resetAndClose();
       }}
     >
-      <DialogContent
-        style={{
-          maxWidth: 700,
-          width: "95vw",
-          fontFamily: "'Tajawal','Cairo',sans-serif",
-          direction: "rtl",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          overflowX: "auto",
-        }}
-      >
+      <DialogContent className="max-w-[700px] w-[95vw] max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: ".72rem",
-                padding: "3px 10px",
-                borderRadius: 20,
-                fontWeight: 700,
-                background: "#e8f5ee",
-                color: "#2d7a52",
-              }}
-            >
-              تبرع جديد
-            </span>
-            <DialogTitle style={{ fontFamily: "'Tajawal','Cairo',sans-serif" }}>
-              إضافة تبرع
-            </DialogTitle>
+          <div className="flex items-center gap-2.5">
+            <Badge className="bg-secondary text-primary hover:bg-secondary">تبرع جديد</Badge>
+            <DialogTitle>إضافة تبرع</DialogTitle>
           </div>
         </DialogHeader>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>رقم التبرع</label>
-              <Input
-                value={donationNumber}
-                onChange={(e) => setDonationNumber(e.target.value)}
-                placeholder="اختياري"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>رقم التبرع</Label>
+              <Input value={donationNumber} onChange={(e) => setDonationNumber(e.target.value)} placeholder="اختياري" />
             </div>
             <div>
-              <label style={lbl}>اسم المتبرع</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="مثال: أحمد الفيصل"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>اسم المتبرع</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: أحمد الفيصل" />
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>الجوال</label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0501234567"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>الجوال</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0501234567" />
             </div>
             <div>
-              <label style={lbl}>اسم المشروع</label>
-              <Input
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="مثال: أجهزة طبية"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>اسم المشروع</Label>
+              <Input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="مثال: أجهزة طبية" />
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>قيمة التبرع</label>
+              <Label className={FIELD_LABEL}>قيمة التبرع</Label>
               <Input
                 type="number"
                 dir="ltr"
                 value={amount || ""}
                 onChange={(e) => setAmount(Number(e.target.value))}
                 placeholder="5000"
-                style={sel}
               />
             </div>
             <div>
-              <label style={lbl}>طريقة الدفع</label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                style={sel}
-              >
-                {PAYMENT_METHODS.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={lbl}>البنك</label>
-              <Input
-                value={bank}
-                onChange={(e) => setBank(e.target.value)}
-                placeholder="اختياري"
-                style={sel}
-              />
-            </div>
-            <div>
-              <label style={lbl}>رقم الحساب</label>
-              <Input
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder="اختياري"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>طريقة الدفع</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>مصدر التبرع</label>
-              <Input
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                placeholder="مثال: المتجر"
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>البنك</Label>
+              <Input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="اختياري" />
             </div>
             <div>
-              <label style={lbl}>التاريخ</label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>رقم الحساب</Label>
+              <Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="اختياري" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className={FIELD_LABEL}>مصدر التبرع</Label>
+              <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="مثال: المتجر" />
+            </div>
+            <div>
+              <Label className={FIELD_LABEL}>التاريخ</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label style={lbl}>الحالة</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as Donation["status"])}
-              style={sel}
-            >
-              <option value="pending">معلق</option>
-              <option value="completed">مكتمل</option>
-            </select>
+            <Label className={FIELD_LABEL}>الحالة</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as Donation["status"])}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">معلق</SelectItem>
+                <SelectItem value="completed">مكتمل</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <DialogFooter
-          style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}
-        >
+        <DialogFooter className="mt-2.5 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={resetAndClose}>
             إلغاء
           </Button>
@@ -263,7 +188,6 @@ export default function DonationModal({ open, onSave, onClose }: Props) {
               });
               resetAndClose();
             }}
-            style={{ background: "#2d7a52", color: "white" }}
           >
             حفظ التبرع
           </Button>

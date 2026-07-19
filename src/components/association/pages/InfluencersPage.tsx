@@ -1,6 +1,12 @@
+import { Star, Plus } from "lucide-react";
 import type { Influencer } from "../types";
 import { formatFollowers } from "../data";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { PlatformBadge } from "@/components/dashboard/StatusBadge";
+import { cn } from "@/lib/utils";
 
 interface Props {
   influencers: Influencer[];
@@ -11,14 +17,6 @@ interface Props {
   onRequest: (inf: Influencer) => void;
 }
 
-const PLAT_STYLE: Record<string, React.CSSProperties> = {
-  Instagram: { background: "#fce7f3", color: "#9d174d" },
-  X: { background: "#e0f2fe", color: "#075985" },
-  TikTok: { background: "#f3e8ff", color: "#6b21a8" },
-  Snapchat: { background: "#fef9c3", color: "#854d0e" },
-  YouTube: { background: "#fee2e2", color: "#b91c1c" },
-};
-
 const PLAT_ICON: Record<string, string> = {
   Instagram: "📷",
   X: "🐦",
@@ -27,10 +25,10 @@ const PLAT_ICON: Record<string, string> = {
   YouTube: "▶️",
 };
 
-const STATUS_STYLE: Record<Influencer["status"], React.CSSProperties> = {
-  active: { background: "#dcfce7", color: "#166534" },
-  pending: { background: "#fef9c3", color: "#854d0e" },
-  ended: { background: "#f1f5f9", color: "#94a3b8" },
+const STATUS_STYLE: Record<Influencer["status"], string> = {
+  active: "bg-emerald-100 text-emerald-800",
+  pending: "bg-amber-100 text-amber-800",
+  ended: "bg-slate-100 text-slate-500",
 };
 
 const STATUS_LABEL: Record<Influencer["status"], string> = {
@@ -58,148 +56,53 @@ export default function InfluencersPage({
     ].filter((item) => item.value);
 
   return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 13,
-        border: "1px solid rgba(45,122,82,.12)",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          padding: "14px 18px",
-          borderBottom: "1px solid rgba(45,122,82,.12)",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 7,
-            background: "#e8f5ee",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: ".95rem",
-          }}
-        >
-          🌟
+    <Card>
+      <CardHeader className="flex-row flex-wrap items-center gap-2.5 space-y-0 border-b">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+          <Star className="h-4 w-4" />
         </div>
         <div>
-          <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>المؤثرون</div>
-          <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-            {influencers.length} مؤثر
-          </div>
+          <CardTitle className="text-sm">المؤثرون</CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">{influencers.length} مؤثر</p>
         </div>
-        <div style={{ marginRight: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <span
-            style={{
-              fontSize: ".72rem",
-              background: "#dcfce7",
-              color: "#166534",
-              padding: "2px 9px",
-              borderRadius: 20,
-              fontWeight: 600,
-            }}
-          >
+        <div className="mr-auto flex items-center gap-2">
+          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
             {activeCount} نشطين
-          </span>
+          </Badge>
           {canManage ? (
-            <Button
-              size="sm"
-              onClick={onAdd}
-              style={{
-                background: "#2d7a52",
-                color: "white",
-                fontSize: ".78rem",
-                padding: "6px 14px",
-                borderRadius: 8,
-              }}
-            >
-              + إضافة مؤثر
+            <Button size="sm" onClick={onAdd}>
+              <Plus className="h-3.5 w-3.5" />
+              إضافة مؤثر
             </Button>
           ) : (
-            <span style={{ fontSize: ".72rem", color: "#6b7280" }}>
-              الجمعية يمكنها طلب حملة فقط
-            </span>
+            <span className="text-xs text-muted-foreground">الجمعية يمكنها طلب حملة فقط</span>
           )}
         </div>
-      </div>
+      </CardHeader>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style={{ padding: 16 }}>
+      <CardContent className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
         {influencers.map((inf) => (
           <div
             key={inf.id}
-            style={{
-              background: "#f2faf6",
-              borderRadius: 12,
-              border: "1px solid rgba(45,122,82,.12)",
-              padding: 16,
-              cursor: "pointer",
-              transition: "all .18s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.boxShadow =
-                "0 2px 14px rgba(45,122,82,.12)";
-              (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(45,122,82,.25)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.boxShadow = "";
-              (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(45,122,82,.12)";
-            }}
+            className="rounded-xl border bg-secondary/40 p-4 transition-shadow hover:shadow-md hover:border-primary/25"
           >
-            {/* Top row */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: "#2d7a52",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: ".9rem",
-                  fontWeight: 700,
-                  color: "white",
-                  flexShrink: 0,
-                }}
-              >
-                {inf.name[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{ fontSize: ".86rem", fontWeight: 700, color: "#111827", lineHeight: 1.3 }}
-                >
+            <div className="mb-3 flex items-start gap-2.5">
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">
+                  {inf.name[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold leading-tight text-foreground">
                   {inf.name}
                 </div>
-                <div style={{ display: "flex", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <PlatformBadge platform={`${PLAT_ICON[inf.platform] ?? ""} ${inf.platform}`} />
                   <span
-                    style={{
-                      fontSize: ".64rem",
-                      padding: "2px 7px",
-                      borderRadius: 20,
-                      fontWeight: 700,
-                      ...(PLAT_STYLE[inf.platform] ?? {}),
-                    }}
-                  >
-                    {PLAT_ICON[inf.platform]} {inf.platform}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: ".63rem",
-                      padding: "2px 7px",
-                      borderRadius: 20,
-                      fontWeight: 600,
-                      ...STATUS_STYLE[inf.status],
-                    }}
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[0.63rem] font-semibold",
+                      STATUS_STYLE[inf.status],
+                    )}
                   >
                     {STATUS_LABEL[inf.status]}
                   </span>
@@ -207,76 +110,37 @@ export default function InfluencersPage({
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2" style={{ marginBottom: 12 }}>
+            <div className="mb-3 grid grid-cols-3 gap-2">
               {[
                 { label: "المتابعون", value: formatFollowers(inf.followers) },
                 { label: "التفاعل", value: `${inf.engagement}%` },
                 { label: "الحملات", value: inf.campaigns },
               ].map((s) => (
-                <div
-                  key={s.label}
-                  style={{
-                    background: "white",
-                    borderRadius: 8,
-                    padding: "7px 8px",
-                    textAlign: "center",
-                    border: "1px solid rgba(45,122,82,.08)",
-                  }}
-                >
-                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#1a5c3a" }}>
-                    {s.value}
-                  </div>
-                  <div style={{ fontSize: ".6rem", color: "#6b7280", marginTop: 2 }}>{s.label}</div>
+                <div key={s.label} className="rounded-lg border bg-card px-2 py-1.5 text-center">
+                  <div className="text-sm font-bold text-primary">{s.value}</div>
+                  <div className="mt-0.5 text-[0.6rem] text-muted-foreground">{s.label}</div>
                 </div>
               ))}
             </div>
 
             {inf.niche && (
-              <div
-                style={{
-                  fontSize: ".7rem",
-                  color: "#2d7a52",
-                  background: "#e8f5ee",
-                  padding: "3px 9px",
-                  borderRadius: 20,
-                  display: "inline-block",
-                  marginBottom: 10,
-                  fontWeight: 600,
-                }}
-              >
+              <div className="mb-2.5 inline-block rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-primary">
                 {inf.niche}
               </div>
             )}
 
             {inf.notes && (
-              <div
-                style={{
-                  fontSize: ".69rem",
-                  color: "#6b7280",
-                  marginBottom: 10,
-                  lineHeight: 1.5,
-                  borderTop: "1px solid rgba(45,122,82,.08)",
-                  paddingTop: 8,
-                }}
-              >
+              <div className="mb-2.5 border-t pt-2 text-xs leading-6 text-muted-foreground">
                 {inf.notes}
               </div>
             )}
 
             {socialBadges(inf).length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              <div className="mb-2.5 flex flex-wrap gap-1.5">
                 {socialBadges(inf).map((badge) => (
                   <span
                     key={`${inf.id}-${badge.label}`}
-                    style={{
-                      fontSize: ".63rem",
-                      padding: "3px 7px",
-                      borderRadius: 20,
-                      background: "#eef6f1",
-                      color: "#2d7a52",
-                      fontWeight: 700,
-                    }}
+                    className="rounded-full bg-secondary px-1.5 py-0.5 text-[0.63rem] font-bold text-primary"
                   >
                     {badge.label}
                   </span>
@@ -284,80 +148,32 @@ export default function InfluencersPage({
               </div>
             )}
 
-            {/* Price + actions */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                borderTop: "1px solid rgba(45,122,82,.08)",
-                paddingTop: 10,
-              }}
-            >
-              <span style={{ fontSize: ".75rem", fontWeight: 700, color: "#1a5c3a" }}>
+            <div className="flex items-center gap-2 border-t pt-2.5">
+              <span className="text-xs font-bold text-primary">
                 {inf.basePrice.toLocaleString()} ر.س
               </span>
-              <span style={{ fontSize: ".62rem", color: "#6b7280" }}>/ حملة</span>
-              <div style={{ display: "flex", gap: 6, marginRight: "auto" }}>
+              <span className="text-[0.62rem] text-muted-foreground">/ حملة</span>
+              <div className="mr-auto flex gap-1.5">
                 {onView && (
-                  <button
-                    onClick={() => onView(inf)}
-                    style={{
-                      fontSize: ".68rem",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(45,122,82,.2)",
-                      background: "white",
-                      color: "#2d7a52",
-                      fontFamily: "'Tajawal','Cairo',sans-serif",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => onView(inf)}>
                     الملف
-                  </button>
+                  </Button>
                 )}
                 {canManage && onEdit && (
-                  <button
-                    onClick={() => onEdit(inf)}
-                    style={{
-                      fontSize: ".68rem",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(45,122,82,.2)",
-                      background: "white",
-                      color: "#2d7a52",
-                      fontFamily: "'Tajawal','Cairo',sans-serif",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => onEdit(inf)}>
                     تعديل
-                  </button>
+                  </Button>
                 )}
                 {inf.status !== "ended" && (
-                  <button
-                    onClick={() => onRequest(inf)}
-                    style={{
-                      fontSize: ".68rem",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: "none",
-                      background: "#2d7a52",
-                      color: "white",
-                      fontFamily: "'Tajawal','Cairo',sans-serif",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => onRequest(inf)}>
                     طلب حملة
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
           </div>
         ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

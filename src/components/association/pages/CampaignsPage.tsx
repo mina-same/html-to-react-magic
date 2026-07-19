@@ -1,12 +1,19 @@
 import { useState } from "react";
+import { Megaphone, Plus, X } from "lucide-react";
 import type { Campaign } from "../types";
 import { campaignsDb } from "@/lib/db";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { cn } from "@/lib/utils";
 
-const STATUS_MAP: Record<Campaign["status"], { label: string; bg: string; color: string }> = {
-  active: { label: "نشطة", bg: "#dcfce7", color: "#166534" },
-  draft: { label: "مسودة", bg: "#f1f5f9", color: "#64748b" },
-  paused: { label: "متوقفة", bg: "#fef9c3", color: "#854d0e" },
-  ended: { label: "منتهية", bg: "#fee2e2", color: "#991b1b" },
+const STATUS_MAP: Record<Campaign["status"], { label: string; className: string }> = {
+  active: { label: "نشطة", className: "bg-emerald-100 text-emerald-800" },
+  draft: { label: "مسودة", className: "bg-slate-100 text-slate-600" },
+  paused: { label: "متوقفة", className: "bg-amber-100 text-amber-800" },
+  ended: { label: "منتهية", className: "bg-red-100 text-red-800" },
 };
 
 interface Props {
@@ -36,112 +43,39 @@ export default function CampaignsPage({ campaigns, userId, onRefresh }: Props) {
     onRefresh?.();
   }
 
-  const inp: React.CSSProperties = {
-    padding: "8px 12px",
-    borderRadius: 8,
-    border: "1px solid rgba(45,122,82,.18)",
-    fontFamily: "'Tajawal','Cairo',sans-serif",
-    fontSize: ".82rem",
-    width: "100%",
-    boxSizing: "border-box",
-    outline: "none",
-    color: "#111827",
-  };
-
   return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 13,
-        border: "1px solid rgba(45,122,82,.12)",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          padding: "14px 18px",
-          borderBottom: "1px solid rgba(45,122,82,.12)",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 7,
-            background: "#e8f5ee",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          📣
+    <Card>
+      <CardHeader className="flex-row flex-wrap items-center gap-2.5 space-y-0 border-b">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+          <Megaphone className="h-4 w-4" />
         </div>
         <div>
-          <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>الحملات</div>
-          <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-            {campaigns.length} حملة
-          </div>
+          <CardTitle className="text-sm">الحملات</CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">{campaigns.length} حملة</p>
         </div>
-        <button
-          onClick={() => setAdding((v) => !v)}
-          style={{
-            marginRight: "auto",
-            fontSize: ".78rem",
-            padding: "6px 14px",
-            borderRadius: 8,
-            border: "none",
-            background: "#2d7a52",
-            color: "white",
-            fontFamily: "'Tajawal','Cairo',sans-serif",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          {adding ? "✕ إلغاء" : "+ حملة جديدة"}
-        </button>
-      </div>
+        <Button size="sm" className="mr-auto" onClick={() => setAdding((v) => !v)}>
+          {adding ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+          {adding ? "إلغاء" : "حملة جديدة"}
+        </Button>
+      </CardHeader>
 
-      {/* Add form */}
       {adding && (
         <form
           onSubmit={handleAdd}
-          style={{
-            padding: "14px 18px",
-            borderBottom: "1px solid rgba(45,122,82,.1)",
-            background: "#f8fdfb",
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-          }}
+          className="flex flex-wrap items-end gap-3 border-b bg-muted/40 p-4"
         >
-          <div style={{ flex: "1 1 200px" }}>
-            <label
-              style={{ fontSize: ".72rem", color: "#6b7280", display: "block", marginBottom: 4 }}
-            >
-              اسم الحملة *
-            </label>
-            <input
-              style={inp}
+          <div className="min-w-[200px] flex-1">
+            <Label className="mb-1.5 block text-xs text-muted-foreground">اسم الحملة *</Label>
+            <Input
               required
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="حملة كسوة الشتاء 2026"
             />
           </div>
-          <div style={{ flex: "0 1 130px" }}>
-            <label
-              style={{ fontSize: ".72rem", color: "#6b7280", display: "block", marginBottom: 4 }}
-            >
-              الميزانية (ر.س)
-            </label>
-            <input
-              style={inp}
+          <div className="w-[130px]">
+            <Label className="mb-1.5 block text-xs text-muted-foreground">الميزانية (ر.س)</Label>
+            <Input
               type="number"
               min="0"
               value={form.budget}
@@ -149,116 +83,54 @@ export default function CampaignsPage({ campaigns, userId, onRefresh }: Props) {
               placeholder="10000"
             />
           </div>
-          <div style={{ flex: "0 1 120px" }}>
-            <label
-              style={{ fontSize: ".72rem", color: "#6b7280", display: "block", marginBottom: 4 }}
-            >
-              الوصول المتوقع
-            </label>
-            <input
-              style={inp}
+          <div className="w-[120px]">
+            <Label className="mb-1.5 block text-xs text-muted-foreground">الوصول المتوقع</Label>
+            <Input
               value={form.reach}
               onChange={(e) => setForm((f) => ({ ...f, reach: e.target.value }))}
               placeholder="50K"
             />
           </div>
-          <button
-            type="submit"
-            disabled={busy}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 8,
-              border: "none",
-              background: "#1a5c3a",
-              color: "white",
-              fontFamily: "'Tajawal','Cairo',sans-serif",
-              fontSize: ".82rem",
-              fontWeight: 700,
-              cursor: busy ? "wait" : "pointer",
-              opacity: busy ? 0.7 : 1,
-            }}
-          >
+          <Button type="submit" disabled={busy}>
             {busy ? "..." : "إضافة"}
-          </button>
+          </Button>
         </form>
       )}
 
-      {/* List */}
-      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+      <CardContent className="flex flex-col gap-2.5 p-4">
         {campaigns.length === 0 ? (
-          <div
-            style={{ textAlign: "center", padding: "32px 0", color: "#9ca3af", fontSize: ".85rem" }}
-          >
-            لا توجد حملات بعد — أضف أول حملة
-          </div>
+          <EmptyState icon={Megaphone} title="لا توجد حملات بعد" description="أضف أول حملة للبدء" />
         ) : (
           campaigns.map((c) => {
             const s = STATUS_MAP[c.status] ?? STATUS_MAP.draft;
             return (
               <div
                 key={c.id}
-                style={{
-                  background: "#f2faf6",
-                  borderRadius: 10,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(45,122,82,.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
+                className="flex flex-wrap items-center gap-3 rounded-lg border bg-secondary/40 p-3.5"
               >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 9,
-                    background: "#e8f5ee",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "1.1rem",
-                    flexShrink: 0,
-                  }}
-                >
-                  📣
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
+                  <Megaphone className="h-4 w-4" />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: ".85rem", fontWeight: 700, color: "#111827" }}>
-                    {c.title}
-                  </div>
-                  <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 3 }}>
-                    الوصول: {c.reach}
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-foreground">{c.title}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">الوصول: {c.reach}</div>
                 </div>
                 <span
-                  style={{
-                    fontSize: ".65rem",
-                    padding: "2px 9px",
-                    borderRadius: 20,
-                    fontWeight: 600,
-                    background: s.bg,
-                    color: s.color,
-                    whiteSpace: "nowrap",
-                  }}
+                  className={cn(
+                    "whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                    s.className,
+                  )}
                 >
                   {s.label}
                 </span>
-                <div
-                  style={{
-                    fontSize: ".8rem",
-                    fontWeight: 700,
-                    color: "#1a5c3a",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <div className="whitespace-nowrap text-sm font-bold text-primary">
                   {c.budget.toLocaleString()} ر.س
                 </div>
               </div>
             );
           })
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

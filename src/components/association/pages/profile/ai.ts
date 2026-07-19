@@ -1,5 +1,6 @@
 import { AI_ANALYSIS } from "../../data";
 import { toast } from "sonner";
+import { trackAIUsage } from "@/lib/ai-usage";
 import { AI_SYSTEM_PROMPT, type AnalysisResultWithFileId } from "./constants";
 
 type AddLog = (text: string, status?: "pending" | "done" | "error") => void;
@@ -108,7 +109,9 @@ export async function extractBrandFromPdf(pdfUrl: string): Promise<string> {
       }),
     });
     if (!res.ok) return "";
-    return (await res.json()).choices[0]?.message?.content ?? "";
+    const json = await res.json();
+    trackAIUsage("brand-extraction", "gpt-4o", json.usage?.total_tokens ?? 0);
+    return json.choices[0]?.message?.content ?? "";
   } catch (err) {
     console.warn("Brand extraction failed:", err);
     return "";
@@ -153,6 +156,7 @@ export async function runAIAnalysis(
       if (res.status === 429) throw new Error("Quota Exceeded");
       if (!res.ok) throw new Error(`فشل الاتصال بـ OpenAI: ${res.status}`);
       const data = await res.json();
+      trackAIUsage("profile-analysis", "gpt-4o", data.usage?.total_tokens ?? 0);
       const raw = data.choices[0].message.content;
       const clean = raw
         .replace(/^```(?:json)?\s*/i, "")
@@ -224,14 +228,18 @@ export async function runAIAnalysis(
 
     // 4. Poll Run
     let runStatus = "queued";
+    let runTokens = 0;
     while (runStatus === "queued" || runStatus === "in_progress") {
       await new Promise((r) => setTimeout(r, 2000));
       const chk = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
         headers,
       });
-      runStatus = (await chk.json()).status;
+      const run = await chk.json();
+      runStatus = run.status;
+      runTokens = run.usage?.total_tokens ?? runTokens;
       if (runStatus === "failed") throw new Error("فشل الذكاء الاصطناعي في قراءة الملف");
     }
+    trackAIUsage("profile-analysis", "gpt-4o", runTokens);
     markLastLog("done");
 
     // 5. Get Messages

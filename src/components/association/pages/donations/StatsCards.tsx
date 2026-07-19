@@ -1,14 +1,16 @@
 import { TrendingUp, CheckCircle, AlertCircle, Star } from "lucide-react";
-import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import type { Donation } from "../../types";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface StatCard {
   num: string;
   label: string;
   sub: string;
-  icon: ReactNode;
-  gradient: string;
-  borderColor: string;
+  icon: LucideIcon;
+  bg: string;
+  color: string;
 }
 
 /** The four summary cards shown above the donations table. */
@@ -33,107 +35,51 @@ export default function StatsCards({ donations }: { donations: Donation[] }) {
       num: totalThisMonth.toLocaleString(),
       label: "تبرعات هذا الشهر (ر.س)",
       sub: `${thisMonthDonations.length} تبرع`,
-      icon: <TrendingUp size={24} color="#3b82f6" />,
-      gradient: "linear-gradient(135deg, #dbeafe, #eff6ff)",
-      borderColor: "#3b82f6",
+      icon: TrendingUp,
+      bg: "bg-blue-50",
+      color: "text-blue-600",
     },
     {
       num: totalCompleted.toLocaleString(),
       label: "إجمالي المحصّل (ر.س)",
       sub: `من ${donations.length} تبرع`,
-      icon: <CheckCircle size={24} color="#2d7a52" />,
-      gradient: "linear-gradient(135deg, #e8f5ee, #f2faf6)",
-      borderColor: "#2d7a52",
+      icon: CheckCircle,
+      bg: "bg-secondary",
+      color: "text-primary",
     },
     {
       num: String(pendingCount),
       label: "تبرعات معلقة",
       sub: pendingCount > 0 ? "⚡ تحتاج متابعة" : "✓ لا شيء معلق",
-      icon: <AlertCircle size={24} color="#f59e0b" />,
-      gradient: "linear-gradient(135deg, #fef9c3, #fffbeb)",
-      borderColor: "#f59e0b",
+      icon: AlertCircle,
+      bg: "bg-amber-50",
+      color: "text-amber-600",
     },
     {
       num: maxDonation.amount.toLocaleString(),
       label: "أعلى تبرع (ر.س)",
       sub: maxDonation.name,
-      icon: <Star size={24} color="#8b5cf6" />,
-      gradient: "linear-gradient(135deg, #f3e8ff, #faf5ff)",
-      borderColor: "#8b5cf6",
+      icon: Star,
+      bg: "bg-violet-50",
+      color: "text-violet-600",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      {stats.map((s, i) => (
-        <div
-          key={i}
-          style={{
-            background: s.gradient,
-            borderRadius: 16,
-            border: `1px solid ${s.borderColor}20`,
-            padding: "18px 16px",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            cursor: "default",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-3px)";
-            e.currentTarget.style.boxShadow = `0 8px 24px ${s.borderColor}30`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            {s.icon}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: "1.6rem",
-                fontWeight: 800,
-                color: s.borderColor,
-                lineHeight: 1.1,
-              }}
-            >
-              {s.num}
+    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+      {stats.map((s) => (
+        <Card key={s.label} className={cn("gap-3 border-none transition-all hover:-translate-y-0.5 hover:shadow-lg", s.bg)}>
+          <CardContent className="flex items-start gap-3 p-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+              <s.icon className={cn("h-6 w-6", s.color)} />
             </div>
-            <div
-              style={{
-                fontSize: "0.78rem",
-                color: "#4b5563",
-                marginTop: 6,
-              }}
-            >
-              {s.label}
+            <div className="flex-1">
+              <div className={cn("text-2xl font-extrabold leading-tight", s.color)}>{s.num}</div>
+              <div className="mt-1.5 text-xs text-slate-600">{s.label}</div>
+              <div className={cn("mt-1 text-xs font-semibold", s.color)}>{s.sub}</div>
             </div>
-            <div
-              style={{
-                fontSize: "0.74rem",
-                fontWeight: 600,
-                color: s.borderColor,
-                marginTop: 4,
-              }}
-            >
-              {s.sub}
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

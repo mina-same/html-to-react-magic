@@ -33,26 +33,26 @@ export default function ContentHistory({
   return (
     <div
       style={{
-        width: 240,
+        width: 250,
         flexShrink: 0,
-        background: "#fff",
-        borderLeft: "1px solid #e8ecef",
+        background: "#fcfcfd",
+        borderLeft: "1px solid #eef2f6",
         display: "flex",
         flexDirection: "column",
       }}
     >
       <div
         style={{
-          padding: "15px 14px 12px",
-          borderBottom: "1px solid #f0f2f5",
+          padding: "16px 16px 13px",
+          borderBottom: "1px solid #eef2f6",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
         <div>
-          <div style={{ fontSize: ".82rem", fontWeight: 800, color: "#0f172a" }}>السجل</div>
-          <div style={{ fontSize: ".66rem", color: "#94a3b8", marginTop: 1 }}>
+          <div style={{ fontSize: ".84rem", fontWeight: 800, color: "#0f172a" }}>المحادثات</div>
+          <div style={{ fontSize: ".66rem", color: "#94a3b8", marginTop: 2 }}>
             <QueryState
               query={contentQ}
               isEmpty={(d: ContentGeneration[]) => d.length === 0 && !optimisticTemp}
@@ -66,16 +66,18 @@ export default function ContentHistory({
         </div>
         <button
           onClick={onNew}
+          className="cg-newbtn"
           style={{
-            fontSize: ".71rem",
-            padding: "5px 11px",
-            borderRadius: 8,
-            border: "1.5px solid #16a34a",
-            background: "transparent",
-            color: "#16a34a",
+            fontSize: ".72rem",
+            padding: "6px 13px",
+            borderRadius: 9,
+            border: "1px solid #10b981",
+            background: "#f0fdf4",
+            color: "#059669",
             fontWeight: 700,
             cursor: "pointer",
             fontFamily: "'Tajawal',sans-serif",
+            transition: "all .15s",
           }}
         >
           + جديد
@@ -117,10 +119,12 @@ export default function ContentHistory({
                     if (!isTmp && !isSel) onSelect(item);
                   }}
                   style={{
-                    padding: "10px 13px",
-                    borderBottom: "1px solid #f8fafc",
-                    background: isSel ? "#f0fdf4" : "transparent",
-                    borderRight: `3px solid ${isSel ? "#16a34a" : "transparent"}`,
+                    margin: "4px 8px",
+                    padding: "10px 11px",
+                    borderRadius: 11,
+                    background: isSel ? "#fff" : "transparent",
+                    border: `1px solid ${isSel ? "#a7f3d0" : "transparent"}`,
+                    boxShadow: isSel ? "0 1px 4px rgba(5,150,105,.08)" : "none",
                     cursor: isTmp ? "default" : isSel ? "default" : "pointer",
                     transition: "background .14s",
                   }}

@@ -31,3 +31,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Caption server — video uploads, audio, renders (contain private speech)
+storage/
+out/
+
+# Render props temp files
+render-props-*.json

@@ -9,6 +9,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Lightbulb } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Influencer } from "../types";
 import { INF_COLORS, formatFollowers } from "../data";
 
@@ -32,26 +44,8 @@ const PLAT_ICONS: Record<string, string> = {
   YouTube: "▶",
   Snapchat: "👻",
 };
-const sel: React.CSSProperties = {
-  borderRadius: 7,
-  border: "1.5px solid rgba(45,122,82,.12)",
-  fontFamily: "'Tajawal','Cairo',sans-serif",
-  fontSize: ".87rem",
-  color: "#111827",
-  outline: "none",
-  padding: "8px 12px",
-  width: "100%",
-  background: "white",
-};
-const lbl: React.CSSProperties = {
-  display: "block",
-  fontSize: ".75rem",
-  fontWeight: 700,
-  color: "#6b7280",
-  textTransform: "uppercase",
-  letterSpacing: ".06em",
-  marginBottom: 6,
-};
+
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 export default function CampaignRequestModal({
   influencer,
@@ -92,90 +86,53 @@ export default function CampaignRequestModal({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{ maxWidth: 500, fontFamily: "'Tajawal','Cairo',sans-serif", direction: "rtl" }}
-      >
+      <DialogContent className="max-w-[500px]" dir="rtl">
         <DialogHeader>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: ".72rem",
-                padding: "3px 10px",
-                borderRadius: 20,
-                fontWeight: 700,
-                background: "#fef9c3",
-                color: "#92400e",
-              }}
-            >
-              طلب حملة جديدة
-            </span>
-            <DialogTitle style={{ fontFamily: "'Tajawal','Cairo',sans-serif" }}>
-              {influencer.name}
-            </DialogTitle>
+          <div className="flex items-center gap-2.5">
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">طلب حملة جديدة</Badge>
+            <DialogTitle>{influencer.name}</DialogTitle>
           </div>
         </DialogHeader>
 
         {/* Influencer summary card */}
-        <div
-          style={{
-            background: "#f2faf6",
-            borderRadius: 10,
-            padding: "14px 16px",
-            marginBottom: 4,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            border: "1px solid rgba(45,122,82,.12)",
-          }}
-        >
-          <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: "50%",
-              background: color,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "1rem",
-              fontWeight: 700,
-              color: "white",
-              flexShrink: 0,
-            }}
-          >
-            {initials}
-          </div>
+        <div className="mb-1 flex items-center gap-3 rounded-lg border bg-secondary/40 p-3.5">
+          <Avatar className="h-[42px] w-[42px] shrink-0">
+            <AvatarFallback style={{ background: color }} className="text-sm font-bold text-white">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
           <div>
-            <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#111827" }}>
-              {influencer.name}
-            </div>
-            <div style={{ fontSize: ".77rem", color: "#6b7280", marginTop: 2 }}>
+            <div className="text-sm font-bold text-foreground">{influencer.name}</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
               {PLAT_ICONS[influencer.platform]} {influencer.platform} ·{" "}
               {formatFollowers(influencer.followers)} متابع · {influencer.engagement}% تفاعل
             </div>
           </div>
-          <div style={{ marginRight: "auto", textAlign: "left" }}>
-            <div style={{ fontSize: ".7rem", color: "#6b7280" }}>يبدأ من</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1a5c3a" }}>
-              يبدأ من {price.toLocaleString()} ر.س
-            </div>
+          <div className="mr-auto text-left">
+            <div className="text-xs text-muted-foreground">يبدأ من</div>
+            <div className="text-lg font-extrabold text-primary">{price.toLocaleString()} ر.س</div>
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>نوع الحملة</label>
-              <select value={type} onChange={(e) => setType(e.target.value)} style={sel}>
-                <option value="خيرية">📢 حملة خيرية عامة</option>
-                <option value="رمضان">🌙 حملة رمضان</option>
-                <option value="تبرع">💳 حملة جمع تبرعات</option>
-                <option value="توعية">💡 حملة توعوية</option>
-                <option value="مشروع">🏗 مشروع محدد</option>
-              </select>
+              <Label className={FIELD_LABEL}>نوع الحملة</Label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="خيرية">📢 حملة خيرية عامة</SelectItem>
+                  <SelectItem value="رمضان">🌙 حملة رمضان</SelectItem>
+                  <SelectItem value="تبرع">💳 حملة جمع تبرعات</SelectItem>
+                  <SelectItem value="توعية">💡 حملة توعوية</SelectItem>
+                  <SelectItem value="مشروع">🏗 مشروع محدد</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label style={lbl}>الميزانية المتوقعة (ر.س)</label>
+              <Label className={FIELD_LABEL}>الميزانية المتوقعة (ر.س)</Label>
               <Input
                 type="number"
                 dir="ltr"
@@ -185,35 +142,35 @@ export default function CampaignRequestModal({
                   setBudget(Number(e.target.value));
                   setBudgetErr(false);
                 }}
-                style={{ ...sel, borderColor: budgetErr ? "#dc2626" : undefined }}
+                className={cn(budgetErr && "border-destructive")}
               />
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={lbl}>تاريخ البداية المقترح</label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={sel}
-              />
+              <Label className={FIELD_LABEL}>تاريخ البداية المقترح</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
-              <label style={lbl}>مدة الحملة</label>
-              <select value={duration} onChange={(e) => setDuration(e.target.value)} style={sel}>
-                {["يوم واحد", "3 أيام", "أسبوع", "أسبوعان", "شهر"].map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
+              <Label className={FIELD_LABEL}>مدة الحملة</Label>
+              <Select value={duration} onValueChange={setDuration}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["يوم واحد", "3 أيام", "أسبوع", "أسبوعان", "شهر"].map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {d}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div>
-            <label style={lbl}>رسالة الحملة / الهدف المطلوب</label>
+            <Label className={FIELD_LABEL}>رسالة الحملة / الهدف المطلوب</Label>
             <Textarea
               value={message}
               onChange={(e) => {
@@ -221,36 +178,24 @@ export default function CampaignRequestModal({
                 setMsgErr(false);
               }}
               placeholder="اكتب هنا ما تريد إيصاله من الحملة..."
-              style={{
-                ...sel,
-                minHeight: 90,
-                resize: "vertical",
-                borderColor: msgErr ? "#dc2626" : undefined,
-              }}
+              className={cn("min-h-[90px] resize-y", msgErr && "border-destructive")}
             />
           </div>
 
-          <div
-            style={{
-              background: "#fff8f0",
-              border: "1px solid rgba(201,168,76,.2)",
-              borderRadius: 8,
-              padding: "11px 14px",
-              fontSize: ".8rem",
-              color: "#92400e",
-              lineHeight: 1.6,
-            }}
-          >
-            💡 <strong>ملاحظة:</strong> السعر المبدئي تقديري ويبدأ من 250 ر.س. السعر النهائي يُحدَّد
-            بعد مراجعة فريق ساعِد والتواصل مع المؤثر.
+          <div className="flex items-start gap-2 rounded-lg border border-gold/25 bg-gold/10 px-3.5 py-2.5 text-sm leading-6 text-amber-800">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <strong>ملاحظة:</strong> السعر المبدئي تقديري ويبدأ من 250 ر.س. السعر النهائي يُحدَّد بعد
+              مراجعة فريق ساعِد والتواصل مع المؤثر.
+            </span>
           </div>
         </div>
 
-        <DialogFooter style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose}>
             إلغاء
           </Button>
-          <Button size="sm" onClick={submit} style={{ background: "#2d7a52", color: "white" }}>
+          <Button size="sm" onClick={submit}>
             إرسال الطلب ←
           </Button>
         </DialogFooter>

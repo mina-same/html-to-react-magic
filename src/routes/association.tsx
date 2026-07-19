@@ -1,7 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  LayoutGrid,
+  ClipboardList,
+  Users,
+  CheckSquare,
+  CreditCard,
+  Sparkles,
+  Captions,
+  Megaphone,
+  Star,
+  Wrench,
+  BarChart3,
+  Settings,
+} from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useEmployees, useTasks, useCampaigns, useDonations, useInfluencers } from "@/api/queries";
@@ -17,11 +31,49 @@ import {
   useSubmitCampaignRequest,
 } from "@/api/mutations";
 
-import AssocSidebar from "@/components/association/AssocSidebar";
+import { DashboardShell, type DashboardNavGroup } from "@/components/dashboard/DashboardShell";
 import Onboarding from "@/components/association/Onboarding";
 import type { PageId, Task, Employee, Influencer } from "@/components/association/types";
 import { PAGE_TITLES } from "@/components/association/types";
 import { keys } from "@/api/keys";
+
+const NAV_GROUPS: DashboardNavGroup[] = [
+  {
+    label: "الرئيسية",
+    items: [
+      { id: "overview", label: "نظرة عامة", icon: LayoutGrid },
+      { id: "profile", label: "ملف الجمعية", icon: ClipboardList, badge: "AI" },
+    ],
+  },
+  {
+    label: "الإدارة",
+    items: [
+      { id: "team", label: "الفريق", icon: Users },
+      { id: "tasks", label: "المهام", icon: CheckSquare },
+      { id: "donations", label: "التبرعات", icon: CreditCard },
+    ],
+  },
+  {
+    label: "المحتوى",
+    items: [
+      { id: "content", label: "محتوى تسويقي", icon: Sparkles },
+      { id: "captions", label: "ترجمة الفيديو", icon: Captions },
+      { id: "campaigns", label: "الحملات", icon: Megaphone },
+      { id: "influencers", label: "المؤثرون", icon: Star },
+    ],
+  },
+  {
+    label: "الخدمات",
+    items: [
+      { id: "services", label: "خدماتنا", icon: Wrench },
+      { id: "analytics", label: "التحليلات", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "الإعدادات",
+    items: [{ id: "settings", label: "الإعدادات", icon: Settings }],
+  },
+];
 
 import OverviewPage from "@/components/association/pages/OverviewPage";
 import ProfilePage from "@/components/association/pages/ProfilePage";
@@ -29,6 +81,7 @@ import TeamPage from "@/components/association/pages/TeamPage";
 import TasksPage from "@/components/association/pages/TasksPage";
 import DonationsPage from "@/components/association/pages/DonationsPage";
 import ContentPage from "@/components/association/pages/ContentPage";
+import CaptionsWorkspace from "@/components/captions/CaptionsWorkspace";
 import CampaignsPage from "@/components/association/pages/CampaignsPage";
 import InfluencersPage from "@/components/association/pages/InfluencersPage";
 import ServicesPage from "@/components/association/pages/ServicesPage";
@@ -72,7 +125,6 @@ function Association() {
   // ── UI state only ──────────────────────────────────────────────
   const [activePage, _setActivePage] = useState<PageId>("overview");
   const [assocName, setAssocName] = useState(savedName);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentCount, setContentCount] = useState(0);
 
   const [taskModal, setTaskModal] = useState<{ open: boolean; task?: Task }>({ open: false });
@@ -229,17 +281,7 @@ function Association() {
       <div
         dir="rtl"
         suppressHydrationWarning
-        style={{
-          minHeight: "100dvh",
-          background: "#f4f7f5",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'Tajawal','Cairo',sans-serif",
-          color: "#2d7a52",
-          fontSize: "1rem",
-          fontWeight: 600,
-        }}
+        className="flex min-h-dvh items-center justify-center bg-app-bg text-base font-semibold text-green-mid"
       >
         جاري التحميل…
       </div>
@@ -304,6 +346,8 @@ function Association() {
         return <DonationsPage userId={user?.id} />;
       case "content":
         return <ContentPage assocName={assocName ?? undefined} />;
+      case "captions":
+        return <CaptionsWorkspace embedded />;
       case "campaigns":
         return (
           <CampaignsPage campaigns={campaigns} userId={user?.id} onRefresh={refreshAssocData} />
@@ -340,135 +384,37 @@ function Association() {
     }
   }
 
+  const navGroups: DashboardNavGroup[] = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.map((item) =>
+      item.id === "tasks" && incompleteTasksCount > 0
+        ? { ...item, badge: incompleteTasksCount, badgeVariant: "destructive" as const }
+        : item,
+    ),
+  }));
+
   return (
-    <div
-      dir="rtl"
-      suppressHydrationWarning
-      style={{
-        display: "flex",
-        height: "100dvh",
-        background: "#f4f7f5",
-        fontFamily: "'Tajawal','Cairo',sans-serif",
-        overflow: "hidden",
-      }}
-    >
-      <Toaster position="top-center" richColors />
-
-      <AssocSidebar
+    <div dir="rtl" suppressHydrationWarning>
+      <DashboardShell
+        navGroups={navGroups}
         activePage={activePage}
-        onNavigate={(page) => {
-          setActivePage(page);
-          setSidebarOpen(false);
-        }}
-        assocName={assocName}
-        assocInitial={assocInitial}
+        onNavigate={(page) => setActivePage(page as PageId)}
+        pageTitle={PAGE_TITLES[activePage]}
+        identityName={assocName}
+        identityInitial={assocInitial}
+        identitySubtitle="جمعية خيرية"
         onLogout={logout}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        tasksCount={incompleteTasksCount}
-      />
-
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          minWidth: 0,
-        }}
-      >
-        {/* Topbar */}
-        <div
-          style={{
-            height: 58,
-            background: "white",
-            borderBottom: "1px solid rgba(45,122,82,.12)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 22px",
-            gap: 12,
-            flexShrink: 0,
-          }}
-        >
-          <button
-            className="md:hidden"
-            onClick={() => setSidebarOpen(true)}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: "1px solid rgba(45,122,82,.15)",
-              background: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontSize: "1rem",
-              flexShrink: 0,
-            }}
-          >
-            ☰
-          </button>
-          <div style={{ fontSize: "1.02rem", fontWeight: 700, color: "#111827", flex: 1 }}>
-            {PAGE_TITLES[activePage]}
-          </div>
-          {assocName && (
-            <span
-              style={{
-                fontSize: ".83rem",
-                fontWeight: 600,
-                color: "#2d7a52",
-                background: "#e8f5ee",
-                padding: "5px 12px",
-                borderRadius: 20,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {assocName}
+        notificationCount={incompleteTasksCount}
+        topbarExtras={
+          dataFetching ? (
+            <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+              جاري التحديث…
             </span>
-          )}
-          {dataFetching && (
-            <span style={{ fontSize: ".72rem", color: "#9ca3af" }}>جاري التحديث…</span>
-          )}
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              border: "1.5px solid rgba(45,122,82,.12)",
-              background: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontSize: ".95rem",
-              position: "relative",
-              flexShrink: 0,
-            }}
-          >
-            🔔
-            {incompleteTasksCount > 0 && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: 5,
-                  left: 5,
-                  width: 6,
-                  height: 6,
-                  background: "#c9a84c",
-                  borderRadius: "50%",
-                  border: "2px solid white",
-                }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Page content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>{renderPage()}</div>
-        </div>
-      </div>
+          ) : undefined
+        }
+      >
+        {renderPage()}
+      </DashboardShell>
 
       {/* Modals */}
       {taskModal.open && (

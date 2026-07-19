@@ -1,115 +1,45 @@
-export default function AnalyticsPage() {
-  const stats = [
-    {
-      label: "إجمالي التبرعات",
-      value: "58,300 ر.س",
-      sub: "↑ 22% عن الشهر السابق",
-      color: "#1a5c3a",
-      border: "#2d7a52",
-    },
-    {
-      label: "المتبرعون النشطون",
-      value: "134",
-      sub: "↑ 22 جديد هذا الشهر",
-      color: "#1e40af",
-      border: "#3b82f6",
-    },
-    {
-      label: "معدل التحويل",
-      value: "4.7%",
-      sub: "من الزوار للمتبرعين",
-      color: "#5b21b6",
-      border: "#8b5cf6",
-    },
-    {
-      label: "متوسط التبرع",
-      value: "435 ر.س",
-      sub: "لكل متبرع",
-      color: "#92400e",
-      border: "#f59e0b",
-    },
-  ];
+import { BarChart3, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
+const STATS = [
+  { label: "إجمالي التبرعات", value: "58,300 ر.س", sub: "↑ 22% عن الشهر السابق", tone: "primary" as const },
+  { label: "المتبرعون النشطون", value: "134", sub: "↑ 22 جديد هذا الشهر", tone: "blue" as const },
+  { label: "معدل التحويل", value: "4.7%", sub: "من الزوار للمتبرعين", tone: "violet" as const },
+  { label: "متوسط التبرع", value: "435 ر.س", sub: "لكل متبرع", tone: "amber" as const },
+];
+
+export default function AnalyticsPage() {
   return (
     <div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        {stats.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              background: "white",
-              borderRadius: 11,
-              border: "1px solid rgba(45,122,82,.12)",
-              padding: "13px 15px",
-              borderRight: `3px solid ${s.border}`,
-            }}
-          >
-            <div style={{ fontSize: "1.2rem", fontWeight: 800, color: s.color, lineHeight: 1 }}>
-              {s.value}
-            </div>
-            <div style={{ fontSize: ".73rem", color: "#6b7280", marginTop: 4 }}>{s.label}</div>
-            <div style={{ fontSize: ".7rem", fontWeight: 600, color: s.color, marginTop: 5 }}>
-              {s.sub}
-            </div>
-          </div>
+      <PageHeader title="التحليلات" description="تقارير الأداء والوصول" />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {STATS.map((s) => (
+          <StatCard key={s.label} {...s} />
         ))}
       </div>
 
-      <div
-        style={{
-          background: "white",
-          borderRadius: 13,
-          border: "1px solid rgba(45,122,82,.12)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "14px 18px",
-            borderBottom: "1px solid rgba(45,122,82,.12)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 7,
-              background: "#e8f5ee",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            📊
+      <Card>
+        <CardHeader className="flex-row items-center gap-2.5 space-y-0 border-b">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+            <BarChart3 className="h-4 w-4" />
           </div>
           <div>
-            <div style={{ fontSize: ".92rem", fontWeight: 700, color: "#111827" }}>التحليلات</div>
-            <div style={{ fontSize: ".76rem", color: "#6b7280", marginTop: 1 }}>
-              تقارير الأداء والوصول
-            </div>
+            <CardTitle className="text-sm">التحليلات</CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">تقارير الأداء والوصول</p>
           </div>
-        </div>
-        <div
-          style={{
-            padding: 40,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div style={{ fontSize: "2.5rem" }}>📈</div>
-          <div style={{ fontSize: ".9rem", fontWeight: 600, color: "#374151" }}>
-            الرسوم البيانية قيد التطوير
-          </div>
-          <div style={{ fontSize: ".78rem", color: "#9ca3af" }}>
-            سيتم إطلاق لوحة التحليلات قريباً
-          </div>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <EmptyState
+            icon={TrendingUp}
+            title="الرسوم البيانية قيد التطوير"
+            description="سيتم إطلاق لوحة التحليلات قريباً"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

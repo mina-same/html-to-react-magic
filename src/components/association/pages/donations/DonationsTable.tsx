@@ -1,15 +1,25 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { QueryState } from "@/components/common/StateViews";
 import { CreditCard, Plus, Download, Upload, FileText } from "lucide-react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { Donation } from "../../types";
+import { cn } from "@/lib/utils";
 import {
   PAYMENT_METHOD_ICONS,
   MONTHS,
   PAGE_SIZE,
-  selStyle,
   TABLE_HEADERS,
   EXPORT_HEADERS,
   formatAmount,
@@ -104,103 +114,27 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
     XLSX.writeFile(wb, "نموذج_تبرعات.xlsx");
   };
 
+  const allOnPage = paginated.length > 0 && paginated.every((d) => selected.has(d.id));
+  const someOnPage = paginated.some((d) => selected.has(d.id));
+
   return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 18,
-        border: "1px solid rgba(45,122,82,.12)",
-        overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
-      }}
-    >
+    <Card className="overflow-hidden">
       {/* Toolbar */}
-      <div
-        style={{
-          padding: "16px 20px",
-          borderBottom: "1px solid rgba(45,122,82,.10)",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-          background: "linear-gradient(to bottom, #f8fdf9, white)",
-        }}
-      >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: "linear-gradient(135deg, #2d7a52, #4a9e70)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <CreditCard size={20} color="white" />
+      <div className="flex flex-wrap items-center gap-3 border-b bg-gradient-to-b from-secondary/40 to-card px-5 py-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[--green-mid] to-[--green-light]">
+          <CreditCard size={20} className="text-white" />
         </div>
-        <div style={{ flex: 1, minWidth: "160px" }}>
-          <div
-            style={{
-              fontSize: "1rem",
-              fontWeight: 700,
-              color: "#111827",
-              fontFamily: "'Tajawal','Cairo',sans-serif",
-            }}
-          >
-            سجل التبرعات
-          </div>
-          <div
-            style={{
-              fontSize: "0.8rem",
-              color: "#6b7280",
-              marginTop: 2,
-              fontFamily: "'Tajawal','Cairo',sans-serif",
-            }}
-          >
-            {filtered.length} تبرعات
-          </div>
+        <div className="min-w-[160px] flex-1">
+          <div className="text-base font-bold text-foreground">سجل التبرعات</div>
+          <div className="mt-0.5 text-sm text-muted-foreground">{filtered.length} تبرعات</div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button
-            size="sm"
-            onClick={onCreateClick}
-            style={{
-              background: "linear-gradient(135deg, #2d7a52, #4a9e70)",
-              color: "white",
-              fontSize: "0.8rem",
-              padding: "8px 16px",
-              borderRadius: 10,
-              height: 36,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={onCreateClick} className="h-9 gap-1.5 bg-gradient-to-br from-[--green-mid] to-[--green-light] font-semibold">
             <Plus size={16} />
             تبرع جديد
           </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleExport}
-            title="تصدير إلى Excel"
-            style={{
-              fontSize: "0.78rem",
-              height: 36,
-              padding: "8px 14px",
-              borderColor: "#2d7a5230",
-              color: "#2d7a52",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              borderRadius: 10,
-            }}
-          >
+          <Button size="sm" variant="outline" onClick={handleExport} title="تصدير إلى Excel" className="h-9 gap-1.5 border-primary/20 font-semibold text-primary">
             <Download size={16} />
             تصدير
           </Button>
@@ -209,75 +143,44 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
             variant="outline"
             onClick={() => document.getElementById("excel-import")?.click()}
             title="استيراد من Excel"
-            style={{
-              fontSize: "0.78rem",
-              height: 36,
-              padding: "8px 14px",
-              borderColor: "#2d7a5230",
-              color: "#2d7a52",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              borderRadius: 10,
-            }}
+            className="h-9 gap-1.5 border-primary/20 font-semibold text-primary"
           >
             <Upload size={16} />
             استيراد
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={downloadTemplate}
-            title="تحميل نموذج Excel"
-            style={{
-              fontSize: "0.78rem",
-              height: 36,
-              padding: "8px 14px",
-              color: "#6b7280",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              borderRadius: 10,
-            }}
-          >
+          <Button size="sm" variant="ghost" onClick={downloadTemplate} title="تحميل نموذج Excel" className="h-9 gap-1.5 font-semibold text-muted-foreground">
             <FileText size={16} />
             النموذج
           </Button>
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <select
-            value={periodFilter}
-            onChange={(e) => setPeriodAndReset(e.target.value)}
-            style={selStyle}
-          >
-            <option value="all">كل الفترات</option>
-            <option value="week">آخر أسبوع</option>
-            <option value="month">آخر شهر</option>
-            {MONTHS.map((m, i) => (
-              <option key={i} value={`month-${i + 1}`}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filter}
-            onChange={(e) => setFilterAndReset(e.target.value)}
-            style={selStyle}
-          >
-            <option value="all">كل التبرعات</option>
-            <option value="large">تبرعات كبيرة +2500</option>
-            <option value="pending">معلق فقط</option>
-            <option value="completed">مكتملة فقط</option>
-          </select>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={periodFilter} onValueChange={setPeriodAndReset}>
+            <SelectTrigger className="h-9 w-[140px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الفترات</SelectItem>
+              <SelectItem value="week">آخر أسبوع</SelectItem>
+              <SelectItem value="month">آخر شهر</SelectItem>
+              {MONTHS.map((m, i) => (
+                <SelectItem key={i} value={`month-${i + 1}`}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filter} onValueChange={setFilterAndReset}>
+            <SelectTrigger className="h-9 w-[160px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل التبرعات</SelectItem>
+              <SelectItem value="large">تبرعات كبيرة +2500</SelectItem>
+              <SelectItem value="pending">معلق فقط</SelectItem>
+              <SelectItem value="completed">مكتملة فقط</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -291,231 +194,86 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
         {() => (
           <>
             <div className="overflow-x-auto">
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "0.86rem",
-                  fontFamily: "'Tajawal','Cairo',sans-serif",
-                }}
-              >
-                <thead>
-                  <tr style={{ background: "#f8fdf9" }}>
-                    <th
-                      style={{
-                        padding: "12px 14px",
-                        borderBottom: "1px solid rgba(45,122,82,.15)",
-                        width: 40,
-                        textAlign: "center",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={paginated.length > 0 && paginated.every((d) => selected.has(d.id))}
-                        ref={(el) => {
-                          if (el)
-                            el.indeterminate =
-                              paginated.some((d) => selected.has(d.id)) &&
-                              !paginated.every((d) => selected.has(d.id));
-                        }}
-                        onChange={(e) => {
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="w-10 text-center">
+                      <Checkbox
+                        checked={allOnPage ? true : someOnPage ? "indeterminate" : false}
+                        onCheckedChange={(checked) => {
                           setSelected((prev) => {
                             const next = new Set(prev);
-                            if (e.target.checked) paginated.forEach((d) => next.add(d.id));
+                            if (checked) paginated.forEach((d) => next.add(d.id));
                             else paginated.forEach((d) => next.delete(d.id));
                             return next;
                           });
                         }}
-                        style={{ cursor: "pointer", accentColor: "#2d7a52" }}
                       />
-                    </th>
+                    </TableHead>
                     {TABLE_HEADERS.map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          padding: "12px 18px",
-                          textAlign: "right",
-                          color: "#4b5563",
-                          fontWeight: 700,
-                          borderBottom: "1px solid rgba(45,122,82,.15)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <TableHead key={h} className="whitespace-nowrap font-bold text-slate-600">
                         {h}
-                      </th>
+                      </TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {paginated.map((d) => (
-                    <tr
-                      key={d.id}
-                      style={{
-                        transition: "background-color 0.15s ease",
-                        background: selected.has(d.id) ? "#f0faf4" : "",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!selected.has(d.id)) e.currentTarget.style.background = "#f8fdf9";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = selected.has(d.id) ? "#f0faf4" : "";
-                      }}
-                    >
-                      <td
-                        style={{
-                          padding: "12px 14px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          textAlign: "center",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
+                    <TableRow key={d.id} className={cn(selected.has(d.id) && "bg-secondary/40")}>
+                      <TableCell className="text-center">
+                        <Checkbox
                           checked={selected.has(d.id)}
-                          onChange={(e) => {
+                          onCheckedChange={(checked) => {
                             setSelected((prev) => {
                               const next = new Set(prev);
-                              if (e.target.checked) next.add(d.id);
+                              if (checked) next.add(d.id);
                               else next.delete(d.id);
                               return next;
                             });
                           }}
-                          style={{ cursor: "pointer", accentColor: "#2d7a52" }}
                         />
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#6b7280",
-                        }}
-                      >
-                        {d.donationNumber || "—"}
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          fontWeight: 700,
-                          color: "#374151",
-                        }}
-                      >
-                        {d.name}
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#6b7280",
-                        }}
-                      >
-                        {d.phone || "—"}
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#6b7280",
-                        }}
-                      >
-                        {d.projectName || "—"}
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          fontWeight: 800,
-                          color: "#1a5c3a",
-                          fontSize: "0.9rem",
-                        }}
-                      >
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{d.donationNumber || "—"}</TableCell>
+                      <TableCell className="font-bold text-foreground/80">{d.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{d.phone || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{d.projectName || "—"}</TableCell>
+                      <TableCell className="text-sm font-extrabold text-primary">
                         {formatAmount(d.amount)} ر.س
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#374151",
-                        }}
-                      >
-                        <span style={{ fontSize: "0.9rem", marginLeft: 6 }}>
-                          {PAYMENT_METHOD_ICONS[d.paymentMethod] ?? ""}
-                        </span>
+                      </TableCell>
+                      <TableCell className="text-foreground/80">
+                        <span className="ml-1.5">{PAYMENT_METHOD_ICONS[d.paymentMethod] ?? ""}</span>
                         {d.paymentMethod}
-                      </td>
-                      <td
-                        style={{ padding: "12px 18px", borderBottom: "1px solid rgba(0,0,0,.04)" }}
-                      >
+                      </TableCell>
+                      <TableCell>
                         <span
-                          style={{
-                            display: "inline-block",
-                            fontSize: "0.74rem",
-                            padding: "4px 12px",
-                            borderRadius: 20,
-                            fontWeight: 700,
-                            ...(d.status === "completed"
-                              ? {
-                                  background: "linear-gradient(135deg, #dcfce7, #e8f5ee)",
-                                  color: "#166534",
-                                }
-                              : {
-                                  background: "linear-gradient(135deg, #fef9c3, #fef3c7)",
-                                  color: "#854d0e",
-                                }),
-                          }}
+                          className={cn(
+                            "inline-block rounded-full px-3 py-1 text-xs font-bold",
+                            d.status === "completed"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800",
+                          )}
                         >
                           {statusLabel(d.status)}
                         </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#6b7280",
-                        }}
-                      >
-                        {d.source || "—"}
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 18px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#6b7280",
-                        }}
-                      >
-                        {d.date}
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{d.source || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{d.date}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
 
-            {/* Bulk action bar */}
             {selected.size > 0 && (
-              <div
-                style={{
-                  padding: "10px 20px",
-                  borderTop: "1px solid rgba(45,122,82,.10)",
-                  background: "#f0faf4",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  fontFamily: "'Tajawal','Cairo',sans-serif",
-                  fontSize: "0.85rem",
-                }}
-              >
-                <span style={{ fontWeight: 700, color: "#2d7a52" }}>{selected.size} محدد</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelected(new Set())}
-                  style={{ fontSize: "0.78rem", height: 30, borderRadius: 8, color: "#6b7280" }}
-                >
+              <div className="flex items-center gap-3 border-t bg-secondary/40 px-5 py-2.5 text-sm">
+                <span className="font-bold text-primary">{selected.size} محدد</span>
+                <Button size="sm" variant="outline" onClick={() => setSelected(new Set())} className="h-[30px] text-xs text-muted-foreground">
                   إلغاء التحديد
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="h-[30px] border-primary/20 text-xs text-primary"
                   onClick={() => {
                     const rows = donations.filter((d) => selected.has(d.id));
                     const headers = [...TABLE_HEADERS];
@@ -538,51 +296,26 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
                     );
                     XLSX.writeFile(wb, `تبرعات_محددة.xlsx`);
                   }}
-                  style={{
-                    fontSize: "0.78rem",
-                    height: 30,
-                    borderRadius: 8,
-                    color: "#2d7a52",
-                    borderColor: "#2d7a5230",
-                  }}
                 >
                   تصدير المحددة
                 </Button>
               </div>
             )}
 
-            {/* Pagination */}
             {totalPages > 1 && (
-              <div
-                style={{
-                  padding: "14px 20px",
-                  borderTop: "1px solid rgba(45,122,82,.08)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  fontFamily: "'Tajawal','Cairo',sans-serif",
-                  fontSize: "0.83rem",
-                  color: "#6b7280",
-                }}
-              >
+              <div className="flex items-center justify-between border-t px-5 py-3.5 text-sm text-muted-foreground">
                 <span>
                   عرض {(safePage - 1) * PAGE_SIZE + 1}–
                   {Math.min(safePage * PAGE_SIZE, filtered.length)} من {filtered.length}
                 </span>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={safePage === 1}
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: 8,
-                      border: "1px solid rgba(45,122,82,.2)",
-                      background: safePage === 1 ? "#f3f4f6" : "white",
-                      color: safePage === 1 ? "#9ca3af" : "#374151",
-                      cursor: safePage === 1 ? "default" : "pointer",
-                      fontFamily: "'Tajawal','Cairo',sans-serif",
-                      fontSize: "0.83rem",
-                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-sm",
+                      safePage === 1 ? "cursor-default bg-muted text-muted-foreground/50" : "bg-card text-foreground/70 hover:bg-muted",
+                    )}
                   >
                     السابق
                   </button>
@@ -595,26 +328,19 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
                     }, [])
                     .map((p, i) =>
                       p === "…" ? (
-                        <span key={`ellipsis-${i}`} style={{ padding: "0 4px", color: "#9ca3af" }}>
+                        <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground/60">
                           …
                         </span>
                       ) : (
                         <button
                           key={p}
                           onClick={() => setPage(p as number)}
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 8,
-                            border: "1px solid",
-                            borderColor: safePage === p ? "#2d7a52" : "rgba(45,122,82,.2)",
-                            background: safePage === p ? "#2d7a52" : "white",
-                            color: safePage === p ? "white" : "#374151",
-                            cursor: "pointer",
-                            fontFamily: "'Tajawal','Cairo',sans-serif",
-                            fontSize: "0.83rem",
-                            fontWeight: safePage === p ? 700 : 400,
-                          }}
+                          className={cn(
+                            "h-8 w-8 rounded-lg border text-sm",
+                            safePage === p
+                              ? "border-primary bg-primary font-bold text-primary-foreground"
+                              : "border-border bg-card text-foreground/70 hover:bg-muted",
+                          )}
                         >
                           {p}
                         </button>
@@ -623,16 +349,10 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={safePage === totalPages}
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: 8,
-                      border: "1px solid rgba(45,122,82,.2)",
-                      background: safePage === totalPages ? "#f3f4f6" : "white",
-                      color: safePage === totalPages ? "#9ca3af" : "#374151",
-                      cursor: safePage === totalPages ? "default" : "pointer",
-                      fontFamily: "'Tajawal','Cairo',sans-serif",
-                      fontSize: "0.83rem",
-                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-sm",
+                      safePage === totalPages ? "cursor-default bg-muted text-muted-foreground/50" : "bg-card text-foreground/70 hover:bg-muted",
+                    )}
                   >
                     التالي
                   </button>
@@ -642,6 +362,6 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
           </>
         )}
       </QueryState>
-    </div>
+    </Card>
   );
 }

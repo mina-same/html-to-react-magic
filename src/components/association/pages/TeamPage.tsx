@@ -1,7 +1,21 @@
 import { useState } from "react";
 import type { Employee } from "../types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Users, UserPlus, Pencil, Trash2, ChevronRight, ChevronLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   employees: Employee[];
@@ -16,31 +30,18 @@ const STATUS_LABEL: Record<Employee["status"], string> = {
   away: "بعيد",
   off: "خارج العمل",
 };
-const STATUS_STYLE: Record<Employee["status"], React.CSSProperties> = {
-  active: { background: "#dcfce7", color: "#166534" },
-  away: { background: "#fef9c3", color: "#854d0e" },
-  off: { background: "#f1f5f9", color: "#64748b" },
+const STATUS_CLASS: Record<Employee["status"], string> = {
+  active: "bg-emerald-100 text-emerald-800",
+  away: "bg-amber-100 text-amber-800",
+  off: "bg-slate-100 text-slate-600",
 };
 const STATUS_DOT: Record<Employee["status"], string> = {
-  active: "#22c55e",
-  away: "#f59e0b",
-  off: "#94a3b8",
+  active: "bg-emerald-500",
+  away: "bg-amber-500",
+  off: "bg-slate-400",
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-const th: React.CSSProperties = {
-  padding: "11px 16px",
-  textAlign: "right",
-  color: "#6b7280",
-  fontWeight: 600,
-  fontSize: "0.78rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  borderBottom: "1px solid rgba(45,122,82,.12)",
-  whiteSpace: "nowrap",
-  background: "#f9fafb",
-};
 
 export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onDelete }: Props) {
   const [confirmId, setConfirmId] = useState<number | null>(null);
@@ -89,94 +90,34 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
   }
 
   return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 16,
-        border: "1px solid rgba(45,122,82,.12)",
-        overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
-        fontFamily: "'Tajawal','Cairo',sans-serif",
-      }}
-    >
+    <Card className="overflow-hidden">
       {/* Header */}
-      <div
-        style={{
-          padding: "16px 20px",
-          borderBottom: "1px solid rgba(45,122,82,.10)",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-          background: "linear-gradient(to bottom, #f8fdf9, white)",
-        }}
-      >
-        <div
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            background: "linear-gradient(135deg, #2d7a52, #4a9e70)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Users size={20} color="white" />
+      <div className="flex flex-wrap items-center gap-3 border-b bg-gradient-to-b from-secondary/40 to-card px-5 py-4">
+        <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[--green-mid] to-[--green-light]">
+          <Users size={20} className="text-white" />
         </div>
         <div>
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#111827" }}>الفريق</div>
-          <div style={{ fontSize: "0.78rem", color: "#6b7280", marginTop: 1 }}>
+          <div className="text-base font-bold text-foreground">الفريق</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
             {employees.length} موظف · {activeCount} نشط
           </div>
         </div>
 
-        <div
-          style={{
-            marginRight: "auto",
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          {/* Active badge */}
-          <span
-            style={{
-              fontSize: "0.74rem",
-              background: "#dcfce7",
-              color: "#166534",
-              padding: "3px 10px",
-              borderRadius: 20,
-              fontWeight: 600,
-              border: "1px solid #bbf7d0",
-            }}
-          >
+        <div className="mr-auto flex flex-wrap items-center gap-2">
+          <Badge className="border border-emerald-200 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
             {activeCount} نشطين
-          </span>
+          </Badge>
 
-          {/* Bulk delete — shown when something is selected */}
           {selected.size > 0 &&
             (confirmBulk ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "0.78rem", color: "#ef4444", fontWeight: 600 }}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-destructive">
                   حذف {selected.size} موظف؟
                 </span>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={handleBulkDelete}
-                  style={{ fontSize: "0.75rem", height: 32, borderRadius: 8 }}
-                >
+                <Button size="sm" variant="destructive" onClick={handleBulkDelete} className="h-8 text-xs">
                   تأكيد
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setConfirmBulk(false)}
-                  style={{ fontSize: "0.75rem", height: 32, borderRadius: 8 }}
-                >
+                <Button size="sm" variant="outline" onClick={() => setConfirmBulk(false)} className="h-8 text-xs">
                   إلغاء
                 </Button>
               </div>
@@ -185,16 +126,7 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                 size="sm"
                 variant="outline"
                 onClick={() => setConfirmBulk(true)}
-                style={{
-                  fontSize: "0.78rem",
-                  height: 34,
-                  borderRadius: 9,
-                  borderColor: "#fca5a5",
-                  color: "#dc2626",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
+                className="h-[34px] gap-1.5 border-red-300 text-xs text-destructive hover:bg-red-50"
               >
                 <Trash2 size={14} />
                 حذف المحددين ({selected.size})
@@ -204,18 +136,7 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
           <Button
             size="sm"
             onClick={onAdd}
-            style={{
-              background: "linear-gradient(135deg, #2d7a52, #4a9e70)",
-              color: "white",
-              fontSize: "0.8rem",
-              height: 36,
-              padding: "0 16px",
-              borderRadius: 10,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
+            className="h-9 gap-1.5 bg-gradient-to-br from-[--green-mid] to-[--green-light] font-semibold"
           >
             <UserPlus size={15} />
             إضافة موظف
@@ -223,203 +144,93 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
         </div>
       </div>
 
-      {/* Empty state */}
       {employees.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "56px 0",
-            color: "#9ca3af",
-            fontSize: "0.9rem",
-          }}
-        >
-          <Users size={40} color="#d1d5db" style={{ margin: "0 auto 12px" }} />
-          <div>لا يوجد موظفون بعد</div>
-          <div style={{ fontSize: "0.8rem", marginTop: 4 }}>ابدأ بإضافة أحد أفراد الفريق</div>
-        </div>
+        <EmptyState icon={Users} title="لا يوجد موظفون بعد" description="ابدأ بإضافة أحد أفراد الفريق" className="py-14" />
       ) : (
         <>
-          {/* Table */}
           <div className="overflow-x-auto">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem" }}>
-              <thead>
-                <tr>
-                  <th style={{ ...th, width: 44, padding: "11px 14px", textAlign: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={allOnPage}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someOnPage && !allOnPage;
-                      }}
-                      onChange={toggleAll}
-                      style={{ cursor: "pointer", accentColor: "#2d7a52", width: 15, height: 15 }}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="w-11 text-center">
+                    <Checkbox
+                      checked={allOnPage ? true : someOnPage ? "indeterminate" : false}
+                      onCheckedChange={toggleAll}
                     />
-                  </th>
-                  <th style={th}>الموظف</th>
-                  <th style={th}>المنصب</th>
-                  <th style={{ ...th, textAlign: "center" }}>الحالة</th>
-                  <th style={{ ...th, textAlign: "center" }}>تغيير الحالة</th>
-                  <th style={{ ...th, textAlign: "center", width: 140 }}>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead>الموظف</TableHead>
+                  <TableHead>المنصب</TableHead>
+                  <TableHead className="text-center">الحالة</TableHead>
+                  <TableHead className="text-center">تغيير الحالة</TableHead>
+                  <TableHead className="w-[140px] text-center">الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {paginated.map((emp) => {
                   const isSelected = selected.has(emp.id);
                   const isConfirming = confirmId === emp.id;
 
                   return (
-                    <tr
-                      key={emp.id}
-                      style={{
-                        background: isSelected ? "#f0faf4" : "",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) e.currentTarget.style.background = "#f8fdf9";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isSelected ? "#f0faf4" : "";
-                      }}
-                    >
-                      {/* Checkbox */}
-                      <td
-                        style={{
-                          padding: "12px 14px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          textAlign: "center",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleOne(emp.id)}
-                          style={{
-                            cursor: "pointer",
-                            accentColor: "#2d7a52",
-                            width: 15,
-                            height: 15,
-                          }}
-                        />
-                      </td>
+                    <TableRow key={emp.id} className={cn(isSelected && "bg-secondary/40")}>
+                      <TableCell className="text-center">
+                        <Checkbox checked={isSelected} onCheckedChange={() => toggleOne(emp.id)} />
+                      </TableCell>
 
-                      {/* Employee name + avatar */}
-                      <td
-                        style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,.04)" }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: "50%",
-                              background: emp.color,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "0.85rem",
-                              fontWeight: 700,
-                              color: "white",
-                              flexShrink: 0,
-                              position: "relative",
-                            }}
-                          >
-                            {emp.name.charAt(0)}
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative shrink-0">
+                            <Avatar className="h-9 w-9">
+                              <AvatarFallback
+                                style={{ background: emp.color }}
+                                className="text-sm font-bold text-white"
+                              >
+                                {emp.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
                             <span
-                              style={{
-                                position: "absolute",
-                                bottom: 1,
-                                left: 1,
-                                width: 10,
-                                height: 10,
-                                borderRadius: "50%",
-                                background: STATUS_DOT[emp.status],
-                                border: "2px solid white",
-                              }}
+                              className={cn(
+                                "absolute bottom-0.5 left-0.5 h-2.5 w-2.5 rounded-full border-2 border-white",
+                                STATUS_DOT[emp.status],
+                              )}
                             />
                           </div>
-                          <span style={{ fontWeight: 600, color: "#111827" }}>{emp.name}</span>
+                          <span className="font-semibold text-foreground">{emp.name}</span>
                         </div>
-                      </td>
+                      </TableCell>
 
-                      {/* Role */}
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          color: "#6b7280",
-                        }}
-                      >
-                        {emp.role || "—"}
-                      </td>
+                      <TableCell className="text-muted-foreground">{emp.role || "—"}</TableCell>
 
-                      {/* Status badge */}
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          textAlign: "center",
-                        }}
-                      >
+                      <TableCell className="text-center">
                         <span
-                          style={{
-                            display: "inline-block",
-                            fontSize: "0.74rem",
-                            padding: "4px 12px",
-                            borderRadius: 20,
-                            fontWeight: 700,
-                            ...STATUS_STYLE[emp.status],
-                          }}
+                          className={cn(
+                            "inline-block rounded-full px-3 py-1 text-xs font-bold",
+                            STATUS_CLASS[emp.status],
+                          )}
                         >
                           {STATUS_LABEL[emp.status]}
                         </span>
-                      </td>
+                      </TableCell>
 
-                      {/* Status selector */}
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          textAlign: "center",
-                        }}
-                      >
-                        <select
+                      <TableCell className="text-center">
+                        <Select
                           value={emp.status}
-                          onChange={(e) =>
-                            onStatusChange(emp.id, e.target.value as Employee["status"])
-                          }
-                          style={{
-                            fontSize: "0.78rem",
-                            padding: "5px 10px",
-                            borderRadius: 8,
-                            border: "1px solid rgba(45,122,82,.2)",
-                            fontFamily: "'Tajawal','Cairo',sans-serif",
-                            color: "#374151",
-                            background: "white",
-                            cursor: "pointer",
-                            outline: "none",
-                          }}
+                          onValueChange={(v) => onStatusChange(emp.id, v as Employee["status"])}
                         >
-                          <option value="active">نشط</option>
-                          <option value="away">بعيد</option>
-                          <option value="off">خارج العمل</option>
-                        </select>
-                      </td>
+                          <SelectTrigger className="mx-auto h-8 w-[130px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">نشط</SelectItem>
+                            <SelectItem value="away">بعيد</SelectItem>
+                            <SelectItem value="off">خارج العمل</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
 
-                      {/* Actions */}
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid rgba(0,0,0,.04)",
-                          textAlign: "center",
-                        }}
-                      >
+                      <TableCell className="text-center">
                         {isConfirming ? (
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <span
-                              style={{ fontSize: "0.74rem", color: "#ef4444", fontWeight: 600 }}
-                            >
-                              تأكيد؟
-                            </span>
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-destructive">تأكيد؟</span>
                             <Button
                               size="sm"
                               variant="destructive"
@@ -427,146 +238,82 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                                 onDelete(emp.id);
                                 setConfirmId(null);
                               }}
-                              style={{ fontSize: "0.72rem", height: 28, borderRadius: 7 }}
+                              className="h-7 text-xs"
                             >
                               نعم
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setConfirmId(null)}
-                              style={{ fontSize: "0.72rem", height: 28, borderRadius: 7 }}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => setConfirmId(null)} className="h-7 text-xs">
                               لا
                             </Button>
                           </div>
                         ) : (
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <button
-                              onClick={() => onEdit(emp)}
+                          <div className="inline-flex items-center gap-1.5">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-[30px] w-[30px] text-primary hover:bg-secondary"
                               title="تعديل"
-                              style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: 8,
-                                border: "1px solid rgba(45,122,82,.2)",
-                                background: "white",
-                                color: "#2d7a52",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "background 0.15s",
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = "#f0faf4")}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                              onClick={() => onEdit(emp)}
                             >
                               <Pencil size={13} />
-                            </button>
-                            <button
-                              onClick={() => setConfirmId(emp.id)}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-[30px] w-[30px] border-red-300 text-destructive hover:bg-red-50"
                               title="حذف"
-                              style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: 8,
-                                border: "1px solid #fca5a5",
-                                background: "white",
-                                color: "#dc2626",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "background 0.15s",
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                              onClick={() => setConfirmId(emp.id)}
                             >
                               <Trash2 size={13} />
-                            </button>
+                            </Button>
                           </div>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* Pagination footer */}
-          <div
-            style={{
-              padding: "12px 20px",
-              borderTop: "1px solid rgba(45,122,82,.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: 10,
-              background: "#fafafa",
-            }}
-          >
-            {/* Left: rows per page + count */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                fontSize: "0.82rem",
-                color: "#6b7280",
-              }}
-            >
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t bg-muted/20 px-5 py-3">
+            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
               <span>عدد الصفوف:</span>
-              <div style={{ display: "flex", gap: 4 }}>
+              <div className="flex gap-1">
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <button
                     key={n}
                     onClick={() => handlePageSize(n)}
-                    style={{
-                      width: 32,
-                      height: 28,
-                      borderRadius: 6,
-                      border: "1px solid",
-                      borderColor: pageSize === n ? "#2d7a52" : "rgba(45,122,82,.18)",
-                      background: pageSize === n ? "#2d7a52" : "white",
-                      color: pageSize === n ? "white" : "#374151",
-                      fontSize: "0.78rem",
-                      fontWeight: pageSize === n ? 700 : 400,
-                      cursor: "pointer",
-                      fontFamily: "'Tajawal','Cairo',sans-serif",
-                      transition: "all 0.15s",
-                    }}
+                    className={cn(
+                      "h-7 w-8 rounded-md border text-xs transition-colors",
+                      pageSize === n
+                        ? "border-primary bg-primary font-bold text-primary-foreground"
+                        : "border-border bg-card text-foreground/70 hover:bg-muted",
+                    )}
                   >
                     {n}
                   </button>
                 ))}
               </div>
-              <span style={{ color: "#9ca3af" }}>|</span>
+              <span className="text-muted-foreground/50">|</span>
               <span>
                 {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, employees.length)} من{" "}
                 {employees.length}
               </span>
             </div>
 
-            {/* Right: page navigation */}
             {totalPages > 1 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={safePage === 1}
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 7,
-                    border: "1px solid rgba(45,122,82,.18)",
-                    background: safePage === 1 ? "#f3f4f6" : "white",
-                    color: safePage === 1 ? "#9ca3af" : "#374151",
-                    cursor: safePage === 1 ? "default" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  className={cn(
+                    "flex h-[30px] w-[30px] items-center justify-center rounded-lg border",
+                    safePage === 1
+                      ? "cursor-default bg-muted text-muted-foreground/50"
+                      : "bg-card text-foreground/70 hover:bg-muted",
+                  )}
                 >
                   <ChevronRight size={15} />
                 </button>
@@ -580,30 +327,19 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                   }, [])
                   .map((p, i) =>
                     p === "…" ? (
-                      <span
-                        key={`el-${i}`}
-                        style={{ padding: "0 3px", color: "#9ca3af", fontSize: "0.82rem" }}
-                      >
+                      <span key={`el-${i}`} className="px-1 text-sm text-muted-foreground/60">
                         …
                       </span>
                     ) : (
                       <button
                         key={p}
                         onClick={() => setPage(p as number)}
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 7,
-                          border: "1px solid",
-                          borderColor: safePage === p ? "#2d7a52" : "rgba(45,122,82,.18)",
-                          background: safePage === p ? "#2d7a52" : "white",
-                          color: safePage === p ? "white" : "#374151",
-                          fontSize: "0.82rem",
-                          fontWeight: safePage === p ? 700 : 400,
-                          cursor: "pointer",
-                          fontFamily: "'Tajawal','Cairo',sans-serif",
-                          transition: "all 0.15s",
-                        }}
+                        className={cn(
+                          "flex h-[30px] w-[30px] items-center justify-center rounded-lg border text-sm",
+                          safePage === p
+                            ? "border-primary bg-primary font-bold text-primary-foreground"
+                            : "border-border bg-card text-foreground/70 hover:bg-muted",
+                        )}
                       >
                         {p}
                       </button>
@@ -613,18 +349,12 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage === totalPages}
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 7,
-                    border: "1px solid rgba(45,122,82,.18)",
-                    background: safePage === totalPages ? "#f3f4f6" : "white",
-                    color: safePage === totalPages ? "#9ca3af" : "#374151",
-                    cursor: safePage === totalPages ? "default" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  className={cn(
+                    "flex h-[30px] w-[30px] items-center justify-center rounded-lg border",
+                    safePage === totalPages
+                      ? "cursor-default bg-muted text-muted-foreground/50"
+                      : "bg-card text-foreground/70 hover:bg-muted",
+                  )}
                 >
                   <ChevronLeft size={15} />
                 </button>
@@ -633,6 +363,6 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 }
