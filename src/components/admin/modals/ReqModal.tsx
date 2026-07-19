@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Org, Influencer, CampaignRequest } from "../types";
 
 interface ReqModalProps {
@@ -9,6 +20,9 @@ interface ReqModalProps {
   onClose: () => void;
   onSave: (data: Partial<CampaignRequest>) => void;
 }
+
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
+const NONE = "_none_";
 
 export function ReqModal({ req, orgs, infs, onClose, onSave }: ReqModalProps) {
   const [form, setForm] = useState<Partial<CampaignRequest>>(req ?? {});
@@ -22,179 +36,109 @@ export function ReqModal({ req, orgs, infs, onClose, onSave }: ReqModalProps) {
     onClose();
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "9px 12px",
-    borderRadius: 7,
-    border: "1.5px solid rgba(45,122,82,.12)",
-    fontFamily: "'Tajawal',sans-serif",
-    fontSize: ".88rem",
-    color: "#111827",
-    outline: "none",
-    direction: "rtl",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: ".74rem",
-    fontWeight: 600,
-    color: "#6b7280",
-    textTransform: "uppercase",
-    letterSpacing: ".05em",
-    marginBottom: 5,
-  };
-
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{
-          fontFamily: "'Tajawal',sans-serif",
-          direction: "rtl",
-          maxWidth: 520,
-          borderRadius: 14,
-        }}
-      >
+      <DialogContent className="max-w-[520px]" dir="rtl">
         <DialogHeader>
-          <DialogTitle style={{ fontSize: ".95rem", fontWeight: 700, color: "#111827" }}>
-            تفاصيل طلب الحملة #{req?.id}
-          </DialogTitle>
+          <DialogTitle>تفاصيل طلب الحملة #{req?.id}</DialogTitle>
         </DialogHeader>
-        <div style={{ padding: "4px 0" }}>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+        <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>الجمعية</label>
-              <select
-                style={{ ...inputStyle, background: "white" }}
-                value={form.orgId ?? ""}
-                onChange={(e) => set("orgId", e.target.value)}
+              <Label className={FIELD_LABEL}>الجمعية</Label>
+              <Select
+                value={form.orgId ? String(form.orgId) : NONE}
+                onValueChange={(v) => set("orgId", v === NONE ? "" : v)}
               >
-                <option value="">اختر الجمعية</option>
-                {orgs.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر الجمعية" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>اختر الجمعية</SelectItem>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={String(o.id)}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label style={labelStyle}>المؤثر</label>
-              <select
-                style={{ ...inputStyle, background: "white" }}
-                value={form.infId ?? ""}
-                onChange={(e) => set("infId", Number(e.target.value))}
+              <Label className={FIELD_LABEL}>المؤثر</Label>
+              <Select
+                value={form.infId ? String(form.infId) : NONE}
+                onValueChange={(v) => set("infId", v === NONE ? "" : Number(v))}
               >
-                <option value="">اختر المؤثر</option>
-                {infs.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر المؤثر" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>اختر المؤثر</SelectItem>
+                  {infs.map((i) => (
+                    <SelectItem key={i.id} value={String(i.id)}>
+                      {i.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>نوع الحملة</label>
-              <input
-                style={inputStyle}
-                value={form.type ?? ""}
-                onChange={(e) => set("type", e.target.value)}
-                placeholder="حملة خيرية"
-              />
+              <Label className={FIELD_LABEL}>نوع الحملة</Label>
+              <Input value={form.type ?? ""} onChange={(e) => set("type", e.target.value)} placeholder="حملة خيرية" />
             </div>
             <div>
-              <label style={labelStyle}>الميزانية (ر.س)</label>
-              <input
-                style={inputStyle}
+              <Label className={FIELD_LABEL}>الميزانية (ر.س)</Label>
+              <Input
                 type="number"
+                dir="ltr"
                 value={form.budget ?? ""}
                 onChange={(e) => set("budget", Number(e.target.value))}
                 placeholder="2000"
               />
             </div>
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>المدة</label>
-              <input
-                style={inputStyle}
-                value={form.duration ?? ""}
-                onChange={(e) => set("duration", e.target.value)}
-                placeholder="أسبوع"
-              />
+              <Label className={FIELD_LABEL}>المدة</Label>
+              <Input value={form.duration ?? ""} onChange={(e) => set("duration", e.target.value)} placeholder="أسبوع" />
             </div>
             <div>
-              <label style={labelStyle}>الحالة</label>
-              <select
-                style={{ ...inputStyle, background: "white" }}
+              <Label className={FIELD_LABEL}>الحالة</Label>
+              <Select
                 value={form.status ?? "pending"}
-                onChange={(e) =>
-                  set("status", e.target.value as "pending" | "approved" | "completed" | "rejected")
-                }
+                onValueChange={(v) => set("status", v as "pending" | "approved" | "completed" | "rejected")}
               >
-                <option value="pending">قيد المراجعة</option>
-                <option value="approved">مقبول</option>
-                <option value="completed">مكتمل</option>
-                <option value="rejected">مرفوض</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">قيد المراجعة</SelectItem>
+                  <SelectItem value="approved">مقبول</SelectItem>
+                  <SelectItem value="completed">مكتمل</SelectItem>
+                  <SelectItem value="rejected">مرفوض</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>رسالة الطلب</label>
-            <textarea
-              style={{ ...inputStyle, resize: "vertical", minHeight: 80, lineHeight: 1.65 }}
+          <div>
+            <Label className={FIELD_LABEL}>رسالة الطلب</Label>
+            <Textarea
+              className="min-h-[80px] resize-y leading-7"
               value={form.message ?? ""}
               onChange={(e) => set("message", e.target.value)}
             />
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "flex-end",
-            borderTop: "1px solid rgba(45,122,82,.12)",
-            paddingTop: 13,
-          }}
-        >
-          <button
-            onClick={onClose}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 7,
-              background: "white",
-              border: "1.5px solid rgba(45,122,82,.12)",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".76rem",
-              color: "#6b7280",
-              cursor: "pointer",
-            }}
-          >
+        <DialogFooter className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
             إلغاء
-          </button>
-          <button
-            onClick={save}
-            style={{
-              padding: "7px 15px",
-              borderRadius: 7,
-              background: "#2d7a52",
-              color: "white",
-              border: "none",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
+          </Button>
+          <Button size="sm" onClick={save}>
             حفظ
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -93,7 +93,7 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
     <Card className="overflow-hidden">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 border-b bg-gradient-to-b from-secondary/40 to-card px-5 py-4">
-        <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[--green-mid] to-[--green-light]">
+        <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-mid to-green-light">
           <Users size={20} className="text-white" />
         </div>
         <div>
@@ -136,7 +136,7 @@ export default function TeamPage({ employees, onAdd, onEdit, onStatusChange, onD
           <Button
             size="sm"
             onClick={onAdd}
-            className="h-9 gap-1.5 bg-gradient-to-br from-[--green-mid] to-[--green-light] font-semibold"
+            className="h-9 gap-1.5 bg-gradient-to-br from-green-mid to-green-light font-semibold"
           >
             <UserPlus size={15} />
             إضافة موظف

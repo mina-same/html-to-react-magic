@@ -1,6 +1,17 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Influencer } from "../types";
 
 interface InfModalProps {
@@ -8,6 +19,8 @@ interface InfModalProps {
   onClose: () => void;
   onSave: (data: Partial<Influencer>) => void;
 }
+
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 export function InfModal({ inf, onClose, onSave }: InfModalProps) {
   const [form, setForm] = useState<Partial<Influencer>>(inf ?? {});
@@ -26,101 +39,66 @@ export function InfModal({ inf, onClose, onSave }: InfModalProps) {
     onClose();
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "9px 12px",
-    borderRadius: 7,
-    border: "1.5px solid rgba(45,122,82,.12)",
-    fontFamily: "'Tajawal',sans-serif",
-    fontSize: ".88rem",
-    color: "#111827",
-    outline: "none",
-    direction: "rtl",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: ".74rem",
-    fontWeight: 600,
-    color: "#6b7280",
-    textTransform: "uppercase",
-    letterSpacing: ".05em",
-    marginBottom: 5,
-  };
-
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{
-          fontFamily: "'Tajawal',sans-serif",
-          direction: "rtl",
-          maxWidth: 520,
-          borderRadius: 14,
-        }}
-      >
+      <DialogContent className="max-w-[520px]" dir="rtl">
         <DialogHeader>
-          <DialogTitle style={{ fontSize: ".95rem", fontWeight: 700, color: "#111827" }}>
-            {isNew ? "➕ إضافة مؤثر جديد" : "✏️ تعديل بيانات المؤثر"}
-          </DialogTitle>
+          <DialogTitle>{isNew ? "➕ إضافة مؤثر جديد" : "✏️ تعديل بيانات المؤثر"}</DialogTitle>
         </DialogHeader>
-        <div style={{ padding: "4px 0" }}>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>اسم المؤثر</label>
-            <input
-              style={inputStyle}
-              value={form.name ?? ""}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="اسم المؤثر"
-            />
+        <div className="flex flex-col gap-3.5">
+          <div>
+            <Label className={FIELD_LABEL}>اسم المؤثر</Label>
+            <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="اسم المؤثر" />
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>المنصة</label>
-              <select
-                style={{ ...inputStyle, background: "white" }}
-                value={form.platform ?? "Instagram"}
-                onChange={(e) => set("platform", e.target.value)}
-              >
-                <option>Instagram</option>
-                <option>X</option>
-                <option>TikTok</option>
-                <option>YouTube</option>
-                <option>Snapchat</option>
-              </select>
+              <Label className={FIELD_LABEL}>المنصة</Label>
+              <Select value={form.platform ?? "Instagram"} onValueChange={(v) => set("platform", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Instagram">Instagram</SelectItem>
+                  <SelectItem value="X">X</SelectItem>
+                  <SelectItem value="TikTok">TikTok</SelectItem>
+                  <SelectItem value="YouTube">YouTube</SelectItem>
+                  <SelectItem value="Snapchat">Snapchat</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label style={labelStyle}>الحالة</label>
-              <select
-                style={{ ...inputStyle, background: "white" }}
+              <Label className={FIELD_LABEL}>الحالة</Label>
+              <Select
                 value={form.status ?? "active"}
-                onChange={(e) => set("status", e.target.value as "active" | "pending" | "ended")}
+                onValueChange={(v) => set("status", v as "active" | "pending" | "ended")}
               >
-                <option value="active">نشط</option>
-                <option value="pending">قيد المراجعة</option>
-                <option value="ended">منتهي</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="pending">قيد المراجعة</SelectItem>
+                  <SelectItem value="ended">منتهي</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>عدد المتابعين</label>
-              <input
-                style={inputStyle}
+              <Label className={FIELD_LABEL}>عدد المتابعين</Label>
+              <Input
                 type="number"
+                dir="ltr"
                 value={form.followers ?? ""}
                 onChange={(e) => set("followers", Number(e.target.value))}
                 placeholder="320000"
               />
             </div>
             <div>
-              <label style={labelStyle}>نسبة التفاعل %</label>
-              <input
-                style={inputStyle}
+              <Label className={FIELD_LABEL}>نسبة التفاعل %</Label>
+              <Input
                 type="number"
+                dir="ltr"
                 step="0.1"
                 value={form.engagement ?? ""}
                 onChange={(e) => set("engagement", Number(e.target.value))}
@@ -128,79 +106,39 @@ export function InfModal({ inf, onClose, onSave }: InfModalProps) {
               />
             </div>
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>السعر لكل حملة (ر.س)</label>
-              <input
-                style={inputStyle}
+              <Label className={FIELD_LABEL}>السعر لكل حملة (ر.س)</Label>
+              <Input
                 type="number"
+                dir="ltr"
                 value={form.price ?? ""}
                 onChange={(e) => set("price", Number(e.target.value))}
                 placeholder="1800"
               />
             </div>
             <div>
-              <label style={labelStyle}>التخصص</label>
-              <input
-                style={inputStyle}
-                value={form.niche ?? ""}
-                onChange={(e) => set("niche", e.target.value)}
-                placeholder="محتوى خيري"
-              />
+              <Label className={FIELD_LABEL}>التخصص</Label>
+              <Input value={form.niche ?? ""} onChange={(e) => set("niche", e.target.value)} placeholder="محتوى خيري" />
             </div>
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>ملاحظات</label>
-            <textarea
-              style={{ ...inputStyle, resize: "vertical", minHeight: 70, lineHeight: 1.65 }}
+          <div>
+            <Label className={FIELD_LABEL}>ملاحظات</Label>
+            <Textarea
+              className="min-h-[70px] resize-y leading-7"
               value={form.notes ?? ""}
               onChange={(e) => set("notes", e.target.value)}
             />
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "flex-end",
-            borderTop: "1px solid rgba(45,122,82,.12)",
-            paddingTop: 13,
-          }}
-        >
-          <button
-            onClick={onClose}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 7,
-              background: "white",
-              border: "1.5px solid rgba(45,122,82,.12)",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".76rem",
-              color: "#6b7280",
-              cursor: "pointer",
-            }}
-          >
+        <DialogFooter className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
             إلغاء
-          </button>
-          <button
-            onClick={save}
-            style={{
-              padding: "7px 15px",
-              borderRadius: 7,
-              background: "#2d7a52",
-              color: "white",
-              border: "none",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
+          </Button>
+          <Button size="sm" onClick={save}>
             {isNew ? "إضافة" : "حفظ"}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

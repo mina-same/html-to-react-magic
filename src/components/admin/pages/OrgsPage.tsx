@@ -1,5 +1,17 @@
-import { StatusBadge, S } from "../helpers";
+import { Search, Plus, FolderOpen } from "lucide-react";
+import { StatusBadge } from "../helpers";
 import type { Org } from "../types";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OrgsPageProps {
   filteredOrgs: Org[];
@@ -11,6 +23,8 @@ interface OrgsPageProps {
   suspendOrg: (id: string) => Promise<void>;
   openOrgProfile: (org: Org) => void;
 }
+
+const HEADERS = ["الجمعية", "الترخيص", "المنطقة", "التواصل", "الحالة", "تاريخ التسجيل", "إجراءات"];
 
 export function OrgsPage({
   filteredOrgs,
@@ -24,146 +38,92 @@ export function OrgsPage({
 }: OrgsPageProps) {
   return (
     <div>
-      <div style={S.toolbar}>
-        <div style={S.searchBar}>
-          <span>🔍</span>
-          <input
-            style={{
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".84rem",
-              color: "#111827",
-              flex: 1,
-              direction: "rtl",
-            }}
+      <div className="mb-3.5 flex flex-wrap items-center gap-2">
+        <div className="relative w-60">
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pr-9"
             placeholder="ابحث عن جمعية..."
             value={orgSearch}
             onChange={(e) => setOrgSearch(e.target.value)}
           />
         </div>
-        <select
-          style={{
-            padding: "7px 12px",
-            border: "1.5px solid rgba(45,122,82,.12)",
-            borderRadius: 8,
-            fontFamily: "'Tajawal',sans-serif",
-            fontSize: ".82rem",
-            color: "#374151",
-            background: "white",
-            cursor: "pointer",
-          }}
-          value={orgStatusFilter}
-          onChange={(e) => setOrgStatusFilter(e.target.value)}
-        >
-          <option value="all">جميع الحالات</option>
-          <option value="active">نشط</option>
-          <option value="new">جديد</option>
-          <option value="pending">قيد المراجعة</option>
-          <option value="suspended">موقوف</option>
-        </select>
-        <button
-          style={{ ...S.btnPrimary, marginRight: "auto" }}
-          onClick={() => setOrgModal({ open: true, data: {} })}
-        >
-          + إضافة جمعية
-        </button>
+        <Select value={orgStatusFilter} onValueChange={setOrgStatusFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">جميع الحالات</SelectItem>
+            <SelectItem value="active">نشط</SelectItem>
+            <SelectItem value="new">جديد</SelectItem>
+            <SelectItem value="pending">قيد المراجعة</SelectItem>
+            <SelectItem value="suspended">موقوف</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button className="mr-auto gap-1.5" onClick={() => setOrgModal({ open: true, data: {} })}>
+          <Plus className="h-3.5 w-3.5" />
+          إضافة جمعية
+        </Button>
       </div>
-      <div style={S.secCard}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              {[
-                "الجمعية",
-                "الترخيص",
-                "المنطقة",
-                "التواصل",
-                "الحالة",
-                "تاريخ التسجيل",
-                "إجراءات",
-              ].map((h, i) => (
-                <th key={i} style={S.tblTh}>
-                  {h}
-                </th>
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              {HEADERS.map((h) => (
+                <TableHead key={h}>{h}</TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredOrgs.map((o) => (
-              <tr
-                key={o.id}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#f2faf6")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-              >
-                <td style={S.tblTd}>
-                  <div style={{ fontWeight: 700, color: "#111827" }}>{o.name}</div>
-                  {o.notes && (
-                    <div style={{ fontSize: ".7rem", color: "#9ca3af", marginTop: 2 }}>
-                      {o.notes}
-                    </div>
-                  )}
-                </td>
-                <td style={S.tblTd}>
-                  <span
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: ".8rem",
-                      background: "#f0f4f2",
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                    }}
-                  >
-                    {o.license}
-                  </span>
-                </td>
-                <td style={S.tblTd}>{o.region}</td>
-                <td style={S.tblTd}>
-                  <div style={{ fontSize: ".78rem" }}>{o.email}</div>
-                  <div style={{ fontSize: ".75rem", color: "#9ca3af" }}>{o.phone}</div>
-                </td>
-                <td style={S.tblTd}>
+              <TableRow key={o.id}>
+                <TableCell>
+                  <div className="font-bold text-foreground">{o.name}</div>
+                  {o.notes && <div className="mt-0.5 text-xs text-muted-foreground">{o.notes}</div>}
+                </TableCell>
+                <TableCell>
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">{o.license}</span>
+                </TableCell>
+                <TableCell>{o.region}</TableCell>
+                <TableCell>
+                  <div className="text-xs">{o.email}</div>
+                  <div className="text-xs text-muted-foreground">{o.phone}</div>
+                </TableCell>
+                <TableCell>
                   <StatusBadge status={o.status} />
-                </td>
-                <td style={S.tblTd}>{o.date}</td>
-                <td style={S.tblTd}>
-                  <div style={{ display: "flex", gap: 5 }}>
-                    <button
-                      style={{
-                        ...S.btnPrimary,
-                        fontSize: ".74rem",
-                        padding: "5px 11px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                      onClick={() => openOrgProfile(o)}
-                    >
-                      🗂️ فتح الملف
-                    </button>
-                    <button style={S.btnGhost} onClick={() => setOrgModal({ open: true, data: o })}>
+                </TableCell>
+                <TableCell>{o.date}</TableCell>
+                <TableCell>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => openOrgProfile(o)}>
+                      <FolderOpen className="h-3 w-3" />
+                      فتح الملف
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setOrgModal({ open: true, data: o })}>
                       تعديل
-                    </button>
-                    <button style={S.btnDanger} onClick={() => suspendOrg(o.id)}>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 border-red-300 text-xs text-destructive hover:bg-red-50"
+                      onClick={() => suspendOrg(o.id)}
+                    >
                       توقيف
-                    </button>
+                    </Button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {filteredOrgs.length === 0 && (
-              <tr>
-                <td
-                  colSpan={7}
-                  style={{ ...S.tblTd, textAlign: "center", color: "#9ca3af", padding: 32 }}
-                >
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   لا توجد نتائج
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

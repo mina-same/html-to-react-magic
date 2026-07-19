@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { S } from "../../helpers";
 import { employeesDb } from "@/lib/db";
 import { keys } from "@/api/keys";
 import { QueryState } from "@/components/common/StateViews";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { Employee } from "@/components/association/types";
 import { empStatusLabel, PAGE_SIZE, pagSlice } from "./constants";
 import { BulkBar, Pager } from "./shared";
@@ -60,122 +65,70 @@ export function EmployeesTab({
               onDelete={() => deleteMu.mutate([...sel])}
               onClear={() => setSel(new Set())}
             />
-            <div style={S.secCard}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...S.tblTh, width: 40, textAlign: "center" as const }}>
-                      <input
-                        type="checkbox"
+            <Card className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="w-10 text-center">
+                      <Checkbox
                         checked={allPageSel}
-                        style={{ cursor: "pointer" }}
-                        onChange={() => {
+                        onCheckedChange={() => {
                           setSel((prev) => {
                             const next = new Set(prev);
-                            pageData.forEach((e) =>
-                              allPageSel ? next.delete(e.id) : next.add(e.id),
-                            );
+                            pageData.forEach((e) => (allPageSel ? next.delete(e.id) : next.add(e.id)));
                             return next;
                           });
                         }}
                       />
-                    </th>
-                    {["الاسم", "الدور", "الحالة"].map((h, i) => (
-                      <th key={i} style={S.tblTh}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                    <TableHead>الاسم</TableHead>
+                    <TableHead>الدور</TableHead>
+                    <TableHead>الحالة</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {pageData.map((emp) => {
                     const st = empStatusLabel(emp.status);
                     return (
-                      <tr
-                        key={emp.id}
-                        style={{
-                          background: sel.has(emp.id) ? "#f0fdf4" : undefined,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!sel.has(emp.id)) e.currentTarget.style.background = "#f9fafb";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = sel.has(emp.id) ? "#f0fdf4" : "";
-                        }}
-                      >
-                        <td style={{ ...S.tblTd, textAlign: "center" as const }}>
-                          <input
-                            type="checkbox"
-                            checked={sel.has(emp.id)}
-                            style={{ cursor: "pointer" }}
-                            onChange={() => toggleEmployee(emp.id)}
-                          />
-                        </td>
-                        <td style={S.tblTd}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                            <div
-                              style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: "50%",
-                                background: emp.color || "#2d7a52",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: ".75rem",
-                                color: "white",
-                                fontWeight: 700,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {emp.name.charAt(0)}
-                            </div>
-                            <span style={{ fontWeight: 600, color: "#111827" }}>{emp.name}</span>
+                      <TableRow key={emp.id} className={cn(sel.has(emp.id) && "bg-secondary/40")}>
+                        <TableCell className="text-center">
+                          <Checkbox checked={sel.has(emp.id)} onCheckedChange={() => toggleEmployee(emp.id)} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-[30px] w-[30px]">
+                              <AvatarFallback style={{ background: emp.color || "#2d7a52" }} className="text-xs font-bold text-white">
+                                {emp.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold text-foreground">{emp.name}</span>
                           </div>
-                        </td>
-                        <td style={S.tblTd}>{emp.role}</td>
-                        <td style={S.tblTd}>
+                        </TableCell>
+                        <TableCell>{emp.role}</TableCell>
+                        <TableCell>
                           <span
-                            style={{
-                              background: st.bg,
-                              color: st.color,
-                              fontSize: ".68rem",
-                              padding: "2px 9px",
-                              borderRadius: 20,
-                              fontWeight: 600,
-                            }}
+                            className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                            style={{ background: st.bg, color: st.color }}
                           >
                             {st.label}
                           </span>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
               <Pager page={page} total={employees.length} onChange={setPage} />
-            </div>
+            </Card>
             {employees.length > PAGE_SIZE && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginTop: 8,
-                }}
-              >
-                <button
-                  style={{ ...S.btnGhost, fontSize: ".74rem" }}
-                  onClick={() => setSel(new Set(employees.map((e) => e.id)))}
-                >
+              <div className="mt-2 flex gap-2">
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setSel(new Set(employees.map((e) => e.id)))}>
                   تحديد الكل ({employees.length})
-                </button>
+                </Button>
                 {sel.size > 0 && (
-                  <button
-                    style={{ ...S.btnGhost, fontSize: ".74rem" }}
-                    onClick={() => setSel(new Set())}
-                  >
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => setSel(new Set())}>
                     إلغاء تحديد الكل
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

@@ -7,7 +7,18 @@ import {
   type CountryCode,
 } from "libphonenumber-js";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Org } from "../types";
 
 const COUNTRY_DISPLAY_NAMES =
@@ -27,6 +38,8 @@ interface OrgModalProps {
   onClose: () => void;
   onSave: (data: Partial<Org> & { password?: string }) => void;
 }
+
+const FIELD_LABEL = "block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
 
 export function OrgModal({ org, onClose, onSave }: OrgModalProps) {
   const [form, setForm] = useState<Partial<Org>>(org ?? {});
@@ -69,28 +82,6 @@ export function OrgModal({ org, onClose, onSave }: OrgModalProps) {
     onClose();
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "9px 12px",
-    borderRadius: 7,
-    border: "1.5px solid rgba(45,122,82,.12)",
-    fontFamily: "'Tajawal',sans-serif",
-    fontSize: ".88rem",
-    color: "#111827",
-    outline: "none",
-    direction: "rtl",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: ".74rem",
-    fontWeight: 600,
-    color: "#6b7280",
-    textTransform: "uppercase",
-    letterSpacing: ".05em",
-    marginBottom: 5,
-  };
-
   useEffect(() => {
     const parsed = form.phone ? parsePhoneNumberFromString(form.phone) : undefined;
     if (parsed?.country) {
@@ -113,172 +104,97 @@ export function OrgModal({ org, onClose, onSave }: OrgModalProps) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        style={{
-          fontFamily: "'Tajawal',sans-serif",
-          direction: "rtl",
-          maxWidth: 520,
-          borderRadius: 14,
-        }}
-      >
+      <DialogContent className="max-w-[520px]" dir="rtl">
         <DialogHeader>
-          <DialogTitle style={{ fontSize: ".95rem", fontWeight: 700, color: "#111827" }}>
-            {isNew ? "➕ إضافة جمعية جديدة" : "✏️ تعديل بيانات الجمعية"}
-          </DialogTitle>
+          <DialogTitle>{isNew ? "➕ إضافة جمعية جديدة" : "✏️ تعديل بيانات الجمعية"}</DialogTitle>
         </DialogHeader>
-        <div style={{ padding: "4px 0" }}>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>اسم الجمعية</label>
-            <input
-              style={inputStyle}
-              value={form.name ?? ""}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="اسم الجمعية الخيرية"
-            />
+        <div className="flex flex-col gap-3.5">
+          <div>
+            <Label className={FIELD_LABEL}>اسم الجمعية</Label>
+            <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="اسم الجمعية الخيرية" />
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>رقم الترخيص</label>
-              <input
-                style={inputStyle}
-                value={form.license ?? ""}
-                onChange={(e) => set("license", e.target.value)}
-                placeholder="20250001"
-              />
+              <Label className={FIELD_LABEL}>رقم الترخيص</Label>
+              <Input value={form.license ?? ""} onChange={(e) => set("license", e.target.value)} placeholder="20250001" />
             </div>
             <div>
-              <label style={labelStyle}>المنطقة</label>
-              <input
-                style={inputStyle}
-                value={form.region ?? ""}
-                onChange={(e) => set("region", e.target.value)}
-                placeholder="الرياض"
-              />
+              <Label className={FIELD_LABEL}>المنطقة</Label>
+              <Input value={form.region ?? ""} onChange={(e) => set("region", e.target.value)} placeholder="الرياض" />
             </div>
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}
-          >
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>البريد الإلكتروني</label>
-              <input
-                style={inputStyle}
-                value={form.email ?? ""}
-                onChange={(e) => set("email", e.target.value)}
-                placeholder="info@org.org"
-              />
+              <Label className={FIELD_LABEL}>البريد الإلكتروني</Label>
+              <Input value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="info@org.org" />
             </div>
             {isNew && (
               <div>
-                <label style={labelStyle}>كلمة المرور (8 أحرف+)</label>
-                <input
-                  style={inputStyle}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
+                <Label className={FIELD_LABEL}>كلمة المرور (8 أحرف+)</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
               </div>
             )}
             {!isNew && (
               <div>
-                <label style={labelStyle}>رقم الهاتف</label>
-                <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-                  <select
-                    style={{
-                      ...inputStyle,
-                      background: "white",
-                      width: 140,
-                      flexShrink: 0,
-                      direction: "ltr",
-                    }}
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value as CountryCode)}
-                  >
-                    {COUNTRY_OPTIONS.map((opt) => (
-                      <option key={opt.code} value={opt.code}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    style={{ ...inputStyle, flex: 1, direction: "ltr" }}
+                <Label className={FIELD_LABEL}>رقم الهاتف</Label>
+                <div className="flex items-stretch gap-2">
+                  <Select value={country} onValueChange={(v) => setCountry(v as CountryCode)}>
+                    <SelectTrigger className="w-[140px] shrink-0" dir="ltr">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.code} value={opt.code}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    dir="ltr"
+                    className="flex-1"
                     value={form.phone ?? ""}
                     onChange={(e) => set("phone", e.target.value)}
                     placeholder="501234567"
                   />
                 </div>
-                <div style={{ fontSize: ".7rem", color: "#6b7280", marginTop: 5 }}>
+                <div className="mt-1.5 text-xs text-muted-foreground">
                   اختر الدولة أولاً ثم أدخل الرقم. سيتم حفظه بصيغة دولية صحيحة.
                 </div>
               </div>
             )}
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>الحالة</label>
-            <select
-              style={{ ...inputStyle, background: "white" }}
-              value={form.status ?? "new"}
-              onChange={(e) => set("status", e.target.value)}
-            >
-              <option value="new">جديد</option>
-              <option value="active">نشط</option>
-              <option value="pending">قيد المراجعة</option>
-              <option value="suspended">موقوف</option>
-            </select>
+          <div>
+            <Label className={FIELD_LABEL}>الحالة</Label>
+            <Select value={form.status ?? "new"} onValueChange={(v) => set("status", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">جديد</SelectItem>
+                <SelectItem value="active">نشط</SelectItem>
+                <SelectItem value="pending">قيد المراجعة</SelectItem>
+                <SelectItem value="suspended">موقوف</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>ملاحظات</label>
-            <textarea
-              style={{ ...inputStyle, resize: "vertical", minHeight: 80, lineHeight: 1.65 }}
+          <div>
+            <Label className={FIELD_LABEL}>ملاحظات</Label>
+            <Textarea
+              className="min-h-[80px] resize-y leading-7"
               value={form.notes ?? ""}
               onChange={(e) => set("notes", e.target.value)}
             />
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "flex-end",
-            borderTop: "1px solid rgba(45,122,82,.12)",
-            paddingTop: 13,
-          }}
-        >
-          <button
-            onClick={onClose}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 7,
-              background: "white",
-              border: "1.5px solid rgba(45,122,82,.12)",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".76rem",
-              color: "#6b7280",
-              cursor: "pointer",
-            }}
-          >
+        <DialogFooter className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
             إلغاء
-          </button>
-          <button
-            onClick={save}
-            style={{
-              padding: "7px 15px",
-              borderRadius: 7,
-              background: "#2d7a52",
-              color: "white",
-              border: "none",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
+          </Button>
+          <Button size="sm" onClick={save}>
             {isNew ? "إضافة" : "حفظ التغييرات"}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

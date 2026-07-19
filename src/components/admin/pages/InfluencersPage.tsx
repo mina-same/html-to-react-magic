@@ -1,5 +1,17 @@
-import { StatusBadge, PlatBadge, S, fmt, infColor } from "../helpers";
+import { Search, Plus } from "lucide-react";
+import { StatusBadge, PlatBadge, fmt, infColor } from "../helpers";
 import type { Influencer } from "../types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface InfluencersPageProps {
   filteredInfs: Influencer[];
@@ -22,167 +34,89 @@ export function InfluencersPage({
 }: InfluencersPageProps) {
   return (
     <div>
-      <div style={S.toolbar}>
-        <div style={S.searchBar}>
-          <span>🔍</span>
-          <input
-            style={{
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".84rem",
-              color: "#111827",
-              flex: 1,
-              direction: "rtl",
-            }}
+      <div className="mb-3.5 flex flex-wrap items-center gap-2">
+        <div className="relative w-60">
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pr-9"
             placeholder="ابحث عن مؤثر..."
             value={infSearch}
             onChange={(e) => setInfSearch(e.target.value)}
           />
         </div>
-        <select
-          style={{
-            padding: "7px 12px",
-            border: "1.5px solid rgba(45,122,82,.12)",
-            borderRadius: 8,
-            fontFamily: "'Tajawal',sans-serif",
-            fontSize: ".82rem",
-            color: "#374151",
-            background: "white",
-            cursor: "pointer",
-          }}
-          value={infPlatFilter}
-          onChange={(e) => setInfPlatFilter(e.target.value)}
-        >
-          <option value="all">جميع المنصات</option>
-          <option>Instagram</option>
-          <option>X</option>
-          <option>TikTok</option>
-          <option>YouTube</option>
-          <option>Snapchat</option>
-        </select>
-        <button
-          style={{ ...S.btnPrimary, marginRight: "auto" }}
-          onClick={() => setInfModal({ open: true, data: {} })}
-        >
-          + إضافة مؤثر
-        </button>
+        <Select value={infPlatFilter} onValueChange={setInfPlatFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">جميع المنصات</SelectItem>
+            <SelectItem value="Instagram">Instagram</SelectItem>
+            <SelectItem value="X">X</SelectItem>
+            <SelectItem value="TikTok">TikTok</SelectItem>
+            <SelectItem value="YouTube">YouTube</SelectItem>
+            <SelectItem value="Snapchat">Snapchat</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button className="mr-auto gap-1.5" onClick={() => setInfModal({ open: true, data: {} })}>
+          <Plus className="h-3.5 w-3.5" />
+          إضافة مؤثر
+        </Button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filteredInfs.map((inf) => (
-          <div
-            key={inf.id}
-            style={{
-              background: "white",
-              borderRadius: 11,
-              border: "1px solid rgba(45,122,82,.12)",
-              padding: 15,
-              transition: "all .18s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "#2d7a52";
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 3px 14px rgba(45,122,82,.1)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(45,122,82,.12)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "";
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: "50%",
-                  background: infColor(inf.id),
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  color: "white",
-                  flexShrink: 0,
-                }}
-              >
-                {inf.name.slice(0, 1)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                  {inf.name}
+          <Card key={inf.id} className="transition-all hover:border-primary/40 hover:shadow-md">
+            <CardContent className="p-4">
+              <div className="mb-2.5 flex items-center gap-2.5">
+                <Avatar className="h-[42px] w-[42px] shrink-0">
+                  <AvatarFallback style={{ background: infColor(inf.id) }} className="text-sm font-bold text-white">
+                    {inf.name.slice(0, 1)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-bold text-foreground">{inf.name}</div>
+                  <div className="mt-0.5 truncate text-xs text-muted-foreground">{inf.niche}</div>
                 </div>
-                <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 1 }}>
-                  {inf.niche}
-                </div>
+                <StatusBadge status={inf.status} />
               </div>
-              <StatusBadge status={inf.status} />
-            </div>
-            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-              <PlatBadge platform={inf.platform} />
-              <span style={{ fontSize: ".72rem", color: "#9ca3af" }}>
-                {inf.price.toLocaleString()} ر.س/حملة
-              </span>
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3,1fr)",
-                gap: 5,
-                margin: "10px 0",
-              }}
-            >
-              {[
-                { num: fmt(inf.followers), lbl: "متابع" },
-                { num: `${inf.engagement}%`, lbl: "تفاعل" },
-                { num: inf.price.toLocaleString(), lbl: "ر.س" },
-              ].map((s, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: "#f2faf6",
-                    borderRadius: 7,
-                    padding: "6px 4px",
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#111827" }}>
-                    {s.num}
+              <div className="mb-2 flex items-center gap-1.5">
+                <PlatBadge platform={inf.platform} />
+                <span className="text-xs text-muted-foreground">{inf.price.toLocaleString()} ر.س/حملة</span>
+              </div>
+              <div className="my-2.5 grid grid-cols-3 gap-1.5">
+                {[
+                  { num: fmt(inf.followers), lbl: "متابع" },
+                  { num: `${inf.engagement}%`, lbl: "تفاعل" },
+                  { num: inf.price.toLocaleString(), lbl: "ر.س" },
+                ].map((s) => (
+                  <div key={s.lbl} className="rounded-md bg-secondary/40 px-1 py-1.5 text-center">
+                    <div className="text-sm font-bold text-foreground">{s.num}</div>
+                    <div className="mt-0.5 text-[0.62rem] text-muted-foreground">{s.lbl}</div>
                   </div>
-                  <div style={{ fontSize: ".62rem", color: "#9ca3af", marginTop: 1 }}>{s.lbl}</div>
-                </div>
-              ))}
-            </div>
-            {inf.notes && (
-              <div
-                style={{
-                  fontSize: ".72rem",
-                  color: "#6b7280",
-                  background: "#f2faf6",
-                  borderRadius: 6,
-                  padding: "5px 9px",
-                  marginBottom: 10,
-                }}
-              >
-                {inf.notes}
+                ))}
               </div>
-            )}
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                style={{ ...S.btnGhost, flex: 1 }}
-                onClick={() => setInfModal({ open: true, data: inf })}
-              >
-                تعديل
-              </button>
-              <button style={S.btnDanger} onClick={() => deleteInf(inf.id)}>
-                حذف
-              </button>
-            </div>
-          </div>
+              {inf.notes && (
+                <div className="mb-2.5 rounded-md bg-secondary/40 px-2.5 py-1.5 text-xs text-muted-foreground">
+                  {inf.notes}
+                </div>
+              )}
+              <div className="flex gap-1.5">
+                <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setInfModal({ open: true, data: inf })}>
+                  تعديل
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-300 text-xs text-destructive hover:bg-red-50"
+                  onClick={() => deleteInf(inf.id)}
+                >
+                  حذف
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
         {filteredInfs.length === 0 && (
-          <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#9ca3af", padding: 48 }}>
-            لا توجد نتائج
-          </div>
+          <div className="col-span-full py-12 text-center text-muted-foreground">لا توجد نتائج</div>
         )}
       </div>
     </div>

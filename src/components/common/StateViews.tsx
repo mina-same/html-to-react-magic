@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import { Loader2, AlertTriangle, Inbox } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * Shared loading / error / empty states.
@@ -8,26 +11,13 @@ import type { ReactNode } from "react";
  * bespoke inline spinner, and error states always expose a retry button.
  */
 
-const keyframes = `@keyframes saaid-spin{to{transform:rotate(360deg)}}`;
-
-export function Spinner({ size = 28, color = "#2d7a52" }: { size?: number; color?: string }) {
+export function Spinner({ size = 28, className }: { size?: number; className?: string }) {
   return (
-    <>
-      <span
-        aria-label="جاري التحميل"
-        style={{
-          display: "inline-block",
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          border: `3px solid rgba(45,122,82,.15)`,
-          borderTopColor: color,
-          animation: "saaid-spin .7s linear infinite",
-          flexShrink: 0,
-        }}
-      />
-      <style>{keyframes}</style>
-    </>
+    <Loader2
+      aria-label="جاري التحميل"
+      className={cn("animate-spin text-primary", className)}
+      style={{ width: size, height: size }}
+    />
   );
 }
 
@@ -41,19 +31,11 @@ export function LoadingState({
   return (
     <div
       dir="rtl"
-      style={{
-        minHeight,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 14,
-        color: "#6b7280",
-        fontFamily: "'Tajawal','Cairo',sans-serif",
-      }}
+      className="flex flex-col items-center justify-center gap-3.5 text-muted-foreground"
+      style={{ minHeight }}
     >
       <Spinner />
-      <div style={{ fontSize: ".88rem", fontWeight: 500 }}>{label}</div>
+      <div className="text-sm font-medium">{label}</div>
     </div>
   );
 }
@@ -70,38 +52,15 @@ export function ErrorState({
   return (
     <div
       dir="rtl"
-      style={{
-        minHeight,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 14,
-        color: "#6b7280",
-        fontFamily: "'Tajawal','Cairo',sans-serif",
-        textAlign: "center",
-        padding: 24,
-      }}
+      className="flex flex-col items-center justify-center gap-3.5 p-6 text-center text-muted-foreground"
+      style={{ minHeight }}
     >
-      <div style={{ fontSize: "2rem" }}>⚠️</div>
-      <div style={{ fontSize: ".9rem", fontWeight: 600, color: "#b91c1c" }}>{message}</div>
+      <AlertTriangle className="h-8 w-8 text-destructive" />
+      <div className="text-sm font-semibold text-destructive">{message}</div>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          style={{
-            padding: "7px 18px",
-            borderRadius: 8,
-            border: "1.5px solid rgba(45,122,82,.18)",
-            background: "white",
-            color: "#2d7a52",
-            fontFamily: "inherit",
-            fontSize: ".82rem",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
+        <Button variant="outline" size="sm" onClick={onRetry}>
           إعادة المحاولة
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -121,21 +80,15 @@ export function EmptyState({
   return (
     <div
       dir="rtl"
-      style={{
-        padding: "56px 24px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        color: "#9ca3af",
-        fontFamily: "'Tajawal','Cairo',sans-serif",
-        textAlign: "center",
-      }}
+      className="flex flex-col items-center justify-center gap-2.5 px-6 py-14 text-center text-muted-foreground"
     >
-      <div style={{ fontSize: "2.5rem" }}>{icon}</div>
-      <div style={{ fontSize: ".92rem", fontWeight: 600, color: "#6b7280" }}>{title}</div>
-      {hint && <div style={{ fontSize: ".8rem", maxWidth: 360 }}>{hint}</div>}
+      {icon === "📭" ? (
+        <Inbox className="h-9 w-9 text-muted-foreground/40" />
+      ) : (
+        <div className="text-4xl">{icon}</div>
+      )}
+      <div className="text-sm font-semibold text-foreground/70">{title}</div>
+      {hint && <div className="max-w-[360px] text-xs">{hint}</div>}
       {action}
     </div>
   );

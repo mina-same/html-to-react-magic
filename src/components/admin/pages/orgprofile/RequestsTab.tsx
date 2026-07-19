@@ -1,78 +1,54 @@
 import { useState } from "react";
-import { S, StatusBadge } from "../../helpers";
+import { StatusBadge } from "../../helpers";
 import type { CampaignRequest } from "../../types";
 import { pagSlice } from "./constants";
 import { Pager } from "./shared";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RequestsTab({ requests }: { requests: CampaignRequest[] }) {
   const [page, setPage] = useState(1);
   const pageData = pagSlice(requests, page);
 
   return (
-    <div style={S.secCard}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["المؤثر", "النوع", "الميزانية", "المدة", "التاريخ", "الرسالة", "الحالة"].map(
-              (h, i) => (
-                <th key={i} style={S.tblTh}>
-                  {h}
-                </th>
-              ),
-            )}
-          </tr>
-        </thead>
-        <tbody>
+    <Card className="overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/40 hover:bg-muted/40">
+            {["المؤثر", "النوع", "الميزانية", "المدة", "التاريخ", "الرسالة", "الحالة"].map((h) => (
+              <TableHead key={h}>{h}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {pageData.map((req) => (
-            <tr
-              key={req.id}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-            >
-              <td style={{ ...S.tblTd, fontWeight: 600 }}>{req.infName}</td>
-              <td style={S.tblTd}>{req.type}</td>
-              <td style={S.tblTd}>{req.budget.toLocaleString()} ر.س</td>
-              <td style={S.tblTd}>{req.duration}</td>
-              <td style={S.tblTd}>{req.date}</td>
-              <td style={S.tblTd}>
-                <div
-                  style={{
-                    maxWidth: 180,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap" as const,
-                    color: "#6b7280",
-                    fontSize: ".76rem",
-                  }}
-                  title={req.message}
-                >
+            <TableRow key={req.id}>
+              <TableCell className="font-semibold">{req.infName}</TableCell>
+              <TableCell>{req.type}</TableCell>
+              <TableCell>{req.budget.toLocaleString()} ر.س</TableCell>
+              <TableCell>{req.duration}</TableCell>
+              <TableCell>{req.date}</TableCell>
+              <TableCell>
+                <div className="max-w-[180px] truncate text-xs text-muted-foreground" title={req.message}>
                   {req.message || "—"}
                 </div>
-              </td>
-              <td style={S.tblTd}>
+              </TableCell>
+              <TableCell>
                 <StatusBadge status={req.status} />
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
           {requests.length === 0 && (
-            <tr>
-              <td
-                colSpan={7}
-                style={{
-                  ...S.tblTd,
-                  textAlign: "center",
-                  color: "#9ca3af",
-                  padding: 40,
-                }}
-              >
-                <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+            <TableRow>
+              <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <div className="mb-2 text-3xl">📋</div>
                 لا توجد طلبات حملات
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <Pager page={page} total={requests.length} onChange={setPage} />
-    </div>
+    </Card>
   );
 }

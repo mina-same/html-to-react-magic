@@ -121,7 +121,7 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
     <Card className="overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b bg-gradient-to-b from-secondary/40 to-card px-5 py-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[--green-mid] to-[--green-light]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-mid to-green-light">
           <CreditCard size={20} className="text-white" />
         </div>
         <div className="min-w-[160px] flex-1">
@@ -130,7 +130,7 @@ export default function DonationsTable({ donations, query, onCreateClick }: Prop
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={onCreateClick} className="h-9 gap-1.5 bg-gradient-to-br from-[--green-mid] to-[--green-light] font-semibold">
+          <Button size="sm" onClick={onCreateClick} className="h-9 gap-1.5 bg-gradient-to-br from-green-mid to-green-light font-semibold">
             <Plus size={16} />
             تبرع جديد
           </Button>

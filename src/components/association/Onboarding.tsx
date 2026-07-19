@@ -59,7 +59,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#071a0f] via-[--green-dark] to-[#0a2518] p-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#071a0f] via-green-dark to-[#0a2518] p-5">
       <Card className="animate-slide-up w-full max-w-md rounded-3xl border-none p-9 shadow-2xl">
         <div className="mb-7 text-center">
           <div className="mb-2 text-2xl font-extrabold text-primary">أهلاً بك!</div>
@@ -115,7 +115,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <Button
             type="submit"
             disabled={submitting}
-            className="mt-2 h-12 w-full bg-gradient-to-br from-[--green-dark] to-[--green-mid] text-base font-bold"
+            className="mt-2 h-12 w-full bg-gradient-to-br from-green-dark to-green-mid text-base font-bold"
           >
             {submitting ? "جاري الحفظ..." : "إكمال الإعداد"}
           </Button>

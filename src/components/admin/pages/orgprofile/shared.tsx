@@ -1,5 +1,32 @@
-import { S } from "../../helpers";
-import { btnPg, PAGE_SIZE } from "./constants";
+import type { ReactNode } from "react";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { PAGE_SIZE } from "./constants";
+
+/** Shared section-card wrapper used across every org-profile tab. */
+export function SecCard({
+  icon,
+  title,
+  className,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card className={className}>
+      <CardHeader className="flex-row items-center gap-2 space-y-0 border-b py-3">
+        <span>{icon}</span>
+        <CardTitle className="text-sm">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-4">{children}</CardContent>
+    </Card>
+  );
+}
 
 export function Pager({
   page,
@@ -22,44 +49,42 @@ export function Pager({
   });
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 4,
-        padding: "14px 0 6px",
-      }}
-    >
-      <button onClick={() => onChange(page - 1)} disabled={page === 1} style={btnPg}>
+    <div className="flex items-center justify-center gap-1 py-3.5">
+      <button
+        onClick={() => onChange(page - 1)}
+        disabled={page === 1}
+        className="rounded-md border bg-card px-2.5 py-1 text-xs text-foreground/70 disabled:opacity-40"
+      >
         ‹
       </button>
       {withGaps.map((p, i) =>
         p === "…" ? (
-          <span key={`gap-${i}`} style={{ color: "#9ca3af", fontSize: ".76rem", padding: "0 2px" }}>
+          <span key={`gap-${i}`} className="px-0.5 text-xs text-muted-foreground">
             …
           </span>
         ) : (
           <button
             key={p}
             onClick={() => onChange(p as number)}
-            style={{
-              ...btnPg,
-              background: p === page ? "#2d7a52" : "white",
-              color: p === page ? "white" : "#374151",
-              fontWeight: p === page ? 700 : 400,
-              borderColor: p === page ? "#2d7a52" : "rgba(45,122,82,.15)",
-              minWidth: 32,
-            }}
+            className={cn(
+              "min-w-8 rounded-md border px-2.5 py-1 text-xs",
+              p === page
+                ? "border-primary bg-primary font-bold text-primary-foreground"
+                : "bg-card text-foreground/70",
+            )}
           >
             {p}
           </button>
         ),
       )}
-      <button onClick={() => onChange(page + 1)} disabled={page === pages} style={btnPg}>
+      <button
+        onClick={() => onChange(page + 1)}
+        disabled={page === pages}
+        className="rounded-md border bg-card px-2.5 py-1 text-xs text-foreground/70 disabled:opacity-40"
+      >
         ›
       </button>
-      <span style={{ fontSize: ".72rem", color: "#9ca3af", marginRight: 8 }}>
+      <span className="mr-2 text-xs text-muted-foreground">
         {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} من {total}
       </span>
     </div>
@@ -79,50 +104,18 @@ export function BulkBar({
 }) {
   if (count === 0) return null;
   return (
-    <div
-      style={{
-        background: "#fef2f2",
-        border: "1.5px solid #fecaca",
-        borderRadius: 10,
-        padding: "10px 16px",
-        marginBottom: 12,
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-      }}
-    >
-      <span
-        style={{
-          width: 28,
-          height: 28,
-          background: "#dc2626",
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "white",
-          fontSize: ".74rem",
-          fontWeight: 700,
-        }}
-      >
+    <div className="mb-3 flex items-center gap-2.5 rounded-lg border-[1.5px] border-red-200 bg-red-50 px-4 py-2.5">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-xs font-bold text-white">
         {count}
       </span>
-      <span style={{ fontSize: ".82rem", color: "#374151", fontWeight: 600 }}>{label} محدد</span>
-      <button
-        onClick={onDelete}
-        style={{
-          ...S.btnDanger,
-          marginRight: "auto",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        🗑️ حذف المحدد
-      </button>
-      <button onClick={onClear} style={S.btnGhost}>
+      <span className="text-sm font-semibold text-foreground/80">{label} محدد</span>
+      <Button variant="destructive" size="sm" className="mr-auto h-7 gap-1.5 text-xs" onClick={onDelete}>
+        <Trash2 className="h-3 w-3" />
+        حذف المحدد
+      </Button>
+      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onClear}>
         إلغاء التحديد
-      </button>
+      </Button>
     </div>
   );
 }

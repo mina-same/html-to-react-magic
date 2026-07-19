@@ -234,7 +234,7 @@ export default function FileUpload({
         <Button
           onClick={onAnalyze}
           disabled={analyzing}
-          className="mt-3 h-12 w-full gap-2 bg-gradient-to-br from-[--green-dark] to-[--green-mid] text-sm font-bold"
+          className="mt-3 h-12 w-full gap-2 bg-gradient-to-br from-green-dark to-green-mid text-sm font-bold"
         >
           {analyzing ? (
             <>

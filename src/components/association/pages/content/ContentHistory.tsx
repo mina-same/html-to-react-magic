@@ -1,7 +1,13 @@
+import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { useContentGenerations } from "@/api/queries";
 import { QueryState } from "@/components/common/StateViews";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { cn } from "@/lib/utils";
 import type { ContentGeneration } from "@/lib/db";
-import { fmtDate, Spin, TEMP_ID } from "./constants";
+import { fmtDate, TEMP_ID } from "./constants";
 
 interface Props {
   assocId: string | undefined;
@@ -31,60 +37,40 @@ export default function ContentHistory({
   const contentQ = useContentGenerations(assocId);
 
   return (
-    <div
-      style={{
-        width: 250,
-        flexShrink: 0,
-        background: "#fcfcfd",
-        borderLeft: "1px solid #eef2f6",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div
-        style={{
-          padding: "16px 16px 13px",
-          borderBottom: "1px solid #eef2f6",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+    <div className="flex w-[250px] shrink-0 flex-col border-l bg-muted/20">
+      <div className="flex items-center justify-between border-b px-4 py-3.5">
         <div>
-          <div style={{ fontSize: ".84rem", fontWeight: 800, color: "#0f172a" }}>المحادثات</div>
-          <div style={{ fontSize: ".66rem", color: "#94a3b8", marginTop: 2 }}>
-            <QueryState
-              query={contentQ}
-              isEmpty={(d: ContentGeneration[]) => d.length === 0 && !optimisticTemp}
-              emptyTitle="يُحمَّل..."
-            >
-              {(history) =>
-                `${[...history, ...(optimisticTemp ? [optimisticTemp] : [])].filter((h) => h.id !== TEMP_ID).length} جلسة`
-              }
-            </QueryState>
+          <div className="text-sm font-extrabold text-foreground">المحادثات</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {contentQ.isLoading ? (
+              <Skeleton className="h-3 w-12" />
+            ) : contentQ.isError ? (
+              "تعذّر التحميل"
+            ) : (
+              `${[...(contentQ.data ?? []), ...(optimisticTemp ? [optimisticTemp] : [])].filter((h) => h.id !== TEMP_ID).length} جلسة`
+            )}
           </div>
         </div>
-        <button
-          onClick={onNew}
-          className="cg-newbtn"
-          style={{
-            fontSize: ".72rem",
-            padding: "6px 13px",
-            borderRadius: 9,
-            border: "1px solid #10b981",
-            background: "#f0fdf4",
-            color: "#059669",
-            fontWeight: 700,
-            cursor: "pointer",
-            fontFamily: "'Tajawal',sans-serif",
-            transition: "all .15s",
-          }}
-        >
-          + جديد
-        </button>
+        <Button size="sm" variant="outline" onClick={onNew} className="h-8 gap-1 border-primary/25 text-xs text-primary hover:bg-secondary">
+          <Plus className="h-3 w-3" />
+          جديد
+        </Button>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <ScrollArea className="flex-1">
+        {contentQ.isLoading ? (
+          <div className="space-y-1 p-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-start gap-2.5 rounded-xl px-2.5 py-2.5">
+                <Skeleton className="h-7 w-7 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-2.5 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <QueryState
           query={contentQ}
           isEmpty={(d: ContentGeneration[]) => d.length === 0 && !optimisticTemp}
@@ -96,14 +82,12 @@ export default function ContentHistory({
             const items = [...history, ...(optimisticTemp ? [optimisticTemp] : [])];
             if (items.length === 0) {
               return (
-                <div style={{ padding: "40px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: "1.4rem", opacity: 0.15, marginBottom: 8 }}>✦</div>
-                  <div style={{ fontSize: ".71rem", color: "#94a3b8", lineHeight: 1.7 }}>
-                    لا يوجد سجل
-                    <br />
-                    ابدأ بتوليد أول محتوى
-                  </div>
-                </div>
+                <EmptyState
+                  icon={Sparkles}
+                  title="لا يوجد سجل"
+                  description="ابدأ بتوليد أول محتوى"
+                  className="py-10"
+                />
               );
             }
             return items.map((item) => {
@@ -112,67 +96,52 @@ export default function ContentHistory({
               return (
                 <div
                   key={item.id}
-                  className="cg-si"
-                  data-sel={isSel}
-                  data-tmp={isTmp}
                   onClick={() => {
                     if (!isTmp && !isSel) onSelect(item);
                   }}
-                  style={{
-                    margin: "4px 8px",
-                    padding: "10px 11px",
-                    borderRadius: 11,
-                    background: isSel ? "#fff" : "transparent",
-                    border: `1px solid ${isSel ? "#a7f3d0" : "transparent"}`,
-                    boxShadow: isSel ? "0 1px 4px rgba(5,150,105,.08)" : "none",
-                    cursor: isTmp ? "default" : isSel ? "default" : "pointer",
-                    transition: "background .14s",
-                  }}
+                  className={cn(
+                    "mx-2 my-1 rounded-xl border px-2.5 py-2.5 transition-colors",
+                    isSel
+                      ? "border-primary/25 bg-card shadow-sm"
+                      : "border-transparent hover:bg-muted/60",
+                    isTmp || isSel ? "cursor-default" : "cursor-pointer",
+                  )}
                 >
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                  <div className="flex items-start gap-2.5">
                     <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 8,
-                        flexShrink: 0,
-                        marginTop: 1,
-                        background: isSel ? "#dcfce7" : isTmp ? "#fef9c3" : "#f1f5f9",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: isSel ? "#16a34a" : isTmp ? "#ca8a04" : "#94a3b8",
-                      }}
+                      className={cn(
+                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                        isSel
+                          ? "bg-secondary text-primary"
+                          : isTmp
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-muted text-muted-foreground",
+                      )}
                     >
                       {isTmp ? (
-                        <Spin size={11} light={false} />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <span style={{ fontSize: ".8rem" }}>✦</span>
+                        <span className="text-sm">✦</span>
                       )}
                     </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="min-w-0 flex-1">
                       <div
-                        style={{
-                          fontSize: ".75rem",
-                          fontWeight: 600,
-                          color: isSel ? "#166534" : isTmp ? "#92400e" : "#334155",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          marginBottom: 2,
-                        }}
+                        className={cn(
+                          "mb-0.5 truncate text-xs font-semibold",
+                          isSel ? "text-primary" : isTmp ? "text-amber-800" : "text-foreground/80",
+                        )}
                       >
                         {item.prompt.trim() || (isTmp ? "جاري التوليد..." : "توليد عام")}
                       </div>
                       {isSel && anyLoading && !isTmp ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <Spin size={9} light={false} />
-                          <span style={{ fontSize: ".62rem", color: "#16a34a", fontWeight: 600 }}>
+                        <div className="flex items-center gap-1">
+                          <Loader2 className="h-2.5 w-2.5 animate-spin text-primary" />
+                          <span className="text-[0.62rem] font-semibold text-primary">
                             جاري التوليد...
                           </span>
                         </div>
                       ) : (
-                        <div style={{ fontSize: ".62rem", color: "#94a3b8" }}>
+                        <div className="text-[0.62rem] text-muted-foreground">
                           {isTmp ? "يُحفظ فور الانتهاء" : fmtDate(item.createdAt)}
                         </div>
                       )}
@@ -183,7 +152,8 @@ export default function ContentHistory({
             });
           }}
         </QueryState>
-      </div>
+        )}
+      </ScrollArea>
     </div>
   );
 }

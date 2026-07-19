@@ -10,9 +10,14 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { StatusBadge, PlatBadge, fmt, infColor, S } from "../helpers";
+import { Landmark, Star, ClipboardList, Settings as SettingsIcon, PieChartIcon, BarChart3, ArrowLeft } from "lucide-react";
+import { StatusBadge, fmt } from "../helpers";
 import type { Org, Influencer, CampaignRequest, PageId } from "../types";
-import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { cn } from "@/lib/utils";
 
 interface OverviewPageProps {
   orgs: Org[];
@@ -20,6 +25,47 @@ interface OverviewPageProps {
   requests: CampaignRequest[];
   setActivePage: (page: PageId) => void;
   setOrgModal: (data: { open: boolean; data: Partial<Org> | null }) => void;
+}
+
+function SectionCard({
+  icon,
+  iconBg,
+  title,
+  sub,
+  action,
+  onAction,
+  children,
+}: {
+  icon: string;
+  iconBg?: string;
+  title: string;
+  sub?: string;
+  action?: string;
+  onAction?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="flex-row items-center justify-between space-y-0 border-b py-3">
+        <div className="flex items-center gap-2">
+          <div className={cn("flex h-[27px] w-[27px] items-center justify-center rounded-lg text-sm", iconBg ?? "bg-secondary")}>
+            {icon}
+          </div>
+          <div>
+            <CardTitle className="text-sm">{title}</CardTitle>
+            {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
+          </div>
+        </div>
+        {action && (
+          <Button variant="link" size="sm" className="h-auto gap-1 p-0 text-xs" onClick={onAction}>
+            {action}
+            <ArrowLeft className="h-3 w-3" />
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="p-0">{children}</CardContent>
+    </Card>
+  );
 }
 
 export function OverviewPage({
@@ -43,535 +89,147 @@ export function OverviewPage({
     { name: "نشط", value: activeOrgs, color: "#2d7a52" },
     { name: "جديد", value: newOrgs, color: "#3b82f6" },
     { name: "قيد المراجعة", value: pendingOrgs, color: "#f59e0b" },
-    {
-      name: "موقوف",
-      value: orgs.filter((o) => o.status === "suspended").length,
-      color: "#ef4444",
-    },
+    { name: "موقوف", value: orgs.filter((o) => o.status === "suspended").length, color: "#ef4444" },
   ].filter((d) => d.value > 0);
 
   const reqStatusData = [
-    {
-      name: "معلق",
-      value: requests.filter((r) => r.status === "pending").length,
-      fill: "#f59e0b",
-    },
+    { name: "معلق", value: requests.filter((r) => r.status === "pending").length, fill: "#f59e0b" },
     { name: "مقبول", value: approvedReqs, fill: "#3b82f6" },
-    {
-      name: "مكتمل",
-      value: requests.filter((r) => r.status === "completed").length,
-      fill: "#2d7a52",
-    },
-    {
-      name: "مرفوض",
-      value: requests.filter((r) => r.status === "rejected").length,
-      fill: "#ef4444",
-    },
+    { name: "مكتمل", value: requests.filter((r) => r.status === "completed").length, fill: "#2d7a52" },
+    { name: "مرفوض", value: requests.filter((r) => r.status === "rejected").length, fill: "#ef4444" },
   ].filter((d) => d.value > 0);
 
   const topInfluencers = [...influencers].sort((a, b) => b.followers - a.followers).slice(0, 4);
 
+  const kpis = [
+    { icon: Landmark, num: orgs.length, lbl: "إجمالي الجمعيات", sub: `${newOrgs} جديدة`, tone: "text-primary border-t-primary", page: "orgs" as PageId },
+    { icon: Star, num: influencers.length, lbl: "المؤثرون", sub: `${influencers.filter((i) => i.status === "active").length} نشط`, tone: "text-gold border-t-gold", page: "influencers" as PageId },
+    { icon: ClipboardList, num: pendingReqs, lbl: "طلبات معلقة", sub: `${approvedReqs} مقبولة`, tone: "text-blue-600 border-t-blue-500", page: "requests" as PageId },
+    { icon: SettingsIcon, num: "—", lbl: "الإعدادات", sub: "إدارة الخيارات", tone: "text-slate-500 border-t-slate-400", page: "settings" as PageId },
+  ];
+
   return (
     <div>
-      {/* ── Welcome banner ─────────────────────────────── */}
-      <div
-        style={{
-          background: "linear-gradient(135deg,#0f2d1e 0%,#1a5c3a 50%,#2d7a52 100%)",
-          borderRadius: 16,
-          padding: "22px 26px",
-          marginBottom: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 20,
-          position: "relative",
-          overflow: "hidden",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: -40,
-            top: -50,
-            width: 200,
-            height: 200,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,.03)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: 80,
-            bottom: -60,
-            width: 160,
-            height: 160,
-            borderRadius: "50%",
-            background: "rgba(201,168,76,.05)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            background: "rgba(255,255,255,.12)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1.6rem",
-            flexShrink: 0,
-          }}
-        >
+      {/* Welcome banner */}
+      <div className="relative mb-5 flex flex-wrap items-center gap-5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f2d1e] via-green-dark to-green-mid px-6 py-5">
+        <div className="pointer-events-none absolute -left-10 -top-12 h-48 w-48 rounded-full bg-white/[0.03]" />
+        <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-white/10 text-2xl">
           🛡️
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: ".78rem", color: "rgba(255,255,255,.5)", marginBottom: 2 }}>
-            لوحة تحكم الإدارة
-          </div>
-          <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "white", marginBottom: 4 }}>
-            مرحباً بالمسؤول — منصة ساعِد
-          </div>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 text-xs text-white/50">لوحة تحكم الإدارة</div>
+          <div className="mb-1.5 text-xl font-extrabold text-white">مرحباً بالمسؤول — منصة ساعِد</div>
+          <div className="flex flex-wrap gap-4">
             {[
               { v: orgs.length, l: "جمعية" },
               { v: influencers.length, l: "مؤثر" },
               { v: approvedReqs, l: "طلب مقبول" },
             ].map((s) => (
-              <div
-                key={s.l}
-                style={{
-                  fontSize: ".8rem",
-                  color: "rgba(255,255,255,.7)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <span style={{ fontWeight: 800, color: "white", fontSize: ".95rem" }}>{s.v}</span>{" "}
-                {s.l}
+              <div key={s.l} className="flex items-center gap-1.5 text-sm text-white/70">
+                <span className="text-base font-extrabold text-white">{s.v}</span> {s.l}
               </div>
             ))}
           </div>
         </div>
         {(newOrgs > 0 || pendingReqs > 0) && (
-          <div
-            style={{
-              background: "rgba(245,158,11,.2)",
-              border: "1px solid rgba(245,158,11,.4)",
-              borderRadius: 10,
-              padding: "8px 14px",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ fontSize: ".72rem", color: "#fcd34d", fontWeight: 700, marginBottom: 2 }}>
-              ⚡ تحتاج مراجعة
-            </div>
-            {newOrgs > 0 && (
-              <div style={{ fontSize: ".78rem", color: "rgba(255,255,255,.8)" }}>
-                {newOrgs} جمعية جديدة
-              </div>
-            )}
-            {pendingReqs > 0 && (
-              <div style={{ fontSize: ".78rem", color: "rgba(255,255,255,.8)" }}>
-                {pendingReqs} طلب معلق
-              </div>
-            )}
+          <div className="shrink-0 rounded-lg border border-amber-400/40 bg-amber-400/20 px-3.5 py-2">
+            <div className="mb-0.5 text-xs font-bold text-amber-300">⚡ تحتاج مراجعة</div>
+            {newOrgs > 0 && <div className="text-xs text-white/80">{newOrgs} جمعية جديدة</div>}
+            {pendingReqs > 0 && <div className="text-xs text-white/80">{pendingReqs} طلب معلق</div>}
           </div>
         )}
       </div>
 
-      {/* ── KPI cards ──────────────────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4,1fr)",
-          gap: 10,
-          marginBottom: 16,
-        }}
-      >
-        {[
-          {
-            icon: "🏛️",
-            num: orgs.length,
-            lbl: "إجمالي الجمعيات",
-            sub: `${newOrgs} جديدة`,
-            accent: "#2d7a52",
-            subColor: "#2d7a52",
-            page: "orgs",
-          },
-          {
-            icon: "🌟",
-            num: influencers.length,
-            lbl: "المؤثرون",
-            sub: `${influencers.filter((i) => i.status === "active").length} نشط`,
-            accent: "#c9a84c",
-            subColor: "#92400e",
-            page: "influencers",
-          },
-          {
-            icon: "📋",
-            num: pendingReqs,
-            lbl: "طلبات معلقة",
-            sub: `${approvedReqs} مقبولة`,
-            accent: "#3b82f6",
-            subColor: "#1d4ed8",
-            page: "requests",
-          },
-          {
-            icon: "⚙️",
-            num: "⚙️",
-            lbl: "الإعدادات",
-            sub: "إدارة الخيارات",
-            accent: "#6b7280",
-            subColor: "#4b5563",
-            page: "settings",
-          },
-        ].map((k, i) => (
-          <div
-            key={i}
-            onClick={() => setActivePage(k.page as PageId)}
-            style={{
-              background: "white",
-              borderRadius: 11,
-              border: "1px solid rgba(45,122,82,.12)",
-              padding: "13px 14px",
-              position: "relative",
-              overflow: "hidden",
-              cursor: "pointer",
-              transition: "box-shadow .15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(45,122,82,.13)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "none";
-            }}
+      {/* KPI cards */}
+      <div className="mb-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        {kpis.map((k) => (
+          <Card
+            key={k.lbl}
+            onClick={() => setActivePage(k.page)}
+            className={cn("cursor-pointer border-t-[3px] transition-shadow hover:shadow-md", k.tone)}
           >
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 4,
-                height: "100%",
-                background: k.accent,
-              }}
-            />
-            <div style={{ fontSize: "1.1rem", marginBottom: 4 }}>{k.icon}</div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 800, lineHeight: 1, marginBottom: 3 }}>
-              {k.num}
-            </div>
-            <div style={{ fontSize: ".7rem", color: "#6b7280" }}>{k.lbl}</div>
-            <div style={{ fontSize: ".66rem", fontWeight: 600, marginTop: 4, color: k.subColor }}>
-              {k.sub}
-            </div>
-          </div>
+            <CardContent className="p-3.5">
+              <k.icon className={cn("mb-1 h-4 w-4", k.tone)} />
+              <div className="text-2xl font-extrabold leading-none">{k.num}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{k.lbl}</div>
+              <div className={cn("mt-1.5 text-xs font-semibold", k.tone)}>{k.sub}</div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {/* ── Charts row ─────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-        {/* Org status donut */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 13,
-            border: "1px solid rgba(45,122,82,.12)",
-            padding: "16px 18px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 7,
-                background: "#e8f5ee",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: ".9rem",
-              }}
-            >
-              🏛️
-            </div>
-            <div>
-              <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                حالة الجمعيات
-              </div>
-              <div style={{ fontSize: ".7rem", color: "#9ca3af" }}>{orgs.length} جمعية مسجلة</div>
-            </div>
+      {/* Charts row */}
+      <div className="mb-4 grid grid-cols-1 gap-3.5 md:grid-cols-2">
+        <SectionCard icon="🏛️" title="حالة الجمعيات" sub={`${orgs.length} جمعية مسجلة`}>
+          <div className="p-4 pt-0">
+            {orgs.length === 0 ? (
+              <EmptyState icon={PieChartIcon} title="لا توجد جمعيات بعد" className="h-[150px] py-0" />
+            ) : (
+              <ResponsiveContainer width="100%" height={155}>
+                <PieChart>
+                  <Pie data={orgStatusData} cx="50%" cy="50%" innerRadius={42} outerRadius={65} paddingAngle={3} dataKey="value" nameKey="name">
+                    {orgStatusData.map((d, idx) => (
+                      <Cell key={idx} fill={d.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(v: number, name: string) => [`${v}`, name]}
+                    contentStyle={{ borderRadius: 8, border: "1px solid rgba(45,122,82,.15)", fontFamily: "'Tajawal','Cairo',sans-serif", fontSize: 12 }}
+                  />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(v) => <span style={{ fontSize: ".7rem", fontFamily: "'Tajawal','Cairo',sans-serif", color: "#374151" }}>{v}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {orgs.length === 0 ? (
-            <div
-              style={{
-                height: 150,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#d1d5db",
-                fontSize: ".82rem",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              <span style={{ fontSize: "2rem" }}>🏛️</span>لا توجد جمعيات بعد
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={155}>
-              <PieChart>
-                <Pie
-                  data={orgStatusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={42}
-                  outerRadius={65}
-                  paddingAngle={3}
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {orgStatusData.map((d, idx) => (
-                    <Cell key={idx} fill={d.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v: number, name: string) => [`${v}`, name]}
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: "1px solid rgba(45,122,82,.15)",
-                    fontFamily: "'Tajawal','Cairo',sans-serif",
-                    fontSize: 12,
-                  }}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(v) => (
-                    <span
-                      style={{
-                        fontSize: ".7rem",
-                        fontFamily: "'Tajawal','Cairo',sans-serif",
-                        color: "#374151",
-                      }}
-                    >
-                      {v}
-                    </span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        </SectionCard>
 
-        {/* Request pipeline bar */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 13,
-            border: "1px solid rgba(45,122,82,.12)",
-            padding: "16px 18px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 7,
-                background: "#eff6ff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: ".9rem",
-              }}
-            >
-              📊
-            </div>
-            <div>
-              <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                خط سير الطلبات
-              </div>
-              <div style={{ fontSize: ".7rem", color: "#9ca3af" }}>
-                {requests.length} طلب إجمالاً
-              </div>
-            </div>
+        <SectionCard icon="📊" iconBg="bg-blue-50" title="خط سير الطلبات" sub={`${requests.length} طلب إجمالاً`}>
+          <div className="p-4 pt-0">
+            {requests.length === 0 ? (
+              <EmptyState icon={BarChart3} title="لا توجد طلبات بعد" className="h-[150px] py-0" />
+            ) : (
+              <ResponsiveContainer width="100%" height={155}>
+                <BarChart data={reqStatusData} margin={{ top: 4, right: 0, left: -24, bottom: 0 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: "'Tajawal','Cairo',sans-serif", fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fontFamily: "'Tajawal','Cairo',sans-serif", fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid rgba(45,122,82,.15)", fontFamily: "'Tajawal','Cairo',sans-serif", fontSize: 12 }} />
+                  <Bar dataKey="value" radius={[5, 5, 0, 0]} maxBarSize={42} name="الطلبات">
+                    {reqStatusData.map((d, idx) => (
+                      <Cell key={idx} fill={d.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {requests.length === 0 ? (
-            <div
-              style={{
-                height: 150,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#d1d5db",
-                fontSize: ".82rem",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              <span style={{ fontSize: "2rem" }}>📋</span>لا توجد طلبات بعد
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={155}>
-              <BarChart data={reqStatusData} margin={{ top: 4, right: 0, left: -24, bottom: 0 }}>
-                <XAxis
-                  dataKey="name"
-                  tick={{
-                    fontSize: 11,
-                    fontFamily: "'Tajawal','Cairo',sans-serif",
-                    fill: "#9ca3af",
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{
-                    fontSize: 10,
-                    fontFamily: "'Tajawal','Cairo',sans-serif",
-                    fill: "#9ca3af",
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: "1px solid rgba(45,122,82,.15)",
-                    fontFamily: "'Tajawal','Cairo',sans-serif",
-                    fontSize: 12,
-                  }}
-                />
-                <Bar dataKey="value" radius={[5, 5, 0, 0]} maxBarSize={42} name="الطلبات">
-                  {reqStatusData.map((d, idx) => (
-                    <Cell key={idx} fill={d.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        </SectionCard>
       </div>
 
-      {/* ── Recent orgs + recent requests ──────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        {/* Recent orgs */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 13,
-            border: "1px solid rgba(45,122,82,.12)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "13px 18px",
-              borderBottom: "1px solid rgba(45,122,82,.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div
-                style={{
-                  width: 27,
-                  height: 27,
-                  borderRadius: 7,
-                  background: "#e8f5ee",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: ".85rem",
-                }}
-              >
-                🏛️
-              </div>
-              <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                آخر الجمعيات
-              </div>
-            </div>
-            <button
-              onClick={() => setActivePage("orgs")}
-              style={{
-                fontSize: ".72rem",
-                color: "#2d7a52",
-                fontWeight: 600,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Tajawal','Cairo',sans-serif",
-              }}
-            >
-              عرض الكل ←
-            </button>
-          </div>
-          <div style={{ padding: "8px 0" }}>
+      {/* Recent orgs + recent requests */}
+      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+        <SectionCard icon="🏛️" title="آخر الجمعيات" action="عرض الكل" onAction={() => setActivePage("orgs")}>
+          <div className="py-2">
             {recentOrgs.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "24px 0",
-                  color: "#9ca3af",
-                  fontSize: ".82rem",
-                }}
-              >
-                لا توجد جمعيات بعد
-              </div>
+              <div className="py-6 text-center text-sm text-muted-foreground">لا توجد جمعيات بعد</div>
             ) : (
               recentOrgs.map((o) => (
                 <div
                   key={o.id}
                   onClick={() => setOrgModal({ open: true, data: o })}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 16px",
-                    cursor: "pointer",
-                    transition: "background .12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = "#f2faf6";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = "";
-                  }}
+                  className="flex cursor-pointer items-center gap-2.5 px-4 py-2 transition-colors hover:bg-secondary/40"
                 >
-                  <div
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg,#2d7a52,#4a9e70)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white",
-                      fontWeight: 700,
-                      fontSize: ".85rem",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {(o.name || "؟")[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: ".83rem",
-                        fontWeight: 600,
-                        color: "#111827",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {o.name || "—"}
-                    </div>
-                    <div style={{ fontSize: ".7rem", color: "#9ca3af" }}>
+                  <Avatar className="h-[34px] w-[34px] shrink-0">
+                    <AvatarFallback className="bg-gradient-to-br from-green-mid to-green-light text-sm font-bold text-white">
+                      {(o.name || "؟")[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-foreground">{o.name || "—"}</div>
+                    <div className="text-xs text-muted-foreground">
                       {o.region || "—"} · {o.date}
                     </div>
                   </div>
@@ -580,107 +238,19 @@ export function OverviewPage({
               ))
             )}
           </div>
-        </div>
+        </SectionCard>
 
-        {/* Recent requests + top influencers */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Pending requests */}
-          <div
-            style={{
-              background: "white",
-              borderRadius: 13,
-              border: "1px solid rgba(45,122,82,.12)",
-              overflow: "hidden",
-              flex: 1,
-            }}
-          >
-            <div
-              style={{
-                padding: "13px 18px",
-                borderBottom: "1px solid rgba(45,122,82,.08)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div
-                  style={{
-                    width: 27,
-                    height: 27,
-                    borderRadius: 7,
-                    background: "#fef9c3",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: ".85rem",
-                  }}
-                >
-                  📋
-                </div>
-                <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                  آخر الطلبات
-                </div>
-              </div>
-              <button
-                onClick={() => setActivePage("requests")}
-                style={{
-                  fontSize: ".72rem",
-                  color: "#2d7a52",
-                  fontWeight: 600,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "'Tajawal','Cairo',sans-serif",
-                }}
-              >
-                عرض الكل ←
-              </button>
-            </div>
-            <div style={{ padding: "8px 0" }}>
+        <div className="flex flex-col gap-3">
+          <SectionCard icon="📋" iconBg="bg-amber-100" title="آخر الطلبات" action="عرض الكل" onAction={() => setActivePage("requests")}>
+            <div className="py-2">
               {recentReqs.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "20px 0",
-                    color: "#9ca3af",
-                    fontSize: ".82rem",
-                  }}
-                >
-                  لا توجد طلبات بعد
-                </div>
+                <div className="py-5 text-center text-sm text-muted-foreground">لا توجد طلبات بعد</div>
               ) : (
                 recentReqs.map((r) => (
-                  <div
-                    key={r.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "7px 16px",
-                      transition: "background .12s",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "#f9fafb";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "";
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: ".8rem",
-                          fontWeight: 600,
-                          color: "#111827",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {r.orgName}
-                      </div>
-                      <div style={{ fontSize: ".7rem", color: "#9ca3af" }}>
+                  <div key={r.id} className="flex items-center gap-2.5 px-4 py-1.5 transition-colors hover:bg-muted/40">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-foreground">{r.orgName}</div>
+                      <div className="text-xs text-muted-foreground">
                         {r.infName} · {r.budget.toLocaleString()} ر.س
                       </div>
                     </div>
@@ -689,125 +259,32 @@ export function OverviewPage({
                 ))
               )}
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Top influencers mini */}
-          <div
-            style={{
-              background: "white",
-              borderRadius: 13,
-              border: "1px solid rgba(45,122,82,.12)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "11px 18px",
-                borderBottom: "1px solid rgba(45,122,82,.08)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div
-                  style={{
-                    width: 27,
-                    height: 27,
-                    borderRadius: 7,
-                    background: "#fef9c3",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: ".85rem",
-                  }}
-                >
-                  🌟
-                </div>
-                <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                  أبرز المؤثرين
-                </div>
-              </div>
-              <button
-                onClick={() => setActivePage("influencers")}
-                style={{
-                  fontSize: ".72rem",
-                  color: "#2d7a52",
-                  fontWeight: 600,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "'Tajawal','Cairo',sans-serif",
-                }}
-              >
-                عرض الكل ←
-              </button>
-            </div>
-            <div style={{ padding: "6px 0" }}>
+          <SectionCard icon="🌟" iconBg="bg-amber-100" title="أبرز المؤثرين" action="عرض الكل" onAction={() => setActivePage("influencers")}>
+            <div className="py-1.5">
               {topInfluencers.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "16px 0",
-                    color: "#9ca3af",
-                    fontSize: ".82rem",
-                  }}
-                >
-                  لا يوجد مؤثرين بعد
-                </div>
+                <div className="py-4 text-center text-sm text-muted-foreground">لا يوجد مؤثرين بعد</div>
               ) : (
                 topInfluencers.map((inf) => (
-                  <div
-                    key={inf.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "6px 16px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg,#c9a84c,#f0d060)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "white",
-                        fontWeight: 700,
-                        fontSize: ".78rem",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {inf.name[0]}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: ".8rem",
-                          fontWeight: 600,
-                          color: "#111827",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {inf.name}
-                      </div>
-                      <div style={{ fontSize: ".7rem", color: "#9ca3af" }}>
+                  <div key={inf.id} className="flex items-center gap-2.5 px-4 py-1.5">
+                    <Avatar className="h-[30px] w-[30px] shrink-0">
+                      <AvatarFallback className="bg-gradient-to-br from-gold to-[#f0d060] text-xs font-bold text-white">
+                        {inf.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-foreground">{inf.name}</div>
+                      <div className="text-xs text-muted-foreground">
                         {inf.platform} · {fmt(inf.followers)} متابع
                       </div>
                     </div>
-                    <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#c9a84c" }}>
-                      {inf.price.toLocaleString()} ر.س
-                    </div>
+                    <div className="text-xs font-bold text-gold">{inf.price.toLocaleString()} ر.س</div>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </SectionCard>
         </div>
       </div>
     </div>

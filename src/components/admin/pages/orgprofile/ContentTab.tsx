@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { S } from "../../helpers";
 import { supabase } from "@/lib/supabase";
 import { keys } from "@/api/keys";
 import { QueryState } from "@/components/common/StateViews";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { ContentGeneration } from "@/lib/db";
 import {
   CONTENT_TYPES,
@@ -69,25 +73,11 @@ export function ContentTab({
               onClear={() => setSel(new Set())}
             />
 
-            {/* Select all bar */}
             {pageData.length > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 12,
-                  padding: "8px 14px",
-                  background: "white",
-                  borderRadius: 8,
-                  border: "1px solid rgba(45,122,82,.12)",
-                }}
-              >
-                <input
-                  type="checkbox"
+              <Card className="mb-3 flex flex-row items-center gap-2.5 px-3.5 py-2">
+                <Checkbox
                   checked={allPageSel}
-                  style={{ cursor: "pointer" }}
-                  onChange={() => {
+                  onCheckedChange={() => {
                     setSel((prev) => {
                       const next = new Set(prev);
                       pageData.forEach((c) => (allPageSel ? next.delete(c.id) : next.add(c.id)));
@@ -95,156 +85,78 @@ export function ContentTab({
                     });
                   }}
                 />
-                <span style={{ fontSize: ".78rem", color: "#6b7280" }}>تحديد الصفحة الحالية</span>
+                <span className="text-sm text-muted-foreground">تحديد الصفحة الحالية</span>
                 {content.length > PAGE_SIZE && (
-                  <button
-                    style={{ ...S.btnGhost, fontSize: ".72rem", marginRight: "auto" }}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mr-auto text-xs"
                     onClick={() => setSel(new Set(content.map((c) => c.id)))}
                   >
                     تحديد الكل ({content.length})
-                  </button>
+                  </Button>
                 )}
-              </div>
+              </Card>
             )}
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))",
-                gap: 14,
-              }}
-            >
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3.5">
               {pageData.map((item) => (
-                <div
+                <Card
                   key={item.id}
-                  style={{
-                    background: "white",
-                    border: sel.has(item.id)
-                      ? "2px solid #2d7a52"
-                      : "1px solid rgba(45,122,82,.12)",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    transition: "border .15s, box-shadow .15s",
-                    boxShadow: sel.has(item.id) ? "0 0 0 3px rgba(45,122,82,.1)" : "none",
-                  }}
+                  className={cn(
+                    "overflow-hidden",
+                    sel.has(item.id) && "border-2 border-primary shadow-[0_0_0_3px_rgba(45,122,82,.1)]",
+                  )}
                 >
-                  {/* Card header */}
                   <div
-                    style={{
-                      background: sel.has(item.id) ? "#f0fdf4" : "#f2faf6",
-                      padding: "10px 14px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      borderBottom: "1px solid rgba(45,122,82,.08)",
-                    }}
+                    className={cn(
+                      "flex items-center gap-2.5 border-b px-3.5 py-2.5",
+                      sel.has(item.id) ? "bg-secondary" : "bg-muted/40",
+                    )}
                   >
-                    <input
-                      type="checkbox"
-                      checked={sel.has(item.id)}
-                      style={{ cursor: "pointer" }}
-                      onChange={() => toggleContent(item.id)}
-                    />
-                    <span style={{ fontSize: ".7rem", color: "#6b7280", flex: 1 }}>
+                    <Checkbox checked={sel.has(item.id)} onCheckedChange={() => toggleContent(item.id)} />
+                    <span className="flex-1 text-xs text-muted-foreground">
                       📅 {item.createdAt.slice(0, 10)}
                     </span>
                     {item.tokensUsed > 0 && (
-                      <span
-                        style={{
-                          fontSize: ".66rem",
-                          background: "#ede9fe",
-                          color: "#7c3aed",
-                          padding: "2px 8px",
-                          borderRadius: 20,
-                          fontWeight: 600,
-                        }}
-                      >
+                      <Badge variant="secondary" className="bg-violet-100 text-xs text-violet-700 hover:bg-violet-100">
                         {item.tokensUsed.toLocaleString()} رمز
-                      </span>
+                      </Badge>
                     )}
                   </div>
 
-                  {/* Prompt */}
-                  <div
-                    style={{
-                      padding: "10px 14px",
-                      borderBottom: "1px solid rgba(45,122,82,.06)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: ".66rem",
-                        color: "#9ca3af",
-                        marginBottom: 4,
-                        textTransform: "uppercase" as const,
-                        letterSpacing: ".04em",
-                      }}
-                    >
-                      الطلب
-                    </div>
-                    <div
-                      style={{
-                        fontSize: ".8rem",
-                        color: "#111827",
-                        fontWeight: 600,
-                        lineHeight: 1.6,
-                      }}
-                    >
+                  <div className="border-b px-3.5 py-2.5">
+                    <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">الطلب</div>
+                    <div className="text-sm font-semibold leading-6 text-foreground">
                       {item.prompt.length > 90 ? item.prompt.slice(0, 90) + "..." : item.prompt}
                     </div>
                   </div>
 
-                  {/* Content preview */}
-                  <div style={{ padding: "10px 14px" }}>
+                  <div className="px-3.5 py-2.5">
                     {CONTENT_TYPES.map((type) => {
                       const c = item.content?.[type];
                       if (!c?.text) return null;
+                      const imgSrc = getDisplayableImage(c);
                       return (
-                        <div key={type} style={{ marginBottom: 8 }}>
-                          <div
-                            style={{
-                              fontSize: ".66rem",
-                              color: "#6b7280",
-                              marginBottom: 3,
-                              fontWeight: 600,
-                            }}
-                          >
+                        <div key={type} className="mb-2">
+                          <div className="mb-1 text-xs font-semibold text-muted-foreground">
                             {CONTENT_TYPE_ICONS[type]} {CONTENT_TYPE_LABELS[type]}
                           </div>
-                          <div
-                            style={{
-                              fontSize: ".76rem",
-                              color: "#374151",
-                              lineHeight: 1.6,
-                              background: "#f9fafb",
-                              padding: "7px 10px",
-                              borderRadius: 7,
-                              borderRight: "2px solid rgba(45,122,82,.2)",
-                            }}
-                          >
+                          <div className="rounded-md border-r-2 border-primary/20 bg-muted/40 px-2.5 py-1.5 text-sm leading-6 text-foreground/80">
                             {c.text.length > 110 ? c.text.slice(0, 110) + "..." : c.text}
                           </div>
-                          {(() => {
-                            const imgSrc = getDisplayableImage(c);
-                            return imgSrc ? (
-                              <img
-                                src={imgSrc}
-                                alt=""
-                                style={{
-                                  width: "100%",
-                                  height: 72,
-                                  objectFit: "cover",
-                                  borderRadius: 7,
-                                  marginTop: 5,
-                                }}
-                              />
-                            ) : null;
-                          })()}
+                          {imgSrc && (
+                            <img
+                              src={imgSrc}
+                              alt=""
+                              className="mt-1.5 h-[72px] w-full rounded-md object-cover"
+                            />
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
 

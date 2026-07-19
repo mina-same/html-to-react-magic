@@ -1,35 +1,26 @@
-import { S } from "../helpers";
+import { Settings as SettingsIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
 export function SettingsPage() {
   return (
-    <div style={S.secCard}>
-      <div style={S.secHead}>
-        <div
-          style={{
-            width: 29,
-            height: 29,
-            borderRadius: 7,
-            background: "#e8f5ee",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: ".9rem",
-          }}
-        >
-          ⚙
+    <Card>
+      <CardHeader className="flex-row items-center gap-2.5 space-y-0 border-b">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-primary">
+          <SettingsIcon className="h-4 w-4" />
         </div>
         <div>
-          <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#111827" }}>إعدادات المنصة</div>
-          <div style={{ fontSize: ".74rem", color: "#6b7280", marginTop: 1 }}>
-            الإعدادات العامة للمنصة
-          </div>
+          <CardTitle className="text-sm">إعدادات المنصة</CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">الإعدادات العامة للمنصة</p>
         </div>
-      </div>
-      <div style={{ ...S.secBody, textAlign: "center", padding: 64, color: "#9ca3af" }}>
-        <div style={{ fontSize: "2rem", marginBottom: 12 }}>⚙️</div>
-        <div style={{ fontWeight: 600 }}>الإعدادات قيد التطوير</div>
-        <div style={{ fontSize: ".8rem", marginTop: 6 }}>ستتوفر هذه الصفحة قريباً</div>
-      </div>
-    </div>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <EmptyState
+          icon={SettingsIcon}
+          title="الإعدادات قيد التطوير"
+          description="ستتوفر هذه الصفحة قريباً"
+        />
+      </CardContent>
+    </Card>
   );
 }

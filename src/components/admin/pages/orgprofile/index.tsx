@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
+import { ArrowRight } from "lucide-react";
 import { useEmployees, useContentGenerations, useDonations, useAssocProfile } from "@/api/queries";
-import { S, StatusBadge } from "@/components/admin/helpers";
+import { StatusBadge } from "@/components/admin/helpers";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { Org, CampaignRequest } from "@/components/admin/types";
 import type { TabId } from "./constants";
 import { OverviewTab } from "./OverviewTab";
@@ -51,90 +54,37 @@ export function OrgProfilePage({ org, requests: allRequests, onBack }: Props) {
     { id: "donations", label: "التبرعات", icon: "💰", count: counts.donations },
   ];
 
+  const stats = [
+    { label: "الموظفون", value: loading ? "—" : counts.employees, icon: "👥", color: "text-primary", bg: "bg-emerald-50" },
+    { label: "الطلبات", value: counts.requests, icon: "📋", color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "التبرعات", value: loading ? "—" : counts.donations, icon: "💰", color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "محتوى AI", value: loading ? "—" : counts.content, icon: "🤖", color: "text-violet-600", bg: "bg-violet-50" },
+  ];
+
   return (
-    <div style={{ animation: "fadeUp .3s ease" }}>
+    <div className="admin-page-anim">
       {/* Header */}
-      <div
-        style={{
-          background: "white",
-          borderRadius: 14,
-          border: "1px solid rgba(45,122,82,.12)",
-          marginBottom: 16,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            background: "linear-gradient(135deg,#2d7a52 0%,#1e5c3a 100%)",
-            padding: "20px 24px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <button
+      <div className="mb-4 overflow-hidden rounded-2xl border">
+        <div className="bg-gradient-to-br from-green-mid to-[#1e5c3a] px-6 py-5">
+          <div className="flex items-center gap-3.5">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onBack}
-              style={{
-                background: "rgba(255,255,255,.15)",
-                border: "1px solid rgba(255,255,255,.3)",
-                borderRadius: 8,
-                color: "white",
-                fontFamily: "'Tajawal',sans-serif",
-                fontSize: ".78rem",
-                fontWeight: 600,
-                padding: "6px 14px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
+              className="gap-1.5 border-white/30 bg-white/15 text-white hover:bg-white/25 hover:text-white"
             >
-              ← رجوع للقائمة
-            </button>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 13,
-                background: "rgba(255,255,255,.18)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 26,
-                flexShrink: 0,
-              }}
-            >
+              <ArrowRight className="h-3.5 w-3.5" />
+              رجوع للقائمة
+            </Button>
+            <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-white/[0.18] text-2xl">
               🏛️
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 5,
-                  flexWrap: "wrap" as const,
-                }}
-              >
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: "1.15rem",
-                    fontWeight: 800,
-                    color: "white",
-                  }}
-                >
-                  {org.name}
-                </h2>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-2.5">
+                <h2 className="text-lg font-extrabold text-white">{org.name}</h2>
                 <StatusBadge status={org.status} />
               </div>
-              <div
-                style={{
-                  fontSize: ".75rem",
-                  color: "rgba(255,255,255,.78)",
-                  display: "flex",
-                  gap: 18,
-                  flexWrap: "wrap" as const,
-                }}
-              >
+              <div className="flex flex-wrap gap-4 text-xs text-white/80">
                 <span>📋 {org.license}</span>
                 <span>📍 {org.region}</span>
                 <span>📅 {org.date}</span>
@@ -145,70 +95,13 @@ export function OrgProfilePage({ org, requests: allRequests, onBack }: Props) {
         </div>
 
         {/* Stats bar */}
-        <div
-          style={{
-            padding: "14px 20px",
-            display: "grid",
-            gridTemplateColumns: "repeat(4,1fr)",
-            gap: 10,
-          }}
-        >
-          {[
-            {
-              label: "الموظفون",
-              value: loading ? "—" : counts.employees,
-              icon: "👥",
-              color: "#2d7a52",
-              bg: "#f0fdf4",
-            },
-            {
-              label: "الطلبات",
-              value: counts.requests,
-              icon: "📋",
-              color: "#3b82f6",
-              bg: "#eff6ff",
-            },
-            {
-              label: "التبرعات",
-              value: loading ? "—" : counts.donations,
-              icon: "💰",
-              color: "#f59e0b",
-              bg: "#fffbeb",
-            },
-            {
-              label: "محتوى AI",
-              value: loading ? "—" : counts.content,
-              icon: "🤖",
-              color: "#8b5cf6",
-              bg: "#f5f3ff",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              style={{
-                background: stat.bg,
-                borderRadius: 10,
-                padding: "12px 14px",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <span style={{ fontSize: 22 }}>{stat.icon}</span>
+        <div className="grid grid-cols-2 gap-2.5 p-4 md:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className={cn("flex items-center gap-2.5 rounded-lg px-3.5 py-3", stat.bg)}>
+              <span className="text-xl">{stat.icon}</span>
               <div>
-                <div
-                  style={{
-                    fontSize: "1.35rem",
-                    fontWeight: 800,
-                    color: stat.color,
-                    lineHeight: 1,
-                  }}
-                >
-                  {stat.value}
-                </div>
-                <div style={{ fontSize: ".7rem", color: "#6b7280", marginTop: 2 }}>
-                  {stat.label}
-                </div>
+                <div className={cn("text-xl font-extrabold leading-none", stat.color)}>{stat.value}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
               </div>
             </div>
           ))}
@@ -216,51 +109,24 @@ export function OrgProfilePage({ org, requests: allRequests, onBack }: Props) {
       </div>
 
       {/* Tab bar */}
-      <div
-        style={{
-          background: "white",
-          borderRadius: 12,
-          border: "1px solid rgba(45,122,82,.12)",
-          padding: 5,
-          marginBottom: 16,
-          display: "flex",
-          gap: 4,
-        }}
-      >
+      <div className="mb-4 flex gap-1 rounded-xl border bg-card p-1.5">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            style={{
-              flex: 1,
-              padding: "9px 10px",
-              borderRadius: 8,
-              border: "none",
-              fontFamily: "'Tajawal',sans-serif",
-              fontSize: ".78rem",
-              fontWeight: tab === t.id ? 700 : 500,
-              background: tab === t.id ? "#2d7a52" : "transparent",
-              color: tab === t.id ? "white" : "#6b7280",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 5,
-              transition: "all .15s",
-            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+              tab === t.id ? "bg-primary font-bold text-primary-foreground" : "font-medium text-muted-foreground",
+            )}
           >
             <span>{t.icon}</span>
             <span>{t.label}</span>
             {t.count !== undefined && t.count > 0 && (
               <span
-                style={{
-                  background: tab === t.id ? "rgba(255,255,255,.25)" : "#e5e7eb",
-                  color: tab === t.id ? "white" : "#374151",
-                  fontSize: ".65rem",
-                  padding: "1px 7px",
-                  borderRadius: 20,
-                  fontWeight: 700,
-                }}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-xs font-bold",
+                  tab === t.id ? "bg-white/25 text-white" : "bg-muted text-foreground/70",
+                )}
               >
                 {t.count}
               </span>

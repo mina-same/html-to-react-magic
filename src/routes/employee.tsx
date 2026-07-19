@@ -1,11 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
+import { ClipboardList, CheckCircle2, Clock3, Users, User, Inbox, Calendar } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks, useEmployees, useMyEmployeeRecord, useAssocOwnerName } from "@/api/queries";
 import { useUpdateTaskStatus } from "@/api/mutations";
 import { LoadingState } from "@/components/common/StateViews";
+import { DashboardShell, type DashboardNavGroup } from "@/components/dashboard/DashboardShell";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import type { Task, Employee } from "@/components/association/types";
 
 export const Route = createFileRoute("/employee")({
@@ -15,17 +23,28 @@ export const Route = createFileRoute("/employee")({
 
 type PageId = "tasks" | "team" | "profile";
 
-const URGENCY_COLOR: Record<string, string> = {
-  urgent: "#dc2626",
-  high: "#f97316",
-  normal: "#d97706",
-  low: "#16a34a",
-};
+const NAV_GROUPS: DashboardNavGroup[] = [
+  {
+    label: "لوحتي",
+    items: [
+      { id: "tasks", label: "مهامي", icon: ClipboardList },
+      { id: "team", label: "الفريق", icon: Users },
+      { id: "profile", label: "ملفي", icon: User },
+    ],
+  },
+];
+
 const URGENCY_LABEL: Record<string, string> = {
   urgent: "عاجل جداً",
   high: "عاجل",
   normal: "عادي",
   low: "منخفض",
+};
+const URGENCY_CLASS: Record<string, string> = {
+  urgent: "bg-red-100 text-red-700",
+  high: "bg-orange-100 text-orange-700",
+  normal: "bg-amber-100 text-amber-700",
+  low: "bg-emerald-100 text-emerald-700",
 };
 const STATUS_LABEL: Record<string, string> = {
   todo: "قيد الانتظار",
@@ -33,11 +52,27 @@ const STATUS_LABEL: Record<string, string> = {
   done: "مكتمل",
   review: "مراجعة",
 };
-const STATUS_COLOR: Record<string, string> = {
-  todo: "#6b7280",
-  doing: "#0369a1",
-  done: "#16a34a",
-  review: "#9333ea",
+const STATUS_CLASS: Record<string, string> = {
+  todo: "border-slate-300 text-slate-500",
+  doing: "border-sky-300 text-sky-700",
+  done: "border-emerald-300 text-emerald-700",
+  review: "border-violet-300 text-violet-700",
+};
+const STATUS_CLASS_ACTIVE: Record<string, string> = {
+  todo: "bg-slate-100",
+  doing: "bg-sky-100",
+  done: "bg-emerald-100",
+  review: "bg-violet-100",
+};
+const EMP_STATUS_LABEL: Record<Employee["status"], string> = {
+  active: "نشط",
+  away: "بعيد",
+  off: "خارج العمل",
+};
+const EMP_STATUS_CLASS: Record<Employee["status"], string> = {
+  active: "bg-secondary text-primary",
+  away: "bg-amber-100 text-amber-800",
+  off: "bg-red-100 text-red-800",
 };
 
 function EmployeeDashboard() {
@@ -95,16 +130,7 @@ function EmployeeDashboard() {
   // ── Render gate ────────────────────────────────────────────────
   if (authLoading || myEmployeeQ.isLoading || tasksQ.isLoading) {
     return (
-      <div
-        dir="rtl"
-        style={{
-          minHeight: "100dvh",
-          background: "#f4f7f5",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <div dir="rtl" className="flex min-h-dvh items-center justify-center bg-app-bg">
         <LoadingState />
       </div>
     );
@@ -112,239 +138,88 @@ function EmployeeDashboard() {
 
   const doneTasks = tasks.filter((t) => t.status === "done").length;
   const pendingTasks = tasks.length - doneTasks;
+  const employeeInitial = myEmployee?.name?.[0] ?? "م";
+
+  const PAGE_TITLES: Record<PageId, string> = {
+    tasks: "مهامي",
+    team: "الفريق",
+    profile: "ملفي",
+  };
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        minHeight: "100dvh",
-        background: "#f0f4f2",
-        fontFamily: "'Tajawal','Cairo',sans-serif",
-      }}
-    >
-      <Toaster position="top-center" richColors />
-
-      {/* Header */}
-      <div
-        style={{
-          background: "white",
-          borderBottom: "1px solid rgba(45,122,82,.1)",
-          padding: "0 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: 56,
-        }}
+    <div dir="rtl">
+      <DashboardShell
+        navGroups={NAV_GROUPS}
+        activePage={activePage}
+        onNavigate={(page) => setActivePage(page as PageId)}
+        pageTitle={PAGE_TITLES[activePage]}
+        identityName={myEmployee?.name ?? "موظف"}
+        identityInitial={employeeInitial}
+        identitySubtitle={myEmployee?.role ? `${myEmployee.role} · ${assocName}` : assocName}
+        onLogout={logout}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "linear-gradient(135deg,#1a5c3a,#2d7a52)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: 700,
-              fontSize: ".95rem",
-            }}
-          >
-            {myEmployee?.name?.[0] ?? "م"}
-          </div>
-          <div>
-            <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-              {myEmployee?.name ?? "موظف"}
-            </div>
-            <div style={{ fontSize: ".72rem", color: "#6b7280" }}>
-              {myEmployee?.role ?? ""} · {assocName}
-            </div>
-          </div>
+        {/* Summary cards */}
+        <div className="mb-4 grid grid-cols-3 gap-3">
+          <StatCard label="مهامي" value={tasks.length} icon={ClipboardList} tone="primary" />
+          <StatCard label="مكتملة" value={doneTasks} icon={CheckCircle2} tone="primary" />
+          <StatCard label="متبقية" value={pendingTasks} icon={Clock3} tone="gold" />
         </div>
-        <button
-          onClick={logout}
-          style={{
-            fontSize: ".78rem",
-            color: "#dc2626",
-            background: "none",
-            border: "1px solid rgba(220,38,38,.2)",
-            padding: "5px 12px",
-            borderRadius: 7,
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
-          خروج
-        </button>
-      </div>
 
-      {/* Summary cards */}
-      <div style={{ padding: "16px 20px 0", display: "flex", gap: 12 }}>
-        {[
-          { label: "مهامي", value: tasks.length, icon: "📋", color: "#1a5c3a" },
-          { label: "مكتملة", value: doneTasks, icon: "✅", color: "#16a34a" },
-          { label: "متبقية", value: pendingTasks, icon: "⏳", color: "#d97706" },
-        ].map((card) => (
-          <div
-            key={card.label}
-            style={{
-              flex: 1,
-              background: "white",
-              borderRadius: 11,
-              padding: "14px 16px",
-              border: "1px solid rgba(45,122,82,.1)",
-            }}
-          >
-            <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>{card.icon}</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: card.color }}>
-              {card.value}
-            </div>
-            <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 2 }}>{card.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Nav tabs */}
-      <div style={{ display: "flex", gap: 6, padding: "14px 20px 0" }}>
-        {(
-          [
-            ["tasks", "مهامي", "📋"],
-            ["team", "الفريق", "👥"],
-            ["profile", "ملفي", "👤"],
-          ] as const
-        ).map(([id, label, icon]) => (
-          <button
-            key={id}
-            onClick={() => setActivePage(id)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 9,
-              border: "none",
-              fontSize: ".82rem",
-              fontWeight: activePage === id ? 700 : 500,
-              background: activePage === id ? "#1a5c3a" : "white",
-              color: activePage === id ? "white" : "#374151",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              transition: "all .15s",
-            }}
-          >
-            {icon} {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div style={{ padding: "16px 20px 32px" }}>
         {/* Tasks page */}
         {activePage === "tasks" && (
           <div>
             {tasks.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "50px 0", color: "#9ca3af" }}>
-                <div style={{ fontSize: "2.5rem", marginBottom: 10 }}>📭</div>
-                <div style={{ fontSize: ".88rem" }}>لا توجد مهام مسندة إليك حالياً</div>
-              </div>
+              <EmptyState icon={Inbox} title="لا توجد مهام مسندة إليك حالياً" />
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="flex flex-col gap-2.5">
                 {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    style={{
-                      background: "white",
-                      borderRadius: 11,
-                      padding: "14px 16px",
-                      border: "1px solid rgba(45,122,82,.1)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        gap: 10,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#111827" }}>
-                          {task.title}
+                  <Card key={task.id}>
+                    <CardContent className="flex flex-col gap-2.5 p-4">
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div>
+                          <div className="text-sm font-bold text-foreground">{task.title}</div>
+                          {task.category && (
+                            <div className="mt-0.5 text-xs text-muted-foreground">{task.category}</div>
+                          )}
+                          {task.notes && (
+                            <div className="mt-1 text-sm leading-6 text-foreground/80">{task.notes}</div>
+                          )}
                         </div>
-                        {task.category && (
-                          <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: 2 }}>
-                            {task.category}
-                          </div>
-                        )}
-                        {task.notes && (
-                          <div
-                            style={{
-                              fontSize: ".78rem",
-                              color: "#374151",
-                              marginTop: 4,
-                              lineHeight: 1.5,
-                            }}
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-xs font-bold",
+                              URGENCY_CLASS[task.urgency],
+                            )}
                           >
-                            {task.notes}
-                          </div>
-                        )}
+                            {URGENCY_LABEL[task.urgency] ?? task.urgency}
+                          </span>
+                          {task.deadline && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(task.deadline).toLocaleDateString("ar-SA")}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "flex-end",
-                          gap: 5,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: ".68rem",
-                            padding: "2px 8px",
-                            borderRadius: 20,
-                            fontWeight: 700,
-                            background: `${URGENCY_COLOR[task.urgency]}18`,
-                            color: URGENCY_COLOR[task.urgency],
-                          }}
-                        >
-                          {URGENCY_LABEL[task.urgency] ?? task.urgency}
-                        </span>
-                        {task.deadline && (
-                          <div style={{ fontSize: ".68rem", color: "#9ca3af" }}>
-                            📅 {new Date(task.deadline).toLocaleDateString("ar-SA")}
-                          </div>
-                        )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {(["todo", "doing", "review", "done"] as Task["status"][]).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => updateTaskStatus(task.id, s)}
+                            className={cn(
+                              "rounded-full border-[1.5px] px-2.5 py-1 text-xs font-medium transition-colors",
+                              task.status === s
+                                ? cn(STATUS_CLASS[s], STATUS_CLASS_ACTIVE[s], "font-bold")
+                                : "border-border text-muted-foreground",
+                            )}
+                          >
+                            {STATUS_LABEL[s]}
+                          </button>
+                        ))}
                       </div>
-                    </div>
-                    {/* Status selector */}
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {(["todo", "doing", "review", "done"] as Task["status"][]).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => updateTaskStatus(task.id, s)}
-                          style={{
-                            fontSize: ".7rem",
-                            padding: "3px 10px",
-                            borderRadius: 20,
-                            border: `1.5px solid ${task.status === s ? STATUS_COLOR[s] : "rgba(0,0,0,.1)"}`,
-                            background: task.status === s ? `${STATUS_COLOR[s]}15` : "transparent",
-                            color: task.status === s ? STATUS_COLOR[s] : "#9ca3af",
-                            cursor: "pointer",
-                            fontFamily: "inherit",
-                            fontWeight: task.status === s ? 700 : 400,
-                            transition: "all .15s",
-                          }}
-                        >
-                          {STATUS_LABEL[s]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
@@ -353,159 +228,71 @@ function EmployeeDashboard() {
 
         {/* Team page */}
         {activePage === "team" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="flex flex-col gap-2.5">
             {team.map((emp) => (
-              <div
-                key={emp.id}
-                style={{
-                  background: "white",
-                  borderRadius: 11,
-                  padding: "12px 16px",
-                  border: "1px solid rgba(45,122,82,.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 9,
-                    background: emp.color,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: ".9rem",
-                    flexShrink: 0,
-                  }}
-                >
-                  {emp.name[0]}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: ".88rem", fontWeight: 700, color: "#111827" }}>
-                    {emp.name}
-                    {emp.id === myEmployee?.id && (
-                      <span
-                        style={{
-                          fontSize: ".65rem",
-                          marginRight: 6,
-                          color: "#2d7a52",
-                          fontWeight: 700,
-                        }}
-                      >
-                        أنت
-                      </span>
-                    )}
+              <Card key={emp.id}>
+                <CardContent className="flex items-center gap-3 p-3.5">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarFallback style={{ background: emp.color }} className="text-sm font-bold text-white">
+                      {emp.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold text-foreground">
+                      {emp.name}
+                      {emp.id === myEmployee?.id && (
+                        <span className="mr-1.5 text-xs font-bold text-primary">أنت</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{emp.role}</div>
                   </div>
-                  <div style={{ fontSize: ".73rem", color: "#6b7280" }}>{emp.role}</div>
-                </div>
-                <span
-                  style={{
-                    fontSize: ".68rem",
-                    padding: "2px 9px",
-                    borderRadius: 20,
-                    fontWeight: 600,
-                    background:
-                      emp.status === "active"
-                        ? "#e8f5ee"
-                        : emp.status === "away"
-                          ? "#fef3c7"
-                          : "#fee2e2",
-                    color:
-                      emp.status === "active"
-                        ? "#166534"
-                        : emp.status === "away"
-                          ? "#92400e"
-                          : "#991b1b",
-                  }}
-                >
-                  {emp.status === "active" ? "نشط" : emp.status === "away" ? "بعيد" : "خارج العمل"}
-                </span>
-              </div>
+                  <Badge className={cn("hover:bg-inherit", EMP_STATUS_CLASS[emp.status])}>
+                    {EMP_STATUS_LABEL[emp.status]}
+                  </Badge>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
 
         {/* Profile page */}
         {activePage === "profile" && (
-          <div
-            style={{
-              background: "white",
-              borderRadius: 13,
-              padding: 20,
-              border: "1px solid rgba(45,122,82,.1)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  background: myEmployee?.color ?? "#2d7a52",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontWeight: 800,
-                  fontSize: "1.4rem",
-                }}
-              >
-                {myEmployee?.name?.[0] ?? "م"}
-              </div>
-              <div>
-                <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#111827" }}>
-                  {myEmployee?.name}
+          <Card>
+            <CardContent className="p-5">
+              <div className="mb-5 flex items-center gap-3.5">
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-extrabold text-white"
+                  style={{ background: myEmployee?.color ?? "#2d7a52" }}
+                >
+                  {myEmployee?.name?.[0] ?? "م"}
                 </div>
-                <div style={{ fontSize: ".8rem", color: "#6b7280" }}>{myEmployee?.role}</div>
-              </div>
-            </div>
-            {[
-              { label: "الجمعية", value: assocName, icon: "🏢" },
-              {
-                label: "الحالة",
-                value:
-                  myEmployee?.status === "active"
-                    ? "نشط"
-                    : myEmployee?.status === "away"
-                      ? "بعيد"
-                      : "خارج العمل",
-                icon: "🟢",
-              },
-              { label: "المهام المسندة", value: `${tasks.length} مهمة`, icon: "📋" },
-              { label: "المهام المكتملة", value: `${doneTasks} مهمة`, icon: "✅" },
-            ].map((row) => (
-              <div
-                key={row.label}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "10px 0",
-                  borderBottom: "1px solid rgba(0,0,0,.05)",
-                }}
-              >
-                <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>
-                  {row.icon}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: ".72rem", color: "#9ca3af", fontWeight: 600 }}>
-                    {row.label}
-                  </div>
-                  <div
-                    style={{ fontSize: ".88rem", color: "#111827", fontWeight: 600, marginTop: 1 }}
-                  >
-                    {row.value}
-                  </div>
+                <div>
+                  <div className="text-lg font-extrabold text-foreground">{myEmployee?.name}</div>
+                  <div className="text-sm text-muted-foreground">{myEmployee?.role}</div>
                 </div>
               </div>
-            ))}
-          </div>
+              {[
+                { label: "الجمعية", value: assocName, icon: "🏢" },
+                {
+                  label: "الحالة",
+                  value: myEmployee ? EMP_STATUS_LABEL[myEmployee.status] : "—",
+                  icon: "🟢",
+                },
+                { label: "المهام المسندة", value: `${tasks.length} مهمة`, icon: "📋" },
+                { label: "المهام المكتملة", value: `${doneTasks} مهمة`, icon: "✅" },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center gap-3 border-b py-2.5 last:border-b-0">
+                  <span className="w-6 text-center text-lg">{row.icon}</span>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-muted-foreground">{row.label}</div>
+                    <div className="mt-0.5 text-sm font-semibold text-foreground">{row.value}</div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
-      </div>
+      </DashboardShell>
     </div>
   );
 }

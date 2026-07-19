@@ -11,7 +11,6 @@ export const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "story", label: "قصة", icon: "✨" },
   { key: "donation", label: "نداء تبرع", icon: "💚" },
   { key: "video", label: "سيناريو", icon: "🎬" },
-  { key: "logo", label: "شعار", icon: "🏷" },
 ];
 
 export const IMAGE_TABS: Tab[] = ["post", "story", "donation"];

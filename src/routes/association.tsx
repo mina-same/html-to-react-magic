@@ -9,6 +9,7 @@ import {
   CheckSquare,
   CreditCard,
   Sparkles,
+  Shapes,
   Captions,
   Megaphone,
   Star,
@@ -57,7 +58,8 @@ const NAV_GROUPS: DashboardNavGroup[] = [
     label: "المحتوى",
     items: [
       { id: "content", label: "محتوى تسويقي", icon: Sparkles },
-      { id: "captions", label: "ترجمة الفيديو", icon: Captions },
+      { id: "logo", label: "الشعار المتحرك", icon: Shapes },
+      { id: "captions", label: "ريل كابشن", icon: Captions },
       { id: "campaigns", label: "الحملات", icon: Megaphone },
       { id: "influencers", label: "المؤثرون", icon: Star },
     ],
@@ -81,6 +83,7 @@ import TeamPage from "@/components/association/pages/TeamPage";
 import TasksPage from "@/components/association/pages/TasksPage";
 import DonationsPage from "@/components/association/pages/DonationsPage";
 import ContentPage from "@/components/association/pages/ContentPage";
+import LogoPage from "@/components/association/pages/LogoPage";
 import CaptionsWorkspace from "@/components/captions/CaptionsWorkspace";
 import CampaignsPage from "@/components/association/pages/CampaignsPage";
 import InfluencersPage from "@/components/association/pages/InfluencersPage";
@@ -346,6 +349,8 @@ function Association() {
         return <DonationsPage userId={user?.id} />;
       case "content":
         return <ContentPage assocName={assocName ?? undefined} />;
+      case "logo":
+        return <LogoPage assocId={user?.id} assocName={assocName ?? undefined} />;
       case "captions":
         return <CaptionsWorkspace embedded />;
       case "campaigns":

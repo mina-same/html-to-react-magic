@@ -1,6 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
+import {
+  LayoutGrid,
+  Landmark,
+  Star,
+  ClipboardList,
+  BarChart3,
+  Settings as SettingsIcon,
+} from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -14,7 +22,7 @@ import {
 } from "@/api/mutations";
 import { LoadingState, ErrorState } from "@/components/common/StateViews";
 
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { DashboardShell, type DashboardNavGroup } from "@/components/dashboard/DashboardShell";
 import { OverviewPage } from "@/components/admin/pages/OverviewPage";
 import { OrgsPage } from "@/components/admin/pages/OrgsPage";
 import { OrgProfilePage } from "@/components/admin/pages/OrgProfilePage";
@@ -22,7 +30,6 @@ import { InfluencersPage } from "@/components/admin/pages/InfluencersPage";
 import { RequestsPage } from "@/components/admin/pages/RequestsPage";
 import { ReportsPage } from "@/components/admin/pages/ReportsPage";
 import { SettingsPage } from "@/components/admin/pages/SettingsPage";
-import { S } from "@/components/admin/helpers";
 import {
   PAGE_TITLES,
   PAGE_TAGS,
@@ -35,6 +42,25 @@ import { OrgModal } from "@/components/admin/modals/OrgModal";
 import { InfModal } from "@/components/admin/modals/InfModal";
 import { ReqModal } from "@/components/admin/modals/ReqModal";
 
+const NAV_GROUPS: DashboardNavGroup[] = [
+  { label: "الرئيسية", items: [{ id: "overview", label: "لوحة التحكم", icon: LayoutGrid }] },
+  {
+    label: "إدارة",
+    items: [
+      { id: "orgs", label: "الجمعيات", icon: Landmark },
+      { id: "influencers", label: "المؤثرون", icon: Star },
+      { id: "requests", label: "الطلبات", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "تقارير",
+    items: [
+      { id: "reports", label: "التقارير المالية", icon: BarChart3 },
+      { id: "settings", label: "الإعدادات", icon: SettingsIcon },
+    ],
+  },
+];
+
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "ساعِد — إدارة المنصة" }] }),
   component: Admin,
@@ -44,7 +70,7 @@ type ModalState<T> = { open: boolean; data: Partial<T> | null };
 
 function Admin() {
   const navigate = useNavigate();
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading, signOut } = useAuth();
 
   // ── UI state only ──────────────────────────────────────────────
   const [activePage, _setActivePage] = useState<PageId>("overview");
@@ -277,76 +303,75 @@ function Admin() {
     }
   }
 
+  const navGroups: DashboardNavGroup[] = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.map((item) => {
+      if (item.id === "orgs") {
+        const n = orgs.filter((o) => o.status === "new").length;
+        return n > 0 ? { ...item, badge: n } : item;
+      }
+      if (item.id === "influencers") {
+        const n = influencers.filter((i) => i.status === "active").length;
+        return n > 0 ? { ...item, badge: n } : item;
+      }
+      if (item.id === "requests") {
+        const n = requests.filter((r) => r.status === "pending").length;
+        return n > 0 ? { ...item, badge: n, badgeVariant: "destructive" as const } : item;
+      }
+      return item;
+    }),
+  }));
+
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap');
-        html, body { direction: rtl; font-family: 'Tajawal', sans-serif; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         .admin-page-anim { animation: fadeUp .3s ease; }
-        .admin-content::-webkit-scrollbar { width: 4px; }
-        .admin-content::-webkit-scrollbar-thumb { background: rgba(45,122,82,.12); border-radius: 4px; }
       `}</style>
-      <Toaster position="top-center" richColors />
-      <div style={S.app}>
-        <AdminSidebar
-          activePage={activePage}
-          setActivePage={setActivePage}
-          orgs={orgs}
-          influencers={influencers}
-          requests={requests}
-        />
-
-        <div style={S.main}>
-          <div style={S.topbar}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginLeft: "auto" }}>
-              <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#111827" }}>
-                {PAGE_TITLES[activePage]}
-              </div>
-              <div style={{ fontSize: ".72rem", color: "#6b7280" }}>
-                {PAGE_TAGS[activePage]({ orgs, influencers, requests })}
-              </div>
-            </div>
-          </div>
-
-          <div style={S.content} className="admin-content">
-            <div className="admin-page-anim">
-              {anyError ? (
-                <ErrorState onRetry={refetchAll} />
-              ) : firstLoad ? (
-                <LoadingState />
-              ) : (
-                renderPage()
-              )}
-            </div>
-          </div>
+      <DashboardShell
+        navGroups={navGroups}
+        activePage={activePage}
+        onNavigate={(page) => setActivePage(page as PageId)}
+        pageTitle={PAGE_TITLES[activePage]}
+        identityName="لوحة الإدارة"
+        identityInitial="A"
+        identitySubtitle={PAGE_TAGS[activePage]({ orgs, influencers, requests })}
+        onLogout={signOut}
+      >
+        <div className="admin-page-anim">
+          {anyError ? (
+            <ErrorState onRetry={refetchAll} />
+          ) : firstLoad ? (
+            <LoadingState />
+          ) : (
+            renderPage()
+          )}
         </div>
+      </DashboardShell>
 
-        {orgModal.open && (
-          <OrgModal
-            org={orgModal.data}
-            onClose={() => setOrgModal({ open: false, data: null })}
-            onSave={saveOrg}
-          />
-        )}
-        {infModal.open && (
-          <InfModal
-            inf={infModal.data}
-            onClose={() => setInfModal({ open: false, data: null })}
-            onSave={saveInf}
-          />
-        )}
-        {reqModal.open && (
-          <ReqModal
-            req={reqModal.data}
-            orgs={orgs}
-            infs={influencers}
-            onClose={() => setReqModal({ open: false, data: null })}
-            onSave={saveReq}
-          />
-        )}
-      </div>
+      {orgModal.open && (
+        <OrgModal
+          org={orgModal.data}
+          onClose={() => setOrgModal({ open: false, data: null })}
+          onSave={saveOrg}
+        />
+      )}
+      {infModal.open && (
+        <InfModal
+          inf={infModal.data}
+          onClose={() => setInfModal({ open: false, data: null })}
+          onSave={saveInf}
+        />
+      )}
+      {reqModal.open && (
+        <ReqModal
+          req={reqModal.data}
+          orgs={orgs}
+          infs={influencers}
+          onClose={() => setReqModal({ open: false, data: null })}
+          onSave={saveReq}
+        />
+      )}
     </>
   );
 }

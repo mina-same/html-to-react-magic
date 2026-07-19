@@ -1,6 +1,16 @@
-import { StatusBadge, S } from "../helpers";
-import type { CampaignRequest } from "../types";
 import { toast } from "sonner";
+import { StatusBadge } from "../helpers";
+import type { CampaignRequest } from "../types";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface RequestsPageProps {
   filteredReqs: CampaignRequest[];
@@ -10,6 +20,8 @@ interface RequestsPageProps {
   saveReq: (req: CampaignRequest) => Promise<void>;
   rejectReq: (id: number) => Promise<void>;
 }
+
+const HEADERS = ["#", "الجمعية", "المؤثر", "النوع", "الميزانية", "المدة", "التاريخ", "الحالة", "إجراءات"];
 
 export function RequestsPage({
   filteredReqs,
@@ -21,104 +33,83 @@ export function RequestsPage({
 }: RequestsPageProps) {
   return (
     <div>
-      <div style={S.toolbar}>
-        <select
-          style={{
-            padding: "7px 12px",
-            border: "1.5px solid rgba(45,122,82,.12)",
-            borderRadius: 8,
-            fontFamily: "'Tajawal',sans-serif",
-            fontSize: ".82rem",
-            color: "#374151",
-            background: "white",
-            cursor: "pointer",
-          }}
-          value={reqStatusFilter}
-          onChange={(e) => setReqStatusFilter(e.target.value)}
-        >
-          <option value="all">جميع الحالات</option>
-          <option value="pending">معلق</option>
-          <option value="approved">مقبول</option>
-          <option value="completed">مكتمل</option>
-          <option value="rejected">مرفوض</option>
-        </select>
+      <div className="mb-3.5 flex flex-wrap items-center gap-2">
+        <Select value={reqStatusFilter} onValueChange={setReqStatusFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">جميع الحالات</SelectItem>
+            <SelectItem value="pending">معلق</SelectItem>
+            <SelectItem value="approved">مقبول</SelectItem>
+            <SelectItem value="completed">مكتمل</SelectItem>
+            <SelectItem value="rejected">مرفوض</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      <div style={S.secCard}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              {[
-                "#",
-                "الجمعية",
-                "المؤثر",
-                "النوع",
-                "الميزانية",
-                "المدة",
-                "التاريخ",
-                "الحالة",
-                "إجراءات",
-              ].map((h, i) => (
-                <th key={i} style={S.tblTh}>
-                  {h}
-                </th>
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              {HEADERS.map((h) => (
+                <TableHead key={h}>{h}</TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredReqs.map((r) => (
-              <tr
-                key={r.id}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#f2faf6")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-              >
-                <td style={{ ...S.tblTd, color: "#9ca3af" }}>#{r.id}</td>
-                <td style={S.tblTd}>{r.orgName}</td>
-                <td style={S.tblTd}>{r.infName}</td>
-                <td style={S.tblTd}>{r.type}</td>
-                <td style={S.tblTd}>{r.budget.toLocaleString()} ر.س</td>
-                <td style={S.tblTd}>{r.duration}</td>
-                <td style={S.tblTd}>{r.date}</td>
-                <td style={S.tblTd}>
+              <TableRow key={r.id}>
+                <TableCell className="text-muted-foreground">#{r.id}</TableCell>
+                <TableCell>{r.orgName}</TableCell>
+                <TableCell>{r.infName}</TableCell>
+                <TableCell>{r.type}</TableCell>
+                <TableCell>{r.budget.toLocaleString()} ر.س</TableCell>
+                <TableCell>{r.duration}</TableCell>
+                <TableCell>{r.date}</TableCell>
+                <TableCell>
                   <StatusBadge status={r.status} />
-                </td>
-                <td style={S.tblTd}>
-                  <div style={{ display: "flex", gap: 5 }}>
-                    <button style={S.btnGhost} onClick={() => setReqModal({ open: true, data: r })}>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setReqModal({ open: true, data: r })}>
                       عرض
-                    </button>
+                    </Button>
                     {r.status === "pending" && (
                       <>
-                        <button
-                          style={{ ...S.btnPrimary, fontSize: ".72rem", padding: "5px 10px" }}
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
                           onClick={() => {
                             saveReq({ ...r, status: "approved" });
                             toast.success("✅ تم قبول الطلب");
                           }}
                         >
                           قبول
-                        </button>
-                        <button style={S.btnDanger} onClick={() => rejectReq(r.id)}>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 border-red-300 text-xs text-destructive hover:bg-red-50"
+                          onClick={() => rejectReq(r.id)}
+                        >
                           رفض
-                        </button>
+                        </Button>
                       </>
                     )}
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {filteredReqs.length === 0 && (
-              <tr>
-                <td
-                  colSpan={9}
-                  style={{ ...S.tblTd, textAlign: "center", color: "#9ca3af", padding: 32 }}
-                >
+              <TableRow>
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   لا توجد نتائج
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

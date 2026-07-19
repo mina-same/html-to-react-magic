@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { S, StatusBadge } from "../../helpers";
+import { StatusBadge } from "../../helpers";
 import { QueryState } from "@/components/common/StateViews";
 import type { Donation } from "@/components/association/types";
 import { pagSlice } from "./constants";
 import { Pager } from "./shared";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function DonationsTab({ donationsQuery }: { donationsQuery: UseQueryResult<Donation[]> }) {
   const [page, setPage] = useState(1);
@@ -19,91 +21,61 @@ export function DonationsTab({ donationsQuery }: { donationsQuery: UseQueryResul
       {(donations) => {
         const pageData = pagSlice(donations, page);
         return (
-          <div style={S.secCard}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {[
-                    "رقم التبرع",
-                    "المتبرع",
-                    "المشروع",
-                    "المبلغ",
-                    "طريقة الدفع",
-                    "التاريخ",
-                    "الحالة",
-                  ].map((h, i) => (
-                    <th key={i} style={S.tblTh}>
-                      {h}
-                    </th>
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  {["رقم التبرع", "المتبرع", "المشروع", "المبلغ", "طريقة الدفع", "التاريخ", "الحالة"].map((h) => (
+                    <TableHead key={h}>{h}</TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {pageData.map((don) => (
-                  <tr
-                    key={don.id}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                  >
-                    <td style={S.tblTd}>
-                      <span
-                        style={{
-                          fontFamily: "monospace",
-                          fontSize: ".76rem",
-                          background: "#f0f4f2",
-                          padding: "2px 7px",
-                          borderRadius: 5,
-                        }}
-                      >
+                  <TableRow key={don.id}>
+                    <TableCell>
+                      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                         {don.donationNumber || "—"}
                       </span>
-                    </td>
-                    <td style={{ ...S.tblTd, fontWeight: 600, color: "#111827" }}>{don.name}</td>
-                    <td style={S.tblTd}>{don.projectName || "—"}</td>
-                    <td style={{ ...S.tblTd, fontWeight: 700, color: "#2d7a52" }} dir="ltr">
+                    </TableCell>
+                    <TableCell className="font-semibold text-foreground">{don.name}</TableCell>
+                    <TableCell>{don.projectName || "—"}</TableCell>
+                    <TableCell className="font-bold text-primary" dir="ltr">
                       {don.amount.toLocaleString()} ر.س
-                    </td>
-                    <td style={S.tblTd}>{don.paymentMethod}</td>
-                    <td style={S.tblTd}>{don.date}</td>
-                    <td style={S.tblTd}>
+                    </TableCell>
+                    <TableCell>{don.paymentMethod}</TableCell>
+                    <TableCell>{don.date}</TableCell>
+                    <TableCell>
                       <StatusBadge status={don.status} />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
             {donations.length > 0 && (
-              <div
-                style={{
-                  padding: "10px 16px",
-                  borderTop: "1px solid rgba(45,122,82,.08)",
-                  display: "flex",
-                  gap: 24,
-                  background: "#f2faf6",
-                }}
-              >
-                <div style={{ fontSize: ".78rem", color: "#6b7280" }}>
+              <div className="flex gap-6 border-t bg-secondary/40 px-4 py-2.5">
+                <div className="text-xs text-muted-foreground">
                   إجمالي التبرعات:{" "}
-                  <strong style={{ color: "#2d7a52" }}>
+                  <strong className="text-primary">
                     {donations.reduce((s, d) => s + d.amount, 0).toLocaleString()} ر.س
                   </strong>
                 </div>
-                <div style={{ fontSize: ".78rem", color: "#6b7280" }}>
+                <div className="text-xs text-muted-foreground">
                   مكتملة:{" "}
-                  <strong style={{ color: "#166534" }}>
+                  <strong className="text-emerald-700">
                     {donations.filter((d) => d.status === "completed").length}
                   </strong>
                 </div>
-                <div style={{ fontSize: ".78rem", color: "#6b7280" }}>
+                <div className="text-xs text-muted-foreground">
                   معلّقة:{" "}
-                  <strong style={{ color: "#92400e" }}>
+                  <strong className="text-amber-700">
                     {donations.filter((d) => d.status === "pending").length}
                   </strong>
                 </div>
               </div>
             )}
             <Pager page={page} total={donations.length} onChange={setPage} />
-          </div>
+          </Card>
         );
       }}
     </QueryState>
